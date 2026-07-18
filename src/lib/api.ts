@@ -43,7 +43,7 @@ if (typeof window !== 'undefined') {
       { id: 7, amount: 300, description: "Compras Mês", type: "expense", date: new Date(new Date().getFullYear(), 2, 15).toISOString(), category_id: 3 },
     ],
     investments: [
-      { id: 1, name: "S&P 500", type: "Ações", current_value: 5000, invested_amount: 4500, return_rate: 11.11, date: new Date().toISOString() }
+      { id: 1, name: "S&P 500", asset_type: "Ações", balance: 5000, target: 10000, date: new Date().toISOString() }
     ]
   };
 
@@ -99,7 +99,7 @@ if (typeof window !== 'undefined') {
       else expense += t.amount;
     });
 
-    db.investments.forEach((i: any) => investments += i.current_value);
+    db.investments.forEach((i: any) => investments += i.balance || 0);
 
     // Generate some dummy chart data for visuals
     let chartData = [];
