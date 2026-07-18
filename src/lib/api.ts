@@ -73,14 +73,65 @@ if (typeof window !== 'undefined') {
   // Summary Mock
   mock.onGet(/\/summary.*/).reply((config) => {
     const db = getDB();
-    // Simplified summary logic based on all current transactions
+    const url = new URL(config.url!, API_URL);
+    const filterYear = url.searchParams.get('year');
+    const filterMonth = url.searchParams.get('month');
+
     let income = 0;
-    let expenses = 0;
-    db.transactions.forEach((t: any) => {
+    let expense = 0;
+    let investments = 0;
+    
+    // Filter transactions if needed
+    let txs = db.transactions;
+    if (filterYear && filterYear !== "Todos") {
+      txs = txs.filter((t: any) => new Date(t.date).getFullYear().toString() === filterYear);
+    }
+    if (filterMonth && filterMonth !== "Todos") {
+      txs = txs.filter((t: any) => (new Date(t.date).getMonth() + 1).toString() === filterMonth);
+    }
+
+    txs.forEach((t: any) => {
       if (t.type.toLowerCase() === 'income') income += t.amount;
-      else expenses += t.amount;
+      else expense += t.amount;
     });
-    return [200, { total_income: income, total_expenses: expenses, balance: income - expenses }];
+
+    db.investments.forEach((i: any) => investments += i.current_value);
+
+    // Generate some dummy chart data for visuals
+    let chartData = [];
+    if (filterMonth) {
+      // Daily data mock
+      chartData = [
+        { name: '01', receitas: income * 0.1, despesas: expense * 0.05 },
+        { name: '10', receitas: income * 0.4, despesas: expense * 0.3 },
+        { name: '20', receitas: income * 0.2, despesas: expense * 0.4 },
+        { name: '30', receitas: income * 0.3, despesas: expense * 0.25 },
+      ];
+    } else {
+      // Monthly data mock
+      chartData = [
+        { name: 'Jan', receitas: income * 0.05, despesas: expense * 0.08 },
+        { name: 'Fev', receitas: income * 0.08, despesas: expense * 0.07 },
+        { name: 'Mar', receitas: income * 0.1, despesas: expense * 0.05 },
+        { name: 'Abr', receitas: income * 0.12, despesas: expense * 0.1 },
+        { name: 'Mai', receitas: income * 0.09, despesas: expense * 0.11 },
+        { name: 'Jun', receitas: income * 0.15, despesas: expense * 0.09 },
+        { name: 'Jul', receitas: income * 0.1, despesas: expense * 0.12 },
+        { name: 'Ago', receitas: income * 0.11, despesas: expense * 0.08 },
+        { name: 'Set', receitas: income * 0.05, despesas: expense * 0.06 },
+        { name: 'Out', receitas: income * 0.05, despesas: expense * 0.09 },
+        { name: 'Nov', receitas: income * 0.05, despesas: expense * 0.05 },
+        { name: 'Dez', receitas: income * 0.05, despesas: expense * 0.1 },
+      ];
+    }
+
+    return [200, {
+      balance: income - expense,
+      income,
+      expense,
+      investments,
+      chartData
+    }];
   });
 
   // Categories Mocks
