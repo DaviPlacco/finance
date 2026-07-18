@@ -5,6 +5,7 @@ import { api } from "@/lib/api";
 import { TrendingUp, Plus, Target, PiggyBank, Pencil, Trash2 } from "lucide-react";
 import { CustomSelect } from "@/components/CustomSelect";
 import { toast } from "sonner";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 export default function InvestimentosPage() {
   const [investments, setInvestments] = useState([]);
@@ -18,14 +19,28 @@ export default function InvestimentosPage() {
   const [target, setTarget] = useState("");
   const [editingId, setEditingId] = useState<number | null>(null);
 
+  const [chartData, setChartData] = useState([]);
+  const [filterYear, setFilterYear] = useState("2026");
+  const [filterMonth, setFilterMonth] = useState("Todos");
+  const [filterDay, setFilterDay] = useState("Todos");
+
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [filterYear, filterMonth, filterDay]);
 
   async function fetchData() {
     try {
-      const res = await api.get("/investments");
-      setInvestments(res.data);
+      const query = new URLSearchParams();
+      if (filterYear) query.append("year", filterYear);
+      if (filterMonth) query.append("month", filterMonth);
+      if (filterDay) query.append("day", filterDay);
+
+      const [invRes, histRes] = await Promise.all([
+        api.get("/investments"),
+        api.get(`/investments/history?${query.toString()}`)
+      ]);
+      setInvestments(invRes.data);
+      setChartData(histRes.data);
     } catch (err) {
       console.error(err);
     } finally {
@@ -195,6 +210,33 @@ export default function InvestimentosPage() {
         </div>
 
         <div className="lg:col-span-2">
+          {/* Chart Section */}
+          <div className="glass-card p-6 mb-8">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white">Evolução Patrimonial</h3>
+              <div className="flex flex-wrap gap-2">
+                <CustomSelect value={filterYear} onChange={setFilterYear as any} options={[{value:"2025",label:"2025"},{value:"2026",label:"2026"}]} />
+                <CustomSelect value={filterMonth} onChange={setFilterMonth as any} options={[{value:"Todos",label:"Mês (Todos)"},{value:"1",label:"Jan"},{value:"2",label:"Fev"},{value:"3",label:"Mar"},{value:"4",label:"Abr"},{value:"5",label:"Mai"},{value:"6",label:"Jun"},{value:"7",label:"Jul"},{value:"8",label:"Ago"},{value:"9",label:"Set"},{value:"10",label:"Out"},{value:"11",label:"Nov"},{value:"12",label:"Dez"}]} />
+                <CustomSelect value={filterDay} onChange={setFilterDay as any} options={[{value:"Todos",label:"Dia (Todos)"},{value:"1",label:"01"},{value:"5",label:"05"},{value:"10",label:"10"},{value:"15",label:"15"},{value:"20",label:"20"},{value:"25",label:"25"}]} />
+              </div>
+            </div>
+            <div className="h-64 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" vertical={false} />
+                  <XAxis dataKey="name" stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} dy={10} />
+                  <YAxis hide domain={['dataMin - 100', 'dataMax + 100']} />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: 'rgba(15, 23, 42, 0.9)', border: 'none', borderRadius: '12px', color: '#fff', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
+                    itemStyle={{ color: '#fff', fontWeight: 'bold' }}
+                    formatter={(value: number) => [`${formatCurrency(value)}`, 'Património']}
+                  />
+                  <Line type="monotone" dataKey="valor" stroke="#0052ff" strokeWidth={3} dot={{ fill: '#0052ff', strokeWidth: 2, r: 4 }} activeDot={{ r: 6, fill: '#fff', stroke: '#0052ff' }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {investments.length === 0 ? (
               <div className="col-span-full glass-card p-8 text-center text-slate-500 dark:text-slate-400">

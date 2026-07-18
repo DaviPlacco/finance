@@ -213,6 +213,56 @@ if (typeof window !== 'undefined') {
     return [200, { message: "Deleted" }];
   });
 
+  // Investments History Mock
+  mock.onGet(/\/investments\/history.*/).reply((config) => {
+    const db = getDB();
+    const url = new URL(config.url!, API_URL);
+    const filterYear = url.searchParams.get('year');
+    const filterMonth = url.searchParams.get('month');
+    const filterDay = url.searchParams.get('day');
+
+    let totalPatrimony = 0;
+    db.investments.forEach((i: any) => totalPatrimony += i.balance || 0);
+
+    // Generate some dummy chart data for visuals based on filters
+    let chartData = [];
+    if (filterDay && filterDay !== "Todos") {
+        // Hourly data for the day
+        for (let i = 8; i <= 18; i += 2) {
+            chartData.push({ name: `${i}:00`, valor: totalPatrimony * (0.95 + Math.random() * 0.1) });
+        }
+    } else if (filterMonth && filterMonth !== "Todos") {
+        // Daily data for the month
+        chartData = [
+            { name: '01', valor: totalPatrimony * 0.90 },
+            { name: '05', valor: totalPatrimony * 0.92 },
+            { name: '10', valor: totalPatrimony * 0.95 },
+            { name: '15', valor: totalPatrimony * 0.94 },
+            { name: '20', valor: totalPatrimony * 0.98 },
+            { name: '25', valor: totalPatrimony * 0.99 },
+            { name: '30', valor: totalPatrimony * 1.00 },
+        ];
+    } else {
+        // Monthly data
+        chartData = [
+            { name: 'Jan', valor: totalPatrimony * 0.70 },
+            { name: 'Fev', valor: totalPatrimony * 0.75 },
+            { name: 'Mar', valor: totalPatrimony * 0.73 },
+            { name: 'Abr', valor: totalPatrimony * 0.80 },
+            { name: 'Mai', valor: totalPatrimony * 0.82 },
+            { name: 'Jun', valor: totalPatrimony * 0.85 },
+            { name: 'Jul', valor: totalPatrimony * 0.84 },
+            { name: 'Ago', valor: totalPatrimony * 0.90 },
+            { name: 'Set', valor: totalPatrimony * 0.92 },
+            { name: 'Out', valor: totalPatrimony * 0.95 },
+            { name: 'Nov', valor: totalPatrimony * 0.98 },
+            { name: 'Dez', valor: totalPatrimony * 1.00 },
+        ];
+    }
+
+    return [200, chartData];
+  });
+
   // Investments Mocks
   mock.onGet('/investments').reply(() => [200, getDB().investments]);
   mock.onPost('/investments').reply((config) => {
