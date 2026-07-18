@@ -37,6 +37,10 @@ if (typeof window !== 'undefined') {
       { id: 2, amount: 800, description: "Renda", type: "expense", date: new Date().toISOString(), category_id: 2 },
       { id: 3, amount: 150, description: "Supermercado", type: "expense", date: new Date().toISOString(), category_id: 3 },
       { id: 4, amount: 50, description: "Jantar", type: "expense", date: new Date().toISOString(), category_id: 4 },
+      // March Data for testing filters
+      { id: 5, amount: 3000, description: "Salário Mensal", type: "income", date: new Date(new Date().getFullYear(), 2, 10).toISOString(), category_id: 1 },
+      { id: 6, amount: 800, description: "Renda", type: "expense", date: new Date(new Date().getFullYear(), 2, 5).toISOString(), category_id: 2 },
+      { id: 7, amount: 300, description: "Compras Mês", type: "expense", date: new Date(new Date().getFullYear(), 2, 15).toISOString(), category_id: 3 },
     ],
     investments: [
       { id: 1, name: "S&P 500", type: "Ações", current_value: 5000, invested_amount: 4500, return_rate: 11.11, date: new Date().toISOString() }
@@ -172,14 +176,25 @@ if (typeof window !== 'undefined') {
     const url = new URL(config.url!, API_URL);
     const year = url.searchParams.get('year');
     const month = url.searchParams.get('month');
+    const type = url.searchParams.get('type');
+    const category_id = url.searchParams.get('category_id');
+    
     let txs = db.transactions;
     
-    if (year && month) {
-        txs = txs.filter((t: any) => {
-            const date = new Date(t.date);
-            return date.getFullYear() === parseInt(year) && (date.getMonth() + 1) === parseInt(month);
-        });
+    if (year && year !== "Todos") {
+      txs = txs.filter((t: any) => new Date(t.date).getFullYear().toString() === year);
     }
+    if (month && month !== "Todos") {
+      txs = txs.filter((t: any) => (new Date(t.date).getMonth() + 1).toString() === month);
+    }
+    if (type && type !== "Ambos") {
+      const typeStr = type === "Receitas" ? "income" : "expense";
+      txs = txs.filter((t: any) => t.type === typeStr);
+    }
+    if (category_id && category_id !== "Todas") {
+      txs = txs.filter((t: any) => t.category_id.toString() === category_id);
+    }
+
     return [200, txs];
   });
   mock.onPost('/transactions').reply((config) => {
