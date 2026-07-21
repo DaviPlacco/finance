@@ -27,9 +27,9 @@
   
   --secondary: #818cf8;
   
-  --glass-bg: rgba(15, 23, 42, 0.6);
-  --glass-border: rgba(255, 255, 255, 0.08);
-  --glass-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
+  --glass-bg: rgba(15, 23, 42, 0.45);
+  --glass-border: rgba(255, 255, 255, 0.05);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
   
   --card-bg: #0f172a;
 }
@@ -54,10 +54,10 @@ body {
 
 .glass-card {
   background: var(--glass-bg);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--glass-border);
-  box-shadow: var(--glass-shadow);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.1), var(--glass-shadow);
   border-radius: 1rem; /* 16px */
 }
 
@@ -84,7 +84,7 @@ body {
 }
 
 .animate-marquee {
-  animation: marquee 90s linear infinite;
+  animation: marquee 150s linear infinite;
   display: flex;
   width: max-content;
 }

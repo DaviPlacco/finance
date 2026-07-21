@@ -354,12 +354,12 @@ export default function GestaoPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="bg-slate-50/50">
-                    <th className="p-4 text-sm font-semibold text-slate-500 border-b border-slate-100">Data</th>
-                    <th className="p-4 text-sm font-semibold text-slate-500 border-b border-slate-100">Descrição</th>
-                    <th className="p-4 text-sm font-semibold text-slate-500 border-b border-slate-100">Categoria</th>
-                    <th className="p-4 text-sm font-semibold text-slate-500 border-b border-slate-100 text-right">Valor</th>
-                    <th className="p-4 text-sm font-semibold text-slate-500 border-b border-slate-100 text-center">Ações</th>
+                  <tr className="bg-slate-50/50 dark:bg-slate-800/30">
+                    <th className="p-4 text-sm font-semibold text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-800">Data</th>
+                    <th className="p-4 text-sm font-semibold text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-800">Descrição</th>
+                    <th className="p-4 text-sm font-semibold text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-800">Categoria</th>
+                    <th className="p-4 text-sm font-semibold text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-800 text-right">Valor</th>
+                    <th className="p-4 text-sm font-semibold text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-800 text-center">Ações</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -374,19 +374,19 @@ export default function GestaoPage() {
                       const isIncome = t.type === 'income';
                       const category = categories.find((c: any) => c.id === t.category_id);
                       return (
-                        <tr key={t.id} className="hover:bg-slate-50/50 transition-colors border-b border-slate-50">
-                          <td className="p-4 text-slate-600 text-sm font-medium">{formatDate(t.date)}</td>
-                          <td className="p-4 text-slate-900 font-medium">{t.description || '-'}</td>
+                        <tr key={t.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors border-b border-slate-50 dark:border-slate-800">
+                          <td className="p-4 text-slate-600 dark:text-slate-400 text-sm font-medium">{formatDate(t.date)}</td>
+                          <td className="p-4 text-slate-900 dark:text-slate-200 font-medium">{t.description || '-'}</td>
                           <td className="p-4">
                             <span className="inline-block px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap max-w-[120px] truncate text-center align-middle" style={{ backgroundColor: `${category?.color}20`, color: category?.color }} title={category?.name || 'Sem Categoria'}>
                               {category?.name || 'Sem Categoria'}
                             </span>
                           </td>
-                          <td className={`p-4 text-right font-bold ${isIncome ? 'text-emerald-600' : 'text-slate-900'}`}>
+                          <td className={`p-4 text-right font-bold ${isIncome ? 'text-emerald-600 dark:text-emerald-500' : 'text-slate-900 dark:text-slate-200'}`}>
                             {isIncome ? '+' : '-'}{formatCurrency(t.amount)}
                           </td>
                           <td className="p-4 text-center">
-                            <button onClick={() => handleDelete(t.id)} className="text-slate-400 hover:text-red-500 transition-colors p-2 rounded-lg hover:bg-red-50">
+                            <button onClick={() => handleDelete(t.id)} className="text-slate-400 hover:text-red-500 transition-colors p-2 rounded-lg hover:bg-red-50 dark:hover:bg-rose-950/30">
                               <Trash2 className="w-4 h-4" />
                             </button>
                           </td>
@@ -489,7 +489,13 @@ export default function GestaoPage() {
               const percent = maxAmount > 0 ? (cat.amount / maxAmount) * 100 : 0;
               
               return (
-                <div key={cat.id} className="glass-card p-5 relative overflow-hidden group hover:-translate-y-1 transition-all duration-300">
+                <div key={cat.id} className="glass-card p-5 relative overflow-hidden group hover:-translate-y-2 hover:shadow-[0_0_30px_rgba(139,92,246,0.2)] hover:border-primary/50 transition-all duration-500">
+                  <div className="absolute inset-0 bg-gradient-to-br from-violet-700/0 to-indigo-900/0 group-hover:from-violet-700/10 group-hover:to-indigo-900/10 transition-colors duration-500 rounded-xl pointer-events-none" />
+                  <div 
+                    className="absolute -bottom-10 left-1/2 -translate-x-1/2 w-40 h-24 blur-[40px] pointer-events-none rounded-full transition-opacity duration-500 opacity-0 group-hover:opacity-40" 
+                    style={{ backgroundColor: cat.color }}
+                  />
+                  
                   <div className="flex justify-between items-start mb-4 relative z-10">
                     <div className="flex items-center gap-2">
                       <div className="w-3 h-3 rounded-full" style={{ backgroundColor: cat.color }} />
