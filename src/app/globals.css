@@ -132,16 +132,22 @@ body {
 .animated-border-card::after {
   content: "";
   position: absolute;
-  inset: -4px;
-  border-radius: 1rem;
+  inset: -12px;
+  border-radius: calc(1rem + 12px);
+  padding: 12px;
   background: conic-gradient(
     from var(--border-angle, 0turn),
     transparent 40%,
     var(--primary) 100%
   );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
   animation: spin-border-angle 4s linear infinite;
-  filter: blur(12px);
-  opacity: 0.5;
+  filter: blur(6px);
+  opacity: 0.6;
   z-index: -1;
   pointer-events: none;
 }
