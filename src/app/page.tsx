@@ -51,7 +51,7 @@ export default function LoginPage() {
       <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-indigo-600/20 blur-[120px] pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-violet-600/20 blur-[120px] pointer-events-none" />
 
-      <div className="glass-card w-full max-w-md p-8 md:p-10 z-10 mx-4 shadow-2xl shadow-indigo-900/10">
+      <div className="glass-card animated-border-card w-full max-w-md p-8 md:p-10 z-10 mx-4 shadow-2xl shadow-indigo-900/10">
         <div className="text-center mb-10">
           <h1 className="text-3xl font-extrabold text-foreground tracking-tight mb-2">
             Finance

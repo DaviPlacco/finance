@@ -92,3 +92,33 @@ body {
 .animate-marquee:hover {
   animation-play-state: paused;
 }
+
+@keyframes spin-slow {
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.animated-border-card {
+  position: relative;
+}
+
+.animated-border-card::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: 1rem;
+  padding: 1px; /* border width */
+  background: conic-gradient(
+    from var(--border-angle, 0deg),
+    transparent 20%,
+    var(--primary) 100%
+  );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  animation: spin-slow 4s linear infinite;
+  pointer-events: none;
+}
