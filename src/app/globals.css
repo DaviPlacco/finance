@@ -93,9 +93,15 @@ body {
   animation-play-state: paused;
 }
 
-@keyframes spin-slow {
-  100% {
-    transform: rotate(360deg);
+@property --border-angle {
+  syntax: "<angle>";
+  inherits: true;
+  initial-value: 0turn;
+}
+
+@keyframes spin-border-angle {
+  to {
+    --border-angle: 1turn;
   }
 }
 
@@ -110,7 +116,7 @@ body {
   border-radius: 1rem;
   padding: 1px; /* border width */
   background: conic-gradient(
-    from var(--border-angle, 0deg),
+    from var(--border-angle, 0turn),
     transparent 20%,
     var(--primary) 100%
   );
@@ -119,6 +125,6 @@ body {
     linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
           mask-composite: exclude;
-  animation: spin-slow 4s linear infinite;
+  animation: spin-border-angle 4s linear infinite;
   pointer-events: none;
 }
