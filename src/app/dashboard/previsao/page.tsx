@@ -87,8 +87,8 @@ export default function PrevisaoPage() {
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-xl shadow-xl">
-          <p className="font-bold text-slate-900 dark:text-white mb-2">{label}</p>
+        <div className="bg-slate-900/80 backdrop-blur-md border border-white/10 p-4 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
+          <p className="font-bold text-white mb-2">{label}</p>
           <div className="space-y-1">
             <p className="text-primary font-semibold text-sm">
               Total Acumulado: {formatCurrency(payload[0].value)}

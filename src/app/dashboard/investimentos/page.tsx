@@ -227,8 +227,8 @@ export default function InvestimentosPage() {
                   <XAxis dataKey="name" stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} dy={10} />
                   <YAxis hide domain={['dataMin - 100', 'dataMax + 100']} />
                   <Tooltip 
-                    contentStyle={{ backgroundColor: 'rgba(15, 23, 42, 0.9)', border: 'none', borderRadius: '12px', color: '#fff', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
-                    itemStyle={{ color: '#fff', fontWeight: 'bold' }}
+                    contentStyle={{ backgroundColor: 'rgba(15, 23, 42, 0.8)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '12px', color: '#f8fafc', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)' }}
+                    itemStyle={{ color: '#e2e8f0', fontWeight: 500 }}
                     formatter={(value: number) => [`${formatCurrency(value)}`, 'Património']}
                   />
                   <Line type="monotone" dataKey="valor" stroke="#0052ff" strokeWidth={3} dot={{ fill: '#0052ff', strokeWidth: 2, r: 4 }} activeDot={{ r: 6, fill: '#fff', stroke: '#0052ff' }} />
