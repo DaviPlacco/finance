@@ -128,3 +128,20 @@ body {
   animation: spin-border-angle 4s linear infinite;
   pointer-events: none;
 }
+
+.animated-border-card::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 1rem;
+  background: conic-gradient(
+    from var(--border-angle, 0turn),
+    transparent 40%,
+    var(--primary) 100%
+  );
+  animation: spin-border-angle 4s linear infinite;
+  filter: blur(12px);
+  opacity: 0.5;
+  z-index: -1;
+  pointer-events: none;
+}
