@@ -5,8 +5,10 @@ import { api } from "@/lib/api";
 import { ArrowUpRight, ArrowDownRight, DollarSign, TrendingUp, Wallet } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from "recharts";
 import { CustomSelect } from "@/components/CustomSelect";
+import { useSettings } from "@/lib/SettingsContext";
 
 export default function DashboardPage() {
+  const { primaryColor } = useSettings();
   const [summary, setSummary] = useState({ balance: 0, income: 0, expense: 0, investments: 0, chartData: [] });
   const [transactions, setTransactions] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -53,6 +55,19 @@ export default function DashboardPage() {
   }, [filterYear, filterMonth]);
 
   useEffect(() => {
+    const handleCategoriesUpdate = async () => {
+      try {
+        const catRes = await api.get("/categories");
+        setCategories(catRes.data);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    window.addEventListener("categories-updated", handleCategoriesUpdate);
+    return () => window.removeEventListener("categories-updated", handleCategoriesUpdate);
+  }, []);
+
+  useEffect(() => {
     // Mostrar o pop-up apenas após o login
     if (sessionStorage.getItem("showWelcome") === "true") {
       setShowWelcome(true);
@@ -63,10 +78,18 @@ export default function DashboardPage() {
     if (storedName) {
       setUsername(storedName.charAt(0).toUpperCase() + storedName.slice(1));
     }
-    const storedImage = localStorage.getItem("profileImage");
-    if (storedImage) {
-      setProfileImage(storedImage);
-    }
+    api.get("/users/me").then(res => {
+      if (res.data.profile_image) {
+        setProfileImage(res.data.profile_image);
+      } else {
+        const storedImage = localStorage.getItem("profileImage");
+        if (storedImage) setProfileImage(storedImage);
+      }
+    }).catch(err => {
+      console.error("Erro ao carregar perfil", err);
+      const storedImage = localStorage.getItem("profileImage");
+      if (storedImage) setProfileImage(storedImage);
+    });
   }, []);
 
   const expensesByCategory = useMemo(() => {
@@ -103,14 +126,15 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+      {/* Header with mobile-optimized filters */}
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">{greeting}, {username}</h1>
-          <p className="text-sm md:text-base text-slate-500 dark:text-slate-400 mt-1 capitalize">{currentDate}</p>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">{greeting}, {username}</h1>
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1 capitalize">{currentDate}</p>
         </div>
-        <div className="flex gap-4">
-          <div className="w-32">
-            <label className="block text-xs font-semibold text-slate-500 mb-1 uppercase tracking-wider">Ano</label>
+        <div className="grid grid-cols-2 sm:flex sm:flex-row gap-3">
+          <div className="w-full sm:w-32">
+            <label className="block text-[11px] font-bold text-slate-500 mb-1 uppercase tracking-wider">Ano</label>
             <CustomSelect 
               value={filterYear}
               onChange={val => setFilterYear(val as string)}
@@ -122,8 +146,8 @@ export default function DashboardPage() {
               ]}
             />
           </div>
-          <div className="w-40">
-            <label className="block text-xs font-semibold text-slate-500 mb-1 uppercase tracking-wider">Mês</label>
+          <div className="w-full sm:w-40">
+            <label className="block text-[11px] font-bold text-slate-500 mb-1 uppercase tracking-wider">Mês</label>
             <CustomSelect 
               value={filterMonth}
               onChange={val => setFilterMonth(val as string)}
@@ -142,65 +166,82 @@ export default function DashboardPage() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-        <div className="glass-card p-6 relative overflow-hidden group transition-all duration-500 hover:shadow-2xl hover:shadow-violet-500/30 hover:-translate-y-1 cursor-default shadow-[0_0_30px_rgba(139,92,246,0.15)] dark:shadow-[0_0_50px_rgba(139,92,246,0.15)]">
-          <div className="absolute inset-0 bg-gradient-to-br from-violet-700 to-indigo-900 opacity-100 group-hover:opacity-0 transition-opacity duration-500 pointer-events-none" />
-          <div className="absolute -bottom-16 -right-16 w-48 h-48 bg-fuchsia-500/40 blur-[50px] pointer-events-none rounded-full" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6">
+        <div 
+          className="glass-card p-6 relative overflow-hidden group transition-all duration-500 hover:shadow-2xl hover:-translate-y-1 active:scale-[0.98] cursor-default border border-slate-200/80 dark:border-slate-800 shadow-[0_0_30px_rgba(139,92,246,0.12)] dark:shadow-[0_0_50px_rgba(139,92,246,0.15)]"
+        >
+          <div 
+            className="absolute inset-0 opacity-100 group-hover:opacity-0 transition-opacity duration-500 pointer-events-none" 
+            style={{
+              background: 'var(--card-hero-gradient, linear-gradient(135deg, #6d28d9 0%, #4338ca 50%, #312e81 100%))'
+            }}
+          />
+          <div 
+            className="absolute -bottom-16 -right-16 w-48 h-48 blur-[50px] pointer-events-none rounded-full" 
+            style={{
+              backgroundColor: 'var(--card-hero-orb, rgba(217, 70, 239, 0.45))'
+            }}
+          />
           <div className="relative z-10">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-semibold text-violet-100 group-hover:text-slate-500 dark:group-hover:text-slate-400 uppercase tracking-wider transition-colors duration-500">Saldo Atual</h3>
+              <h3 className="text-xs sm:text-sm font-bold text-violet-100 group-hover:text-slate-500 dark:group-hover:text-slate-400 uppercase tracking-wider transition-colors duration-500">Saldo Atual</h3>
               <div className="p-2 bg-white/20 group-hover:bg-indigo-50 dark:group-hover:bg-indigo-500/10 rounded-lg transition-colors duration-500">
                 <Wallet className="w-5 h-5 text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors duration-500" />
               </div>
             </div>
-            <p className="text-2xl md:text-3xl font-bold text-white group-hover:text-slate-900 dark:group-hover:text-white transition-colors duration-500">{formatCurrency(summary.balance)}</p>
+            <p className="text-2xl sm:text-3xl font-extrabold text-white group-hover:text-slate-900 dark:group-hover:text-white transition-colors duration-500">{formatCurrency(summary.balance)}</p>
           </div>
         </div>
 
-        <div className="glass-card p-6 relative overflow-hidden group transition-all duration-500 hover:shadow-2xl hover:shadow-violet-500/30 hover:-translate-y-1 cursor-default">
-          <div className="absolute inset-0 bg-gradient-to-br from-violet-700 to-indigo-900 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+        <div className="glass-card p-6 relative overflow-hidden group transition-all duration-500 hover:shadow-2xl hover:-translate-y-1 active:scale-[0.98] cursor-default border border-slate-200/80 dark:border-slate-800">
+          <div className="absolute inset-0 bg-gradient-to-br from-emerald-600 to-teal-800 opacity-0 group-hover:opacity-100 active:opacity-100 transition-opacity duration-500 pointer-events-none" />
           <div className="relative z-10">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-semibold text-slate-500 group-hover:text-violet-100 uppercase tracking-wider transition-colors duration-500">Receitas (Mês)</h3>
-              <div className="p-2 bg-green-50 group-hover:bg-white/20 rounded-lg transition-colors duration-500">
+              <h3 className="text-xs sm:text-sm font-bold text-slate-500 group-hover:text-emerald-100 uppercase tracking-wider transition-colors duration-500">Receitas (Mês)</h3>
+              <div className="p-2 bg-emerald-50 dark:bg-emerald-950/40 group-hover:bg-white/20 rounded-lg transition-colors duration-500">
                 <ArrowUpRight className="w-5 h-5 text-emerald-600 group-hover:text-white transition-colors duration-500" />
               </div>
             </div>
-            <p className="text-2xl md:text-3xl font-bold text-emerald-600 dark:text-emerald-500 group-hover:text-white transition-colors duration-500">{formatCurrency(summary.income)}</p>
+            <p className="text-2xl sm:text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 group-hover:text-white transition-colors duration-500">{formatCurrency(summary.income)}</p>
           </div>
         </div>
 
-        <div className="glass-card p-6 relative overflow-hidden group transition-all duration-500 hover:shadow-2xl hover:shadow-violet-500/30 hover:-translate-y-1 cursor-default">
-          <div className="absolute inset-0 bg-gradient-to-br from-violet-700 to-indigo-900 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+        <div className="glass-card p-6 relative overflow-hidden group transition-all duration-500 hover:shadow-2xl hover:-translate-y-1 active:scale-[0.98] cursor-default border border-slate-200/80 dark:border-slate-800">
+          <div className="absolute inset-0 bg-gradient-to-br from-rose-600 to-red-800 opacity-0 group-hover:opacity-100 active:opacity-100 transition-opacity duration-500 pointer-events-none" />
           <div className="relative z-10">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-semibold text-slate-500 group-hover:text-violet-100 uppercase tracking-wider transition-colors duration-500">Despesas (Mês)</h3>
-              <div className="p-2 bg-red-50 group-hover:bg-white/20 rounded-lg transition-colors duration-500">
+              <h3 className="text-xs sm:text-sm font-bold text-slate-500 group-hover:text-rose-100 uppercase tracking-wider transition-colors duration-500">Despesas (Mês)</h3>
+              <div className="p-2 bg-rose-50 dark:bg-rose-950/40 group-hover:bg-white/20 rounded-lg transition-colors duration-500">
                 <ArrowDownRight className="w-5 h-5 text-rose-600 group-hover:text-white transition-colors duration-500" />
               </div>
             </div>
-            <p className="text-2xl md:text-3xl font-bold text-rose-600 dark:text-rose-500 group-hover:text-white transition-colors duration-500">{formatCurrency(summary.expense)}</p>
+            <p className="text-2xl sm:text-3xl font-extrabold text-rose-600 dark:text-rose-400 group-hover:text-white transition-colors duration-500">{formatCurrency(summary.expense)}</p>
           </div>
         </div>
 
-        <div className="glass-card p-6 relative overflow-hidden group transition-all duration-500 hover:shadow-2xl hover:shadow-violet-500/30 hover:-translate-y-1 cursor-default">
-          <div className="absolute inset-0 bg-gradient-to-br from-violet-700 to-indigo-900 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+        <div className="glass-card p-6 relative overflow-hidden group transition-all duration-500 hover:shadow-2xl hover:-translate-y-1 active:scale-[0.98] cursor-default border border-slate-200/80 dark:border-slate-800">
+          <div 
+            className="absolute inset-0 opacity-0 group-hover:opacity-100 active:opacity-100 transition-opacity duration-500 pointer-events-none" 
+            style={{
+              background: 'var(--card-hero-gradient, linear-gradient(135deg, #6d28d9 0%, #4338ca 50%, #312e81 100%))'
+            }}
+          />
           <div className="relative z-10">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-semibold text-slate-500 group-hover:text-violet-100 uppercase tracking-wider transition-colors duration-500">Investido</h3>
+              <h3 className="text-xs sm:text-sm font-bold text-slate-500 group-hover:text-white/90 uppercase tracking-wider transition-colors duration-500">Investido</h3>
               <div className="p-2 bg-primary/10 group-hover:bg-white/20 rounded-lg transition-colors duration-500">
                 <TrendingUp className="w-5 h-5 text-primary group-hover:text-white transition-colors duration-500" />
               </div>
             </div>
-            <p className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white group-hover:text-white transition-colors duration-500">{formatCurrency(summary.investments || 0)}</p>
+            <p className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white group-hover:text-white transition-colors duration-500">{formatCurrency(summary.investments || 0)}</p>
           </div>
         </div>
       </div>
 
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="glass-card p-6">
-          <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-6">Fluxo de Caixa {filterMonth ? '(Diário)' : '(Mensal)'}</h3>
+        <div className="glass-card p-5 sm:p-6 border border-slate-200/80 dark:border-slate-800">
+          <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white mb-6">Fluxo de Caixa {filterMonth ? '(Diário)' : '(Mensal)'}</h3>
           <div className="h-[240px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={summary.chartData || []} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
@@ -225,9 +266,16 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="glass-card p-6 relative overflow-hidden shadow-[0_0_30px_rgba(139,92,246,0.05)] dark:shadow-[0_0_40px_rgba(139,92,246,0.05)]">
-          <div className="absolute -bottom-32 left-1/2 -translate-x-1/2 w-3/4 h-32 bg-indigo-600/30 blur-[60px] pointer-events-none rounded-full" />
-          <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-6 relative z-10">Evolução Patrimonial</h3>
+        <div 
+          className="glass-card p-5 sm:p-6 relative overflow-hidden border border-slate-200/80 dark:border-slate-800 shadow-[0_0_30px_rgba(139,92,246,0.04)] dark:shadow-[0_0_40px_rgba(139,92,246,0.04)]"
+        >
+          <div 
+            className="absolute -bottom-32 left-1/2 -translate-x-1/2 w-3/4 h-32 blur-[60px] pointer-events-none rounded-full opacity-30 dark:opacity-20" 
+            style={{
+              backgroundColor: 'var(--primary-glow)'
+            }}
+          />
+          <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white mb-6 relative z-10">Evolução Patrimonial</h3>
           <div className="h-[240px] w-full relative z-10">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={summary.chartData || []} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
@@ -235,7 +283,14 @@ export default function DashboardPage() {
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} dy={10} />
                 <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} tickFormatter={yAxisTickFormatter} width={45} />
                 <Tooltip contentStyle={{ backgroundColor: 'rgba(15, 23, 42, 0.8)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '12px', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)', color: '#f8fafc' }} itemStyle={{ color: '#e2e8f0', fontWeight: 500 }} />
-                <Line type="monotone" dataKey="receitas" stroke="#4f46e5" strokeWidth={3} dot={{ r: 4, fill: '#4f46e5', strokeWidth: 0 }} activeDot={{ r: 6 }} />
+                <Line 
+                  type="monotone" 
+                  dataKey="receitas" 
+                  stroke={primaryColor || "#8b5cf6"} 
+                  strokeWidth={3} 
+                  dot={{ r: 4, fill: primaryColor || "#8b5cf6", strokeWidth: 0 }} 
+                  activeDot={{ r: 6, fill: '#fff', stroke: primaryColor || "#8b5cf6", strokeWidth: 2 }} 
+                />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -253,9 +308,17 @@ export default function DashboardPage() {
             <div className="animate-marquee flex gap-4 mt-4">
               {/* Duplicate the array twice to ensure a smooth infinite loop */}
               {[...transactions, ...transactions, ...transactions].map((t: any, i: number) => (
-                <div key={i} className="relative group flex-shrink-0 w-64 glass-card p-4 border border-slate-200/60 dark:border-slate-800 transition-all duration-500 cursor-pointer bg-white dark:bg-slate-900 hover:border-primary/50 hover:-translate-y-4 hover:-rotate-[5deg] hover:shadow-[0_0_40px_rgba(139,92,246,0.3)] hover:z-20">
-                  <div className="absolute inset-0 bg-gradient-to-br from-violet-700/0 to-indigo-900/0 group-hover:from-violet-700/10 group-hover:to-indigo-900/10 transition-colors duration-500 rounded-xl pointer-events-none" />
-                  <div className="absolute -bottom-10 left-1/2 -translate-x-1/2 w-32 h-20 bg-indigo-600/0 group-hover:bg-indigo-600/40 blur-[40px] pointer-events-none rounded-full transition-colors duration-500" />
+                <div 
+                  key={i} 
+                  className="card-history-item relative group flex-shrink-0 w-64 glass-card p-4 border border-slate-200/60 dark:border-slate-800 transition-all duration-500 cursor-pointer bg-white dark:bg-slate-900 hover:-translate-y-4 hover:-rotate-[5deg] hover:z-20"
+                >
+                  {/* Subtle bottom ambient light glow on hover */}
+                  <div 
+                    className="absolute -bottom-10 left-1/2 -translate-x-1/2 w-32 h-20 blur-[40px] pointer-events-none rounded-full transition-all duration-500 opacity-0 group-hover:opacity-40" 
+                    style={{
+                      backgroundColor: 'var(--card-history-accent)'
+                    }}
+                  />
                   
                   <div className="relative z-10">
                     <div className="flex justify-between items-center mb-2">
@@ -278,13 +341,20 @@ export default function DashboardPage() {
                   </div>
 
                   {/* Hover Toast / Tooltip */}
-                  <div className="absolute -top-20 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none z-50 glass-card text-slate-900 dark:text-white text-sm py-3 px-4 w-max max-w-[250px] shadow-2xl scale-95 group-hover:scale-100 origin-bottom">
+                  <div 
+                    className="absolute -top-20 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none z-50 glass-card text-slate-900 dark:text-white text-sm py-3 px-4 w-max max-w-[250px] shadow-2xl scale-95 group-hover:scale-100 origin-bottom border border-slate-200/80 dark:border-slate-800"
+                    style={{
+                      boxShadow: '0 10px 30px -5px var(--card-history-glow)'
+                    }}
+                  >
                     <div className="font-extrabold text-base">{t.description}</div>
                     <div className="text-slate-500 dark:text-slate-400 text-xs mt-1 font-medium">
                       Categoria: {categories.find((c: any) => c.id === t.category_id)?.name || "Sem Categoria"}
                     </div>
                     {/* Arrow */}
-                    <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 glass-card border-t-0 border-l-0 rotate-45" />
+                    <div 
+                      className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 glass-card border-t-0 border-l-0 rotate-45 border-r border-b border-slate-200/80 dark:border-slate-800" 
+                    />
                   </div>
                 </div>
               ))}
@@ -305,11 +375,13 @@ export default function DashboardPage() {
               const percent = maxAmount > 0 ? (cat.amount / maxAmount) * 100 : 0;
               
               return (
-                <div key={cat.id} className="glass-card p-5 relative overflow-hidden group hover:-translate-y-2 hover:shadow-[0_0_30px_rgba(139,92,246,0.2)] hover:border-primary/50 transition-all duration-500">
-                  <div className="absolute inset-0 bg-gradient-to-br from-violet-700/0 to-indigo-900/0 group-hover:from-violet-700/10 group-hover:to-indigo-900/10 transition-colors duration-500 rounded-xl pointer-events-none" />
+                <div 
+                  key={cat.id} 
+                  className="card-expenses-item glass-card p-5 relative overflow-hidden group hover:-translate-y-2 transition-all duration-500 cursor-pointer"
+                >
                   <div 
                     className="absolute -bottom-10 left-1/2 -translate-x-1/2 w-40 h-24 blur-[40px] pointer-events-none rounded-full transition-opacity duration-500 opacity-0 group-hover:opacity-40" 
-                    style={{ backgroundColor: cat.color }}
+                    style={{ backgroundColor: cat.color || 'var(--primary)' }}
                   />
                   
                   <div className="flex justify-between items-start mb-4 relative z-10">
@@ -349,15 +421,20 @@ export default function DashboardPage() {
       {/* Welcome Premium Modal */}
       {showWelcome && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-700">
-          <div className="relative w-full max-w-md rounded-[20px] overflow-hidden p-[2px] shadow-[0_0_80px_rgba(139,92,246,0.3)] group">
+          <div 
+            className="relative w-full max-w-md rounded-[20px] overflow-hidden p-[2px] group"
+            style={{
+              boxShadow: '0 0 80px var(--primary-glow)'
+            }}
+          >
             {/* Animated glowing borders */}
             <div 
               className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[200%] h-[200%] animate-spin pointer-events-none" 
-              style={{ animationDuration: '4s', background: 'conic-gradient(from 0deg, transparent 0 280deg, #8b5cf6 360deg)' }} 
+              style={{ animationDuration: '4s', background: 'conic-gradient(from 0deg, transparent 0 280deg, var(--primary) 360deg)' }} 
             />
             <div 
               className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[200%] h-[200%] animate-spin pointer-events-none" 
-              style={{ animationDuration: '6s', animationDirection: 'reverse', background: 'conic-gradient(from 0deg, transparent 0 280deg, #3b82f6 360deg)' }} 
+              style={{ animationDuration: '6s', animationDirection: 'reverse', background: 'conic-gradient(from 0deg, transparent 0 280deg, var(--secondary) 360deg)' }} 
             />
             
             {/* Inner Content */}
@@ -368,18 +445,35 @@ export default function DashboardPage() {
               
               <div className="flex flex-col items-center">
                 <div className="w-24 h-24 rounded-full bg-slate-100 dark:bg-slate-800 shadow-xl border-4 border-white dark:border-slate-800 flex items-center justify-center relative z-10 mb-6 overflow-hidden">
-                  <div className="absolute inset-0 bg-gradient-to-tr from-violet-500/20 to-indigo-500/20 animate-pulse" />
+                  <div 
+                    className="absolute inset-0 animate-pulse opacity-20" 
+                    style={{
+                      background: 'linear-gradient(135deg, var(--primary), var(--secondary))'
+                    }}
+                  />
                   {profileImage ? (
                     <img src={profileImage} alt="Profile" className="w-full h-full object-cover" />
                   ) : (
-                    <span className="text-2xl font-black bg-clip-text text-transparent bg-gradient-to-tr from-violet-500 to-indigo-500">
+                    <span 
+                      className="text-2xl font-black bg-clip-text text-transparent"
+                      style={{
+                        backgroundImage: 'linear-gradient(135deg, var(--primary), var(--secondary))'
+                      }}
+                    >
                       {username.charAt(0).toUpperCase()}
                     </span>
                   )}
                 </div>
 
                 <div className="text-center mb-8 w-full">
-                  <h2 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-violet-500 to-indigo-500 mb-2">{greeting}, {username}!</h2>
+                  <h2 
+                    className="text-3xl font-extrabold text-transparent bg-clip-text mb-2"
+                    style={{
+                      backgroundImage: 'linear-gradient(135deg, var(--primary), var(--secondary))'
+                    }}
+                  >
+                    {greeting}, {username}!
+                  </h2>
                   <p className="text-slate-500 dark:text-slate-400">Aqui tens o resumo de como está a tua saúde financeira neste mês.</p>
                 </div>
               </div>
@@ -416,7 +510,14 @@ export default function DashboardPage() {
                 )}
               </div>
               
-              <button onClick={() => setShowWelcome(false)} className="mt-8 w-full py-4 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-bold rounded-xl transition-all shadow-xl shadow-indigo-500/20 hover:shadow-indigo-500/40 hover:-translate-y-1">
+              <button 
+                onClick={() => setShowWelcome(false)} 
+                className="mt-8 w-full py-4 text-white font-bold rounded-xl transition-all hover:-translate-y-1 active:scale-[0.98]"
+                style={{
+                  background: 'linear-gradient(135deg, var(--primary), var(--secondary))',
+                  boxShadow: '0 10px 30px -5px var(--primary-glow)'
+                }}
+              >
                 Aceder ao Dashboard
               </button>
             </div>

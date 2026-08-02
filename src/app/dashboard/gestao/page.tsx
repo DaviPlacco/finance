@@ -2,7 +2,20 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { api } from "@/lib/api";
-import { Plus, Trash2, ChevronLeft, ChevronRight, TrendingUp } from "lucide-react";
+import { 
+  Plus, 
+  Trash2, 
+  ChevronLeft, 
+  ChevronRight, 
+  TrendingUp, 
+  History, 
+  Clock, 
+  ArrowUpRight, 
+  ArrowDownRight, 
+  Receipt,
+  Sparkles,
+  PieChart
+} from "lucide-react";
 import { CustomSelect } from "@/components/CustomSelect";
 import { useSettings } from "@/lib/SettingsContext";
 import { toast } from "sonner";
@@ -10,7 +23,6 @@ import { toast } from "sonner";
 export default function GestaoPage() {
   const [transactions, setTransactions] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
-  const [accounts, setAccounts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   
   // Form state
@@ -40,6 +52,14 @@ export default function GestaoPage() {
     setCurrentPage(1);
     fetchData();
   }, [filterYear, filterMonth, filterType, filterCategoryId]);
+
+  useEffect(() => {
+    const handleCategoriesUpdate = () => {
+      fetchData();
+    };
+    window.addEventListener("categories-updated", handleCategoriesUpdate);
+    return () => window.removeEventListener("categories-updated", handleCategoriesUpdate);
+  }, []);
 
   async function fetchData() {
     try {
@@ -109,7 +129,7 @@ export default function GestaoPage() {
     try {
       await api.delete(`/transactions/${id}`);
       fetchData();
-      toast.success("Transação eliminada.");
+      toast.error("Transação eliminada.");
     } catch (err) {
       console.error("Failed to delete transaction");
       toast.error("Erro ao eliminar transação.");
@@ -123,7 +143,7 @@ export default function GestaoPage() {
         fetchData();
         if (categoryId === id.toString()) setCategoryId("");
         if (filterCategoryId === id.toString()) setFilterCategoryId("");
-        toast.success("Categoria eliminada com sucesso.");
+        toast.error("Categoria eliminada com sucesso.");
       } catch (err) {
         console.error("Failed to delete category");
         toast.error("Erro ao eliminar a categoria.");
@@ -156,7 +176,7 @@ export default function GestaoPage() {
         });
         setBudgetAmount("");
         fetchData();
-        toast.success("Previsão de gastos atualizada com sucesso!");
+        toast("Previsão de gastos atualizada com sucesso!", { style: { background: '#ffffff', color: '#000000', border: '1px solid #e2e8f0' } });
       }
     } catch (err) {
       console.error("Failed to set budget");
@@ -165,9 +185,6 @@ export default function GestaoPage() {
   };
 
   const expensesByCategory = useMemo(() => {
-    // Filter only current visible transactions or ALL transactions?
-    // User wants "gastos totais em cada categoria", usually this means for the filtered view.
-    // We will use the fetched `transactions` which is already filtered by year/month from the API.
     const expenses = transactions.filter((t: any) => t.type === 'expense');
     
     const grouped = expenses.reduce((acc: any, t: any) => {
@@ -186,54 +203,112 @@ export default function GestaoPage() {
     }).sort((a, b) => b.amount - a.amount);
   }, [transactions, categories]);
 
-  if (loading) return <div className="animate-pulse p-8">A carregar...</div>;
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[300px]">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+          <p className="text-sm font-medium text-slate-500">A carregar dados...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">Gestão de Dados</h1>
-        <p className="text-slate-500 dark:text-slate-400 mt-1">Gere as tuas entradas e saídas.</p>
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-3">
+            <span>Gestão Financeira</span>
+            <span className="hidden sm:inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-primary/10 text-primary border border-primary/20">
+              <Sparkles className="w-3 h-3" /> Controlo Ativo
+            </span>
+          </h1>
+          <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 mt-1">
+            Gere as tuas entradas, despesas, orçamentos e planeamento futuro.
+          </p>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
         {/* Form Column */}
         <div className="lg:col-span-1 space-y-6">
-          <div className="glass-card p-6">
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
-              <Plus className="w-5 h-5 text-primary" /> Novo Registo
-            </h3>
+          {/* Novo Registo Card */}
+          <div className="glass-card p-5 sm:p-6 relative overflow-hidden border border-slate-200/80 dark:border-slate-800 shadow-xl shadow-slate-900/5">
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                  <Plus className="w-5 h-5" />
+                </div>
+                Novo Registo
+              </h3>
+            </div>
             
             <form onSubmit={handleAddTransaction} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4 mb-4">
+              <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl">
                 <button
                   type="button"
                   onClick={() => setType("income")}
-                  className={`py-2 px-4 rounded-xl font-semibold transition-all ${type === 'income' ? 'bg-emerald-100 text-emerald-700 border-2 border-emerald-500' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-2 border-transparent'}`}
+                  className={`py-2 px-3 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-1.5 ${
+                    type === 'income' 
+                      ? 'bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-400 shadow-sm' 
+                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  }`}
                 >
-                  Receita
+                  <ArrowUpRight className="w-4 h-4" /> Receita
                 </button>
                 <button
                   type="button"
                   onClick={() => setType("expense")}
-                  className={`py-2 px-4 rounded-xl font-semibold transition-all ${type === 'expense' ? 'bg-rose-100 text-rose-700 border-2 border-rose-500' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-2 border-transparent'}`}
+                  className={`py-2 px-3 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-1.5 ${
+                    type === 'expense' 
+                      ? 'bg-white dark:bg-slate-700 text-rose-600 dark:text-rose-400 shadow-sm' 
+                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  }`}
                 >
-                  Despesa
+                  <ArrowDownRight className="w-4 h-4" /> Despesa
                 </button>
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Valor (€)</label>
-                <input type="number" step="0.01" required value={amount} onChange={e => setAmount(e.target.value)} className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-white/50 dark:bg-slate-800/50 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary outline-none" placeholder="0.00" />
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 uppercase tracking-wider">
+                  Valor (€)
+                </label>
+                <input 
+                  type="number" 
+                  step="0.01" 
+                  required 
+                  value={amount} 
+                  onChange={e => setAmount(e.target.value)} 
+                  className="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-700/80 rounded-xl bg-white/70 dark:bg-slate-800/60 text-slate-900 dark:text-white text-base font-semibold focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-slate-400" 
+                  placeholder="0.00" 
+                />
               </div>
               
               <div>
-                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Data</label>
-                <input type="date" required value={date} onChange={e => setDate(e.target.value)} className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-white/50 dark:bg-slate-800/50 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary outline-none" />
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 uppercase tracking-wider">
+                  Data de Execução
+                </label>
+                <input 
+                  type="date" 
+                  required 
+                  value={date} 
+                  onChange={e => setDate(e.target.value)} 
+                  className="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-700/80 rounded-xl bg-white/70 dark:bg-slate-800/60 text-slate-900 dark:text-white text-sm font-medium focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all" 
+                />
+                {new Date(date) > new Date() && (
+                  <p className="text-[11px] font-semibold text-amber-600 dark:text-amber-400 mt-1 flex items-center gap-1">
+                    <Clock className="w-3 h-3" /> Esta transação ficará "Em Espera" até à data indicada.
+                  </p>
+                )}
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Categoria</label>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 uppercase tracking-wider">
+                  Categoria
+                </label>
                 <CustomSelect 
                   required
                   value={categoryId} 
@@ -247,24 +322,45 @@ export default function GestaoPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Descrição</label>
-                <input type="text" value={description} onChange={e => setDescription(e.target.value)} className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-white/50 dark:bg-slate-800/50 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary outline-none" placeholder="Ex: Supermercado" />
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 uppercase tracking-wider">
+                  Descrição (Opcional)
+                </label>
+                <input 
+                  type="text" 
+                  value={description} 
+                  onChange={e => setDescription(e.target.value)} 
+                  className="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-700/80 rounded-xl bg-white/70 dark:bg-slate-800/60 text-slate-900 dark:text-white text-sm font-medium focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-slate-400" 
+                  placeholder="Ex: Supermercado, Salário, etc." 
+                />
               </div>
 
-              <button type="submit" className="w-full py-3 bg-primary text-white font-bold rounded-xl shadow-lg shadow-primary/30 hover:bg-primary/90 transition-all mt-4">
+              <button 
+                type="submit" 
+                className="w-full py-3 bg-gradient-to-r from-primary to-primary/90 text-white font-bold rounded-xl shadow-lg shadow-primary/25 hover:shadow-primary/40 hover:-translate-y-0.5 active:translate-y-0 transition-all text-sm uppercase tracking-wider mt-2"
+              >
                 Guardar Registo
               </button>
             </form>
           </div>
 
-          <div className="glass-card p-6">
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-indigo-500" /> Previsão de Gastos
-            </h3>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">Define um limite mensal de gastos para as tuas categorias de despesa.</p>
+          {/* Previsão de Gastos Card */}
+          <div className="glass-card p-5 sm:p-6 relative overflow-hidden border border-slate-200/80 dark:border-slate-800 shadow-xl shadow-slate-900/5">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                  <TrendingUp className="w-5 h-5" />
+                </div>
+                Previsão de Gastos
+              </h3>
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-4 leading-relaxed">
+              Define um limite mensal de gastos para as tuas categorias de despesa.
+            </p>
             <form onSubmit={handleSetBudget} className="space-y-4">
               <div>
-                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Categoria</label>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 uppercase tracking-wider">
+                  Categoria
+                </label>
                 <CustomSelect 
                   required
                   value={budgetCategoryId} 
@@ -279,144 +375,287 @@ export default function GestaoPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Limite Mensal (€)</label>
-                <input type="number" step="0.01" required value={budgetAmount} onChange={e => setBudgetAmount(e.target.value)} className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-white/50 dark:bg-slate-800/50 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary outline-none" placeholder="0.00" />
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 uppercase tracking-wider">
+                  Limite Mensal (€)
+                </label>
+                <input 
+                  type="number" 
+                  step="0.01" 
+                  required 
+                  value={budgetAmount} 
+                  onChange={e => setBudgetAmount(e.target.value)} 
+                  className="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-700/80 rounded-xl bg-white/70 dark:bg-slate-800/60 text-slate-900 dark:text-white text-sm font-semibold focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-slate-400" 
+                  placeholder="0.00" 
+                />
               </div>
-              <button type="submit" className="w-full py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/30 hover:bg-indigo-700 transition-all mt-4">
+              <button 
+                type="submit" 
+                className="w-full py-3 bg-primary hover:brightness-110 text-white font-bold rounded-xl shadow-lg shadow-primary/25 hover:shadow-primary/40 hover:-translate-y-0.5 active:translate-y-0 transition-all text-sm uppercase tracking-wider mt-2"
+              >
                 Guardar Previsão
               </button>
             </form>
           </div>
         </div>
 
-        {/* Table Column */}
+        {/* Table & History Column */}
         <div className="lg:col-span-2 space-y-6">
-          <div className="glass-card p-4 flex flex-col md:flex-row gap-4">
-            <div className="flex-1">
-              <label className="block text-xs font-semibold text-slate-500 mb-1 uppercase tracking-wider">Ano</label>
-              <CustomSelect 
-                value={filterYear}
-                onChange={val => setFilterYear(val as string)}
-                options={[
-                  { value: "", label: "Todos" },
-                  { value: "2024", label: "2024" },
-                  { value: "2025", label: "2025" },
-                  { value: "2026", label: "2026" }
-                ]}
-              />
-            </div>
-            <div className="flex-1">
-              <label className="block text-xs font-semibold text-slate-500 mb-1 uppercase tracking-wider">Mês</label>
-              <CustomSelect 
-                value={filterMonth}
-                onChange={val => setFilterMonth(val as string)}
-                options={[
-                  { value: "", label: "Todos" },
-                  { value: "1", label: "Janeiro" }, { value: "2", label: "Fevereiro" },
-                  { value: "3", label: "Março" }, { value: "4", label: "Abril" },
-                  { value: "5", label: "Maio" }, { value: "6", label: "Junho" },
-                  { value: "7", label: "Julho" }, { value: "8", label: "Agosto" },
-                  { value: "9", label: "Setembro" }, { value: "10", label: "Outubro" },
-                  { value: "11", label: "Novembro" }, { value: "12", label: "Dezembro" }
-                ]}
-              />
-            </div>
-            <div className="flex-1">
-              <label className="block text-xs font-semibold text-slate-500 mb-1 uppercase tracking-wider">Tipo</label>
-              <CustomSelect 
-                value={filterType}
-                onChange={val => setFilterType(val as string)}
-                options={[
-                  { value: "", label: "Ambos" },
-                  { value: "income", label: "Receitas" },
-                  { value: "expense", label: "Despesas" }
-                ]}
-              />
-            </div>
-            <div className="flex-1">
-              <label className="block text-xs font-semibold text-slate-500 mb-1 uppercase tracking-wider">Categoria</label>
-              <CustomSelect 
-                value={filterCategoryId}
-                onChange={val => setFilterCategoryId(val as string)}
-                options={[
-                  { value: "", label: "Todas" },
-                  ...categories.map((c: any) => ({ value: c.id, label: c.name }))
-                ]}
-              />
+          {/* Filters Bar */}
+          <div className="glass-card p-4 border border-slate-200/80 dark:border-slate-800 shadow-md">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-500 mb-1 uppercase tracking-wider">Ano</label>
+                <CustomSelect 
+                  value={filterYear}
+                  onChange={val => setFilterYear(val as string)}
+                  options={[
+                    { value: "", label: "Todos" },
+                    { value: "2024", label: "2024" },
+                    { value: "2025", label: "2025" },
+                    { value: "2026", label: "2026" }
+                  ]}
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold text-slate-500 mb-1 uppercase tracking-wider">Mês</label>
+                <CustomSelect 
+                  value={filterMonth}
+                  onChange={val => setFilterMonth(val as string)}
+                  options={[
+                    { value: "", label: "Todos" },
+                    { value: "1", label: "Janeiro" }, { value: "2", label: "Fevereiro" },
+                    { value: "3", label: "Março" }, { value: "4", label: "Abril" },
+                    { value: "5", label: "Maio" }, { value: "6", label: "Junho" },
+                    { value: "7", label: "Julho" }, { value: "8", label: "Agosto" },
+                    { value: "9", label: "Setembro" }, { value: "10", label: "Outubro" },
+                    { value: "11", label: "Novembro" }, { value: "12", label: "Dezembro" }
+                  ]}
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold text-slate-500 mb-1 uppercase tracking-wider">Tipo</label>
+                <CustomSelect 
+                  value={filterType}
+                  onChange={val => setFilterType(val as string)}
+                  options={[
+                    { value: "", label: "Ambos" },
+                    { value: "income", label: "Receitas" },
+                    { value: "expense", label: "Despesas" }
+                  ]}
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold text-slate-500 mb-1 uppercase tracking-wider">Categoria</label>
+                <CustomSelect 
+                  value={filterCategoryId}
+                  onChange={val => setFilterCategoryId(val as string)}
+                  options={[
+                    { value: "", label: "Todas" },
+                    ...categories.map((c: any) => ({ value: c.id, label: c.name }))
+                  ]}
+                />
+              </div>
             </div>
           </div>
 
-          <div className="glass-card overflow-hidden">
-            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-white/40">
-              <h3 className="text-lg font-bold text-slate-900">Histórico de Transações</h3>
+          {/* Premium History Container */}
+          <div 
+            className="glass-card overflow-hidden border border-slate-200/80 dark:border-slate-800/80 shadow-2xl relative transition-all duration-300"
+            style={{
+              boxShadow: '0 10px 40px -10px var(--card-history-glow, rgba(139, 92, 246, 0.15))'
+            }}
+          >
+            {/* Header */}
+            <div 
+              className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800/80 flex flex-wrap items-center justify-between gap-3 bg-white/60 dark:bg-slate-900/60 backdrop-blur-md relative"
+            >
+              <div className="flex items-center gap-3">
+                <div 
+                  className="w-9 h-9 rounded-xl flex items-center justify-center text-white shadow-md shadow-primary/20"
+                  style={{ backgroundColor: 'var(--card-history-accent, var(--primary))' }}
+                >
+                  <Receipt className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white">
+                    Histórico de Transações
+                  </h3>
+                  <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                    {transactions.length} {transactions.length === 1 ? 'registo encontrado' : 'registos encontrados'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Status Badge */}
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  Sincronizado
+                </span>
+              </div>
             </div>
             
-            <div className="overflow-x-auto">
+            {/* DESKTOP TABLE VIEW (MD+) */}
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="bg-slate-50/50 dark:bg-slate-800/30">
-                    <th className="p-4 text-sm font-semibold text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-800">Data</th>
-                    <th className="p-4 text-sm font-semibold text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-800">Descrição</th>
-                    <th className="p-4 text-sm font-semibold text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-800">Categoria</th>
-                    <th className="p-4 text-sm font-semibold text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-800 text-right">Valor</th>
-                    <th className="p-4 text-sm font-semibold text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-800 text-center">Ações</th>
+                  <tr className="bg-slate-50/70 dark:bg-slate-800/40 border-b border-slate-200/80 dark:border-slate-800">
+                    <th className="p-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Data</th>
+                    <th className="p-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Descrição</th>
+                    <th className="p-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Categoria</th>
+                    <th className="p-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-right">Valor</th>
+                    <th className="p-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-center sticky right-0 bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur-sm z-10">Ações</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
                   {paginatedTransactions.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="py-12 text-center text-slate-500">
-                        Não existem transações para os filtros selecionados.
+                      <td colSpan={5} className="py-16 text-center text-slate-500 dark:text-slate-400">
+                        <div className="flex flex-col items-center justify-center gap-2">
+                          <Receipt className="w-10 h-10 text-slate-300 dark:text-slate-700" />
+                          <p className="font-semibold text-sm">Não existem transações para os filtros selecionados.</p>
+                          <p className="text-xs text-slate-400">Tenta alterar o ano, mês ou tipo de transação.</p>
+                        </div>
                       </td>
                     </tr>
                   ) : (
                     paginatedTransactions.map((t: any) => {
                       const isIncome = t.type === 'income';
+                      const isFuture = new Date(t.date) > new Date();
                       const category = categories.find((c: any) => c.id === t.category_id);
                       return (
-                        <tr key={t.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors border-b border-slate-50 dark:border-slate-800">
-                          <td className="p-4 text-slate-600 dark:text-slate-400 text-sm font-medium">{formatDate(t.date)}</td>
-                          <td className="p-4 text-slate-900 dark:text-slate-200 font-medium">{t.description || '-'}</td>
-                          <td className="p-4">
-                            <span className="inline-block px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap max-w-[120px] truncate text-center align-middle" style={{ backgroundColor: `${category?.color}20`, color: category?.color }} title={category?.name || 'Sem Categoria'}>
-                              {category?.name || 'Sem Categoria'}
+                        <tr 
+                          key={t.id} 
+                          className="hover:bg-slate-50/70 dark:hover:bg-slate-800/50 transition-colors group"
+                        >
+                          <td className="p-4 text-slate-600 dark:text-slate-300 text-sm font-medium whitespace-nowrap">
+                            <div className="flex items-center gap-2">
+                              <span>{formatDate(t.date)}</span>
+                              {isFuture && (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100/80 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-300/40 dark:border-amber-700/50">
+                                  <Clock className="w-2.5 h-2.5" /> Em Espera
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="p-4 text-slate-900 dark:text-slate-100 font-semibold text-sm max-w-[220px] truncate" title={t.description || '-'}>
+                            {t.description || '-'}
+                          </td>
+                          <td className="p-4 whitespace-nowrap">
+                            <span 
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold"
+                              style={{ 
+                                backgroundColor: `${category?.color || '#94a3b8'}15`, 
+                                color: category?.color || '#94a3b8',
+                                border: `1px solid ${category?.color || '#94a3b8'}30`
+                              }}
+                            >
+                              <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: category?.color || '#94a3b8' }} />
+                              <span className="truncate max-w-[120px]">{category?.name || 'Sem Categoria'}</span>
                             </span>
                           </td>
-                          <td className={`p-4 text-right font-bold ${isIncome ? 'text-emerald-600 dark:text-emerald-500' : 'text-slate-900 dark:text-slate-200'}`}>
+                          <td className={`p-4 text-right font-extrabold text-sm whitespace-nowrap ${isIncome ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-900 dark:text-slate-100'}`}>
                             {isIncome ? '+' : '-'}{formatCurrency(t.amount)}
                           </td>
-                          <td className="p-4 text-center">
-                            <button onClick={() => handleDelete(t.id)} className="text-slate-400 hover:text-red-500 transition-colors p-2 rounded-lg hover:bg-red-50 dark:hover:bg-rose-950/30">
+                          <td className="p-4 text-center sticky right-0 bg-white/90 dark:bg-[#0b1120]/90 backdrop-blur-sm z-10">
+                            <button 
+                              onClick={() => handleDelete(t.id)} 
+                              className="text-slate-400 hover:text-rose-500 dark:hover:text-rose-400 p-2 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                              title="Eliminar Transação"
+                            >
                               <Trash2 className="w-4 h-4" />
                             </button>
                           </td>
                         </tr>
-                      )
+                      );
                     })
                   )}
                 </tbody>
               </table>
             </div>
 
+            {/* MOBILE CARD LIST VIEW (SM / XS) - Prevents cramping/overflow */}
+            <div className="block md:hidden divide-y divide-slate-100 dark:divide-slate-800/80">
+              {paginatedTransactions.length === 0 ? (
+                <div className="py-12 px-4 text-center text-slate-500 dark:text-slate-400">
+                  <Receipt className="w-10 h-10 mx-auto text-slate-300 dark:text-slate-700 mb-2" />
+                  <p className="font-semibold text-sm">Sem registos encontrados</p>
+                </div>
+              ) : (
+                paginatedTransactions.map((t: any) => {
+                  const isIncome = t.type === 'income';
+                  const isFuture = new Date(t.date) > new Date();
+                  const category = categories.find((c: any) => c.id === t.category_id);
+                  return (
+                    <div 
+                      key={t.id} 
+                      className="p-4 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors flex items-center justify-between gap-3"
+                    >
+                      <div className="flex-1 min-w-0 space-y-1.5">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                            {formatDate(t.date)}
+                          </span>
+                          {isFuture && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100/80 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-300/40">
+                              <Clock className="w-2.5 h-2.5" /> Em Espera
+                            </span>
+                          )}
+                        </div>
+                        <p className="font-bold text-sm text-slate-900 dark:text-white truncate">
+                          {t.description || 'Sem descrição'}
+                        </p>
+                        <div>
+                          <span 
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium"
+                            style={{ 
+                              backgroundColor: `${category?.color || '#94a3b8'}15`, 
+                              color: category?.color || '#94a3b8' 
+                            }}
+                          >
+                            <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: category?.color || '#94a3b8' }} />
+                            {category?.name || 'Sem Categoria'}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3 shrink-0">
+                        <div className="text-right">
+                          <span className={`text-base font-black ${isIncome ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-900 dark:text-white'}`}>
+                            {isIncome ? '+' : '-'}{formatCurrency(t.amount)}
+                          </span>
+                        </div>
+                        <button 
+                          onClick={() => handleDelete(t.id)} 
+                          className="text-slate-400 hover:text-rose-500 p-2 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
             {/* Pagination Controls */}
             {totalPages > 1 && (
-              <div className="flex items-center justify-between border-t border-slate-200 dark:border-slate-800 px-6 py-4">
-                <span className="text-sm text-slate-500 dark:text-slate-400">
+              <div className="flex flex-col sm:flex-row items-center justify-between border-t border-slate-200/80 dark:border-slate-800 px-4 sm:px-6 py-4 gap-3 bg-slate-50/50 dark:bg-slate-900/40">
+                <span className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 text-center sm:text-left">
                   A mostrar {((currentPage - 1) * itemsPerPage) + 1} a {Math.min(currentPage * itemsPerPage, transactions.length)} de {transactions.length} registos
                 </span>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
                   <button
                     onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                     disabled={currentPage === 1}
-                    className="p-1 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                    className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                   >
-                    <ChevronLeft className="w-5 h-5" />
+                    <ChevronLeft className="w-4 h-4" />
                   </button>
-                  <div className="flex gap-1 hidden sm:flex">
+                  <div className="flex gap-1">
                     {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => {
-                      // Show limited pages if too many
-                      if (totalPages > 7 && page > 3 && page < totalPages - 2 && Math.abs(currentPage - page) > 1) {
-                        if (page === 4 || page === totalPages - 3) return <span key={page} className="px-2 text-slate-400">...</span>;
+                      if (totalPages > 5 && Math.abs(currentPage - page) > 1 && page !== 1 && page !== totalPages) {
+                        if (page === 2 || page === totalPages - 1) return <span key={page} className="px-1 text-slate-400 text-xs">...</span>;
                         return null;
                       }
                       
@@ -424,7 +663,11 @@ export default function GestaoPage() {
                         <button
                           key={page}
                           onClick={() => setCurrentPage(page)}
-                          className={`w-8 h-8 rounded-lg text-sm font-bold transition-all ${currentPage === page ? 'bg-primary text-white shadow-md shadow-primary/20' : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300'}`}
+                          className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-xs sm:text-sm font-bold transition-all ${
+                            currentPage === page 
+                              ? 'bg-primary text-white shadow-md shadow-primary/25' 
+                              : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300'
+                          }`}
                         >
                           {page}
                         </button>
@@ -434,9 +677,9 @@ export default function GestaoPage() {
                   <button
                     onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                     disabled={currentPage === totalPages}
-                    className="p-1 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                    className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                   >
-                    <ChevronRight className="w-5 h-5" />
+                    <ChevronRight className="w-4 h-4" />
                   </button>
                 </div>
               </div>
@@ -446,28 +689,28 @@ export default function GestaoPage() {
 
         {/* Modal Nova Categoria */}
         {isAddingCategory && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-            <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 w-full max-w-sm shadow-2xl animate-in zoom-in-95 duration-200">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 w-full max-w-sm shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-200">
               <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Nova Categoria</h3>
               <input 
                 type="text" 
                 value={newCatName} 
                 onChange={e => setNewCatName(e.target.value)} 
-                placeholder="Ex: Streaming" 
-                className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary outline-none mb-6"
+                placeholder="Ex: Streaming, Ginásio..." 
+                className="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary outline-none mb-6 text-sm font-medium"
                 autoFocus
               />
               <div className="flex gap-3">
                 <button 
                   onClick={() => { setIsAddingCategory(false); setNewCatName(""); }} 
-                  className="flex-1 py-2 font-semibold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
+                  className="flex-1 py-2.5 font-semibold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors text-sm"
                 >
                   Cancelar
                 </button>
                 <button 
                   onClick={confirmAddCategory}
                   disabled={!newCatName.trim()}
-                  className="flex-1 py-2 bg-primary text-white font-semibold rounded-xl hover:bg-primary/90 transition-colors disabled:opacity-50"
+                  className="flex-1 py-2.5 bg-primary text-white font-bold rounded-xl hover:bg-primary/90 transition-colors disabled:opacity-50 text-sm shadow-lg shadow-primary/20"
                 >
                   Guardar
                 </button>
@@ -477,39 +720,42 @@ export default function GestaoPage() {
         )}
       </div>
 
-      {/* Category Expenses Summary */}
+      {/* Category Expenses Summary - Styled with Expenses Card Accent */}
       {expensesByCategory.length > 0 && (
         <div className="mt-8 space-y-4 animate-in slide-in-from-bottom-5 fade-in duration-500 delay-150">
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <TrendingUp className="w-5 h-5 text-rose-500" /> Top Categorias de Gastos
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+              <PieChart className="w-5 h-5 text-rose-500" /> 
+              Top Categorias de Gastos
+            </h2>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
             {expensesByCategory.map((cat, idx) => {
               const maxAmount = expensesByCategory[0].amount;
               const percent = maxAmount > 0 ? (cat.amount / maxAmount) * 100 : 0;
               
               return (
-                <div key={cat.id} className="glass-card p-5 relative overflow-hidden group hover:-translate-y-2 hover:shadow-[0_0_30px_rgba(139,92,246,0.2)] hover:border-primary/50 transition-all duration-500">
-                  <div className="absolute inset-0 bg-gradient-to-br from-violet-700/0 to-indigo-900/0 group-hover:from-violet-700/10 group-hover:to-indigo-900/10 transition-colors duration-500 rounded-xl pointer-events-none" />
-                  <div 
-                    className="absolute -bottom-10 left-1/2 -translate-x-1/2 w-40 h-24 blur-[40px] pointer-events-none rounded-full transition-opacity duration-500 opacity-0 group-hover:opacity-40" 
-                    style={{ backgroundColor: cat.color }}
-                  />
-                  
-                  <div className="flex justify-between items-start mb-4 relative z-10">
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: cat.color }} />
-                      <span className="font-semibold text-slate-700 dark:text-slate-300 truncate max-w-[120px]" title={cat.name}>
+                <div 
+                  key={cat.id} 
+                  className="glass-card p-5 relative overflow-hidden group hover:-translate-y-1.5 transition-all duration-300 border border-slate-200/80 dark:border-slate-800/80"
+                  style={{
+                    boxShadow: '0 8px 30px -10px var(--card-expenses-glow, rgba(244, 63, 94, 0.15))'
+                  }}
+                >
+                  <div className="flex justify-between items-start mb-3 relative z-10">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: cat.color }} />
+                      <span className="font-bold text-sm text-slate-800 dark:text-slate-200 truncate" title={cat.name}>
                         {cat.name}
                       </span>
                     </div>
-                    <span className="font-bold text-rose-600 dark:text-rose-500">
+                    <span className="font-extrabold text-sm text-rose-600 dark:text-rose-400 shrink-0">
                       -{formatCurrency(cat.amount)}
                     </span>
                   </div>
                   
                   {/* Progress bar background */}
-                  <div className="w-full bg-slate-100 dark:bg-slate-800/50 h-2 rounded-full overflow-hidden relative z-10">
+                  <div className="w-full bg-slate-100 dark:bg-slate-800/80 h-2 rounded-full overflow-hidden relative z-10">
                     <div 
                       className="h-full rounded-full transition-all duration-1000 ease-out"
                       style={{ 
@@ -520,7 +766,7 @@ export default function GestaoPage() {
                   </div>
                   
                   {/* Ranking Number */}
-                  <div className="absolute -right-3 -bottom-5 text-7xl font-black text-slate-900/5 dark:text-white/5 pointer-events-none group-hover:scale-110 transition-transform duration-500">
+                  <div className="absolute -right-2 -bottom-4 text-6xl font-black text-slate-900/5 dark:text-white/5 pointer-events-none group-hover:scale-110 transition-transform duration-300">
                     #{idx + 1}
                   </div>
                 </div>

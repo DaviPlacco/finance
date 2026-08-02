@@ -8,8 +8,17 @@
   
   --primary: #2e1065; /* Violet 950 */
   --primary-foreground: #ffffff;
+  --primary-glow: rgba(139, 92, 246, 0.35);
   
   --secondary: #4f46e5; /* Indigo 600 */
+  
+  --card-hero-gradient: linear-gradient(135deg, #6d28d9 0%, #4338ca 50%, #312e81 100%);
+  --card-hero-orb: rgba(217, 70, 239, 0.45);
+  
+  --card-history-accent: var(--primary);
+  --card-history-glow: var(--primary-glow);
+  --card-expenses-accent: var(--primary);
+  --card-expenses-glow: var(--primary-glow);
   
   --glass-bg: rgba(255, 255, 255, 0.7);
   --glass-border: rgba(255, 255, 255, 0.4);
@@ -24,8 +33,17 @@
   
   --primary: #8b5cf6;
   --primary-foreground: #ffffff;
+  --primary-glow: rgba(139, 92, 246, 0.45);
   
   --secondary: #818cf8;
+  
+  --card-hero-gradient: linear-gradient(135deg, #6d28d9 0%, #4338ca 50%, #312e81 100%);
+  --card-hero-orb: rgba(217, 70, 239, 0.45);
+  
+  --card-history-accent: var(--primary);
+  --card-history-glow: var(--primary-glow);
+  --card-expenses-accent: var(--primary);
+  --card-expenses-glow: var(--primary-glow);
   
   --glass-bg: rgba(15, 23, 42, 0.45);
   --glass-border: rgba(255, 255, 255, 0.05);
@@ -156,4 +174,21 @@ body {
   opacity: 0.9;
   z-index: -1;
   pointer-events: none;
+}
+
+/* Card Custom Accents & Dynamic Hover Effects (Glow only, no border) */
+.card-history-item {
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-history-item:hover {
+  box-shadow: 0 12px 36px -8px var(--card-history-glow) !important;
+}
+
+.card-expenses-item {
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-expenses-item:hover {
+  box-shadow: 0 12px 36px -8px rgba(0, 0, 0, 0.15) !important;
 }

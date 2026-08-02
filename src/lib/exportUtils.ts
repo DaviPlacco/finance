@@ -384,3 +384,166 @@ export const exportSimulacaoToPDF = (incomes: any[], expenses: any[]) => {
     toast.error("Erro ao exportar PDF. Verifica a consola.");
   }
 };
+
+export const exportGeneralMonthlyReportPDF = async (year: number, month: number) => {
+  try {
+    const [transactionsRes, categoriesRes, investmentsRes] = await Promise.all([
+      api.get("/transactions"),
+      api.get("/categories"),
+      api.get("/investments")
+    ]);
+    
+    const allTransactions = transactionsRes.data;
+    const categories = categoriesRes.data;
+    const investments = investmentsRes.data;
+
+    const categoryMap = new Map(categories.map((c: any) => [c.id, c]));
+
+    // Filtrar transações pelo mês e ano escolhidos
+    const filteredTransactions = allTransactions.filter((t: any) => {
+      if (!t.date) return false;
+      const tDate = new Date(t.date);
+      return tDate.getFullYear() === year && (tDate.getMonth() + 1) === month;
+    });
+
+    const doc = new jsPDF();
+
+    // Cabeçalho Principal
+    doc.setFontSize(22);
+    doc.setTextColor(79, 70, 229);
+    doc.text("Finance", 14, 20);
+    
+    doc.setFontSize(12);
+    doc.setTextColor(100, 116, 139);
+    doc.text(`Relatório de Fim de Mês - ${month.toString().padStart(2, '0')}/${year}`, 14, 28);
+
+    // Resumo de Transações
+    const tableColumn = ["Data", "Categoria", "Descrição", "Tipo", "Valor"];
+    const tableRows: any[] = [];
+    const rowColors: any[] = [];
+
+    let totalIncome = 0;
+    let totalExpense = 0;
+
+    filteredTransactions.forEach((t: any) => {
+      const category = categoryMap.get(t.category_id);
+      const catName = category ? category.name : "Sem Categoria";
+      const catColorHex = category && category.color ? category.color : "#94a3b8";
+      
+      const isIncome = t.type && t.type.toUpperCase() === "INCOME";
+      const typeStr = isIncome ? "Receita" : "Despesa";
+      const valStr = formatCurrency(t.amount);
+
+      if (isIncome) totalIncome += t.amount;
+      else totalExpense += t.amount;
+
+      tableRows.push([formatDate(t.date), catName, t.description || "-", typeStr, valStr]);
+      rowColors.push({ catColorHex, isIncome });
+    });
+
+    if (filteredTransactions.length > 0) {
+      doc.setFontSize(14);
+      doc.setTextColor(30, 41, 59);
+      doc.text("Movimentos do Mês", 14, 40);
+
+      autoTable(doc, {
+        head: [tableColumn],
+        body: tableRows,
+        startY: 45,
+        styles: { fontSize: 10, cellPadding: 3 },
+        headStyles: { fillColor: [30, 41, 59], textColor: [255, 255, 255] },
+        alternateRowStyles: { fillColor: [248, 250, 252] },
+        didParseCell: function (data) {
+          if (data.section === 'body') {
+            const rowIndex = data.row.index;
+            const config = rowColors[rowIndex];
+            
+            if (data.column.index === 1) {
+               data.cell.styles.textColor = config.catColorHex;
+               data.cell.styles.fontStyle = 'bold';
+            }
+            if (data.column.index === 4) {
+               data.cell.styles.textColor = config.isIncome ? [22, 163, 74] : [220, 38, 38];
+               data.cell.styles.fontStyle = 'bold';
+               data.cell.styles.halign = 'right';
+            }
+          }
+        }
+      });
+    } else {
+      doc.setFontSize(10);
+      doc.setTextColor(100, 116, 139);
+      doc.text("Nenhum movimento registado neste mês.", 14, 40);
+    }
+
+    const finalY = (doc as any).lastAutoTable ? (doc as any).lastAutoTable.finalY + 15 : 55;
+    
+    // Resumo Financeiro
+    const balance = totalIncome - totalExpense;
+    doc.setFontSize(14);
+    doc.setTextColor(30, 41, 59);
+    doc.text("Resumo de Fluxo de Caixa", 14, finalY);
+    
+    doc.setFontSize(10);
+    doc.setTextColor(22, 163, 74);
+    doc.text(`Total Receitas: ${formatCurrency(totalIncome)}`, 14, finalY + 8);
+    doc.setTextColor(220, 38, 38);
+    doc.text(`Total Despesas: ${formatCurrency(totalExpense)}`, 14, finalY + 14);
+
+    const balanceColor = balance >= 0 ? [22, 163, 74] : [220, 38, 38];
+    doc.setTextColor(balanceColor[0], balanceColor[1], balanceColor[2]);
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "bold");
+    doc.text(`Saldo Líquido Mensal: ${formatCurrency(balance)}`, 14, finalY + 22);
+    doc.setFont("helvetica", "normal");
+
+    // Secção de Investimentos
+    const invY = finalY + 40;
+    doc.setFontSize(14);
+    doc.setTextColor(30, 41, 59);
+    doc.text("Posição de Investimentos (Atual)", 14, invY);
+
+    if (investments.length > 0) {
+      const invTableColumn = ["Ativo", "Tipo", "Saldo"];
+      const invTableRows: any[] = [];
+      let totalInv = 0;
+
+      investments.forEach((inv: any) => {
+        totalInv += inv.balance;
+        invTableRows.push([inv.name, inv.asset_type, formatCurrency(inv.balance)]);
+      });
+
+      autoTable(doc, {
+        head: [invTableColumn],
+        body: invTableRows,
+        startY: invY + 5,
+        styles: { fontSize: 10, cellPadding: 3 },
+        headStyles: { fillColor: [79, 70, 229], textColor: [255, 255, 255] },
+        alternateRowStyles: { fillColor: [248, 250, 252] },
+        didParseCell: function (data) {
+          if (data.section === 'body' && data.column.index === 2) {
+             data.cell.styles.halign = 'right';
+             data.cell.styles.fontStyle = 'bold';
+             data.cell.styles.textColor = [0, 82, 255];
+          }
+        }
+      });
+
+      const endInvY = (doc as any).lastAutoTable.finalY + 10;
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(0, 82, 255);
+      doc.text(`Total Património Investido: ${formatCurrency(totalInv)}`, 14, endInvY);
+      doc.setFont("helvetica", "normal");
+    } else {
+      doc.setFontSize(10);
+      doc.setTextColor(100, 116, 139);
+      doc.text("Sem registos de investimentos.", 14, invY + 10);
+    }
+
+    doc.save(`Finance_Fecho_Mes_${month.toString().padStart(2, '0')}_${year}.pdf`);
+  } catch (error) {
+    console.error("Erro ao gerar relatório geral:", error);
+    toast.error("Erro ao exportar PDF.");
+  }
+};

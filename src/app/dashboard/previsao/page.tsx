@@ -15,8 +15,10 @@ import {
   Area,
   AreaChart
 } from "recharts";
+import { useSettings } from "@/lib/SettingsContext";
 
 export default function PrevisaoPage() {
+  const { primaryColor } = useSettings();
   const [initialAmount, setInitialAmount] = useState<string>("10000");
   const [monthlyContribution, setMonthlyContribution] = useState<string>("500");
   const [annualRate, setAnnualRate] = useState<string>("8");
@@ -87,21 +89,30 @@ export default function PrevisaoPage() {
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-slate-900/80 backdrop-blur-md border border-white/10 p-4 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
-          <p className="font-bold text-white mb-2">{label}</p>
-          <div className="space-y-1">
-            <p className="text-primary font-semibold text-sm">
-              Total Acumulado: {formatCurrency(payload[0].value)}
-            </p>
+        <div className="glass-card bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-slate-200/90 dark:border-slate-800 p-4 rounded-xl shadow-xl dark:shadow-[0_12px_36px_rgba(0,0,0,0.5)] min-w-[220px]">
+          <p className="font-bold text-slate-900 dark:text-white mb-2.5 text-sm">{label}</p>
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between gap-3 text-sm">
+              <span className="text-slate-600 dark:text-slate-300 font-medium">Total Acumulado:</span>
+              <span className="font-bold text-indigo-600 dark:text-indigo-400" style={{ color: primaryColor }}>
+                {formatCurrency(payload[0].value)}
+              </span>
+            </div>
             {payload[1] && (
-              <p className="text-slate-500 dark:text-slate-400 font-medium text-sm">
-                Total Investido: {formatCurrency(payload[1].value)}
-              </p>
+              <div className="flex items-center justify-between gap-3 text-sm">
+                <span className="text-slate-500 dark:text-slate-400 font-medium">Total Investido:</span>
+                <span className="font-semibold text-slate-700 dark:text-slate-200">
+                  {formatCurrency(payload[1].value)}
+                </span>
+              </div>
             )}
             {payload[1] && (
-              <p className="text-emerald-500 font-medium text-sm pt-1 border-t border-slate-100 dark:border-slate-800 mt-1">
-                Juros Compostos: {formatCurrency(payload[0].value - payload[1].value)}
-              </p>
+              <div className="flex items-center justify-between gap-3 text-sm pt-2 border-t border-slate-100 dark:border-slate-800/80 mt-2">
+                <span className="text-emerald-600 dark:text-emerald-400 font-semibold">Juros Compostos:</span>
+                <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                  {formatCurrency(payload[0].value - payload[1].value)}
+                </span>
+              </div>
             )}
           </div>
         </div>
@@ -211,29 +222,29 @@ export default function PrevisaoPage() {
 
         {/* Resultados em Cartões */}
         <div className="xl:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4 h-fit">
-          <div className="glass-card p-6 border-l-4 border-l-indigo-400 hover:-translate-y-1 transition-transform duration-300">
+          <div className="glass-card p-6 border-l-4 border-l-indigo-400 hover:-translate-y-1 active:scale-[0.98] transition-transform duration-300">
             <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-2">
               <CalendarDays className="w-4 h-4" /> Em 10 Anos
             </h3>
             <p className="text-3xl font-bold text-slate-900 dark:text-white">{formatCurrency(results.year10)}</p>
           </div>
           
-          <div className="glass-card p-6 border-l-4 border-l-violet-500 hover:-translate-y-1 transition-transform duration-300">
+          <div className="glass-card p-6 border-l-4 border-l-violet-500 hover:-translate-y-1 active:scale-[0.98] transition-transform duration-300">
             <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-2">
               <CalendarDays className="w-4 h-4" /> Em 20 Anos
             </h3>
             <p className="text-3xl font-bold text-slate-900 dark:text-white">{formatCurrency(results.year20)}</p>
           </div>
 
-          <div className="glass-card p-6 border-l-4 border-l-fuchsia-500 hover:-translate-y-1 transition-transform duration-300">
+          <div className="glass-card p-6 border-l-4 border-l-fuchsia-500 hover:-translate-y-1 active:scale-[0.98] transition-transform duration-300">
             <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-2">
               <CalendarDays className="w-4 h-4" /> Em 30 Anos
             </h3>
             <p className="text-3xl font-bold text-slate-900 dark:text-white">{formatCurrency(results.year30)}</p>
           </div>
 
-          <div className="glass-card p-6 border-l-4 border-l-primary relative overflow-hidden group hover:-translate-y-1 transition-all duration-300">
-            <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+          <div className="glass-card p-6 border-l-4 border-l-primary relative overflow-hidden group hover:-translate-y-1 active:scale-[0.98] transition-all duration-300">
+            <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 active:opacity-100 transition-opacity" />
             <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-2">
               <Target className="w-4 h-4 text-primary" /> Meta ({customYears} Anos)
             </h3>
@@ -254,8 +265,8 @@ export default function PrevisaoPage() {
             <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
               <defs>
                 <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.3}/>
-                  <stop offset="95%" stopColor="#4f46e5" stopOpacity={0}/>
+                  <stop offset="5%" stopColor={primaryColor || "#4f46e5"} stopOpacity={0.35}/>
+                  <stop offset="95%" stopColor={primaryColor || "#4f46e5"} stopOpacity={0}/>
                 </linearGradient>
                 <linearGradient id="colorInvestido" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#94a3b8" stopOpacity={0.2}/>
@@ -282,11 +293,11 @@ export default function PrevisaoPage() {
               <Area 
                 type="monotone" 
                 dataKey="Total" 
-                stroke="#4f46e5" 
+                stroke={primaryColor || "#4f46e5"} 
                 strokeWidth={3}
                 fillOpacity={1} 
                 fill="url(#colorTotal)" 
-                activeDot={{ r: 6, strokeWidth: 0, fill: '#4f46e5' }}
+                activeDot={{ r: 6, strokeWidth: 0, fill: primaryColor || '#4f46e5' }}
               />
               <Area 
                 type="monotone" 

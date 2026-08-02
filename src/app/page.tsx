@@ -32,6 +32,7 @@ export default function LoginPage() {
 
       localStorage.setItem("token", response.data.access_token);
       localStorage.setItem("username", username);
+      sessionStorage.setItem("showWelcome", "true");
       toast.success(isRegistering ? "Conta criada com sucesso!" : `Bem-vindo de volta, ${username}!`);
       router.push("/dashboard");
     } catch (err: any) {
