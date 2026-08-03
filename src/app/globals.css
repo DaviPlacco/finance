@@ -79,21 +79,41 @@ body {
   border-radius: 1rem; /* 16px */
 }
 
-/* Custom Scrollbar for sleek look */
+/* Custom Scrollbar for sleek look following active palette */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--primary) 65%, transparent) transparent;
+}
+
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
+
 ::-webkit-scrollbar-track {
   background: transparent;
 }
+
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 4px;
+  background: color-mix(in srgb, var(--primary) 60%, transparent);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
 }
+
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: var(--primary);
+  border-radius: 9999px;
+  border: 1px solid transparent;
+  background-clip: padding-box;
+  box-shadow: 0 0 10px var(--primary-glow);
 }
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
 
 /* Animations */
 @keyframes marquee {

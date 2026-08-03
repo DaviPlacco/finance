@@ -8,13 +8,17 @@ import {
   ChevronLeft, 
   ChevronRight, 
   TrendingUp, 
-  History, 
   Clock, 
   ArrowUpRight, 
   ArrowDownRight, 
   Receipt,
   Sparkles,
-  PieChart
+  PieChart,
+  Camera,
+  Image as ImageIcon,
+  X,
+  Download,
+  Eye
 } from "lucide-react";
 import { CustomSelect } from "@/components/CustomSelect";
 import { useSettings } from "@/lib/SettingsContext";
@@ -31,6 +35,7 @@ export default function GestaoPage() {
   const [description, setDescription] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [type, setType] = useState("expense");
+  const [receiptImage, setReceiptImage] = useState<string | null>(null);
 
   const [isAddingCategory, setIsAddingCategory] = useState(false);
   const [newCatName, setNewCatName] = useState("");
@@ -38,6 +43,9 @@ export default function GestaoPage() {
   // Budget state
   const [budgetCategoryId, setBudgetCategoryId] = useState("");
   const [budgetAmount, setBudgetAmount] = useState("");
+
+  // Receipt Modal State
+  const [viewingReceipt, setViewingReceipt] = useState<any | null>(null);
 
   const { itemsPerPage } = useSettings();
   const [currentPage, setCurrentPage] = useState(1);
@@ -80,6 +88,41 @@ export default function GestaoPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const MAX_WIDTH = 1200;
+        const MAX_HEIGHT = 1200;
+        let width = img.width;
+        let height = img.height;
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx?.drawImage(img, 0, 0, width, height);
+        const compressedBase64 = canvas.toDataURL("image/jpeg", 0.75);
+        setReceiptImage(compressedBase64);
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleAddTransaction = async (e: React.FormEvent) => {
@@ -90,14 +133,16 @@ export default function GestaoPage() {
         type,
         category_id: parseInt(categoryId),
         description,
-        date
+        date,
+        receipt_image: receiptImage
       });
       setAmount("");
       setDescription("");
+      setReceiptImage(null);
       fetchData();
       toast.success("Registo adicionado com sucesso!");
     } catch (err) {
-      console.error("Failed to add transaction");
+      console.error("Failed to add transaction", err);
       toast.error("Erro ao adicionar registo");
     }
   };
@@ -172,7 +217,8 @@ export default function GestaoPage() {
           name: cat.name,
           color: cat.color,
           type: cat.type,
-          budget_limit: parseFloat(budgetAmount)
+          budget_limit: parseFloat(budgetAmount),
+          group_id: cat.group_id
         });
         setBudgetAmount("");
         fetchData();
@@ -226,7 +272,7 @@ export default function GestaoPage() {
             </span>
           </h1>
           <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Gere as tuas entradas, despesas, orçamentos e planeamento futuro.
+            Gere as tuas entradas, despesas, comprovativos e planeamento futuro.
           </p>
         </div>
       </div>
@@ -236,7 +282,7 @@ export default function GestaoPage() {
         {/* Form Column */}
         <div className="lg:col-span-1 space-y-6">
           {/* Novo Registo Card */}
-          <div className="glass-card p-5 sm:p-6 relative overflow-hidden border border-slate-200/80 dark:border-slate-800 shadow-xl shadow-slate-900/5">
+          <div className="glass-card p-5 sm:p-6 relative border border-slate-200/80 dark:border-slate-800 shadow-xl shadow-slate-900/5">
             <div className="flex items-center justify-between mb-5">
               <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
@@ -334,12 +380,50 @@ export default function GestaoPage() {
                 />
               </div>
 
-              <button 
-                type="submit" 
-                className="w-full py-3 bg-gradient-to-r from-primary to-primary/90 text-white font-bold rounded-xl shadow-lg shadow-primary/25 hover:shadow-primary/40 hover:-translate-y-0.5 active:translate-y-0 transition-all text-sm uppercase tracking-wider mt-2"
-              >
-                Guardar Registo
-              </button>
+              {/* 📸 Anexar Foto de Talão / Comprovativo */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 uppercase tracking-wider">
+                  Comprovativo / Talão (Opcional)
+                </label>
+                {receiptImage ? (
+                  <div className="relative group rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 p-2 flex items-center gap-3">
+                    <img src={receiptImage} alt="Comprovativo" className="w-14 h-14 object-cover rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">Comprovativo anexado</p>
+                      <p className="text-[11px] text-emerald-500 font-semibold">Pronto para guardar</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setReceiptImage(null)}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors"
+                      title="Remover anexo"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <label className="cursor-pointer flex items-center justify-center gap-2 w-full py-2.5 px-4 border border-dashed border-slate-300 dark:border-slate-700 hover:border-primary/60 rounded-xl bg-slate-50/50 dark:bg-slate-800/30 hover:bg-primary/5 transition-all text-xs font-bold text-slate-600 dark:text-slate-400 hover:text-primary">
+                    <Camera className="w-4 h-4 text-primary" />
+                    <span>Anexar Foto de Talão / Fatura</span>
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      className="hidden" 
+                      onChange={handleFileChange} 
+                    />
+                  </label>
+                )}
+              </div>
+
+              {/* 📌 Mobile Sticky Submit Button */}
+              <div className="sticky bottom-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md pt-3 pb-1 border-t border-slate-100 dark:border-slate-800 z-20 md:relative md:bg-transparent md:pt-0 md:pb-0 md:border-0">
+                <button 
+                  type="submit" 
+                  className="w-full py-3.5 md:py-3 bg-gradient-to-r from-primary to-primary/90 text-white font-bold rounded-xl shadow-lg shadow-primary/25 hover:shadow-primary/40 hover:-translate-y-0.5 active:translate-y-0 transition-all text-sm uppercase tracking-wider"
+                >
+                  Guardar Registo
+                </button>
+              </div>
             </form>
           </div>
 
@@ -504,13 +588,14 @@ export default function GestaoPage() {
                     <th className="p-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Descrição</th>
                     <th className="p-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Categoria</th>
                     <th className="p-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-right">Valor</th>
+                    <th className="p-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-center">Talão</th>
                     <th className="p-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-center sticky right-0 bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur-sm z-10">Ações</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
                   {paginatedTransactions.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="py-16 text-center text-slate-500 dark:text-slate-400">
+                      <td colSpan={6} className="py-16 text-center text-slate-500 dark:text-slate-400">
                         <div className="flex flex-col items-center justify-center gap-2">
                           <Receipt className="w-10 h-10 text-slate-300 dark:text-slate-700" />
                           <p className="font-semibold text-sm">Não existem transações para os filtros selecionados.</p>
@@ -538,7 +623,7 @@ export default function GestaoPage() {
                               )}
                             </div>
                           </td>
-                          <td className="p-4 text-slate-900 dark:text-slate-100 font-semibold text-sm max-w-[220px] truncate" title={t.description || '-'}>
+                          <td className="p-4 text-slate-900 dark:text-slate-100 font-semibold text-sm max-w-[200px] truncate" title={t.description || '-'}>
                             {t.description || '-'}
                           </td>
                           <td className="p-4 whitespace-nowrap">
@@ -557,6 +642,21 @@ export default function GestaoPage() {
                           <td className={`p-4 text-right font-extrabold text-sm whitespace-nowrap ${isIncome ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-900 dark:text-slate-100'}`}>
                             {isIncome ? '+' : '-'}{formatCurrency(t.amount)}
                           </td>
+                          <td className="p-4 text-center whitespace-nowrap">
+                            {t.receipt_image ? (
+                              <button
+                                type="button"
+                                onClick={() => setViewingReceipt(t)}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-primary/10 text-primary text-xs font-bold hover:bg-primary hover:text-white transition-all shadow-xs"
+                                title="Ver Comprovativo"
+                              >
+                                <Receipt className="w-3.5 h-3.5" />
+                                <span>Ver</span>
+                              </button>
+                            ) : (
+                              <span className="text-slate-300 dark:text-slate-700 text-xs">-</span>
+                            )}
+                          </td>
                           <td className="p-4 text-center sticky right-0 bg-white/90 dark:bg-[#0b1120]/90 backdrop-blur-sm z-10">
                             <button 
                               onClick={() => handleDelete(t.id)} 
@@ -574,7 +674,7 @@ export default function GestaoPage() {
               </table>
             </div>
 
-            {/* MOBILE CARD LIST VIEW (SM / XS) - Prevents cramping/overflow */}
+            {/* MOBILE CARD LIST VIEW (SM / XS) */}
             <div className="block md:hidden divide-y divide-slate-100 dark:divide-slate-800/80">
               {paginatedTransactions.length === 0 ? (
                 <div className="py-12 px-4 text-center text-slate-500 dark:text-slate-400">
@@ -600,6 +700,15 @@ export default function GestaoPage() {
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100/80 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-300/40">
                               <Clock className="w-2.5 h-2.5" /> Em Espera
                             </span>
+                          )}
+                          {t.receipt_image && (
+                            <button
+                              type="button"
+                              onClick={() => setViewingReceipt(t)}
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary/10 text-primary"
+                            >
+                              <Receipt className="w-2.5 h-2.5" /> Talão
+                            </button>
                           )}
                         </div>
                         <p className="font-bold text-sm text-slate-900 dark:text-white truncate">
@@ -718,6 +827,63 @@ export default function GestaoPage() {
             </div>
           </div>
         )}
+
+        {/* 🖼️ Modal Lightbox do Comprovativo / Talão */}
+        {viewingReceipt && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200">
+              {/* Header */}
+              <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 bg-primary/10 rounded-xl text-primary">
+                    <Receipt className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-slate-900 dark:text-white text-sm sm:text-base">
+                      {viewingReceipt.description || "Comprovativo da Transação"}
+                    </h3>
+                    <p className="text-xs text-slate-500">
+                      {formatDate(viewingReceipt.date)} • {formatCurrency(viewingReceipt.amount)}
+                    </p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setViewingReceipt(null)}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Image Preview Container */}
+              <div className="p-4 overflow-y-auto flex items-center justify-center bg-slate-950/20 max-h-[60vh]">
+                <img 
+                  src={viewingReceipt.receipt_image} 
+                  alt="Talão da Transação" 
+                  className="max-h-[55vh] w-auto max-w-full rounded-xl object-contain shadow-md border border-slate-200/20"
+                />
+              </div>
+
+              {/* Actions Footer */}
+              <div className="p-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50">
+                <a 
+                  href={viewingReceipt.receipt_image} 
+                  download={`comprovativo-${viewingReceipt.id}.jpg`}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 shadow-sm transition-all"
+                >
+                  <Download className="w-3.5 h-3.5 text-primary" />
+                  <span>Descarregar Imagem</span>
+                </a>
+                <button 
+                  onClick={() => setViewingReceipt(null)}
+                  className="px-4 py-2 bg-primary text-white text-xs font-bold rounded-xl shadow-md hover:opacity-90 transition-all"
+                >
+                  Fechar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Category Expenses Summary - Styled with Expenses Card Accent */}
@@ -757,7 +923,7 @@ export default function GestaoPage() {
                   {/* Progress bar background */}
                   <div className="w-full bg-slate-100 dark:bg-slate-800/80 h-2 rounded-full overflow-hidden relative z-10">
                     <div 
-                      className="h-full rounded-full transition-all duration-1000 ease-out"
+                      className="h-full rounded-full transition-all duration-1000 ease-out" 
                       style={{ 
                         width: `${percent}%`, 
                         backgroundColor: cat.color 

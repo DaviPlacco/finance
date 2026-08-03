@@ -21,7 +21,7 @@ api.interceptors.request.use((config) => {
 if (typeof window !== 'undefined') {
   const mock = new MockAdapter(api, { delayResponse: 300 }); // simulate light network delay
 
-  const DB_KEY = 'finance_mock_db_v2';
+  const DB_KEY = 'finance_mock_db_v3';
   const TTL = 24 * 60 * 60 * 1000; // 24 hours
 
   const now = new Date();
@@ -35,34 +35,38 @@ if (typeof window !== 'undefined') {
       email: "admin@finance.app",
       profile_image: null
     },
+    category_groups: [
+      { id: 1, name: "Habitação & Custos Fixos", type: "expense", color: "#ef4444" },
+      { id: 2, name: "Estilo de Vida & Lazer", type: "expense", color: "#8b5cf6" }
+    ],
     categories: [
-      { id: 1, name: "Salário & Rendimentos", color: "#10b981", type: "income", budget_limit: null },
-      { id: 2, name: "Habitação & Renda", color: "#ef4444", type: "expense", budget_limit: 850 },
-      { id: 3, name: "Supermercado & Alimentação", color: "#f59e0b", type: "expense", budget_limit: 450 },
-      { id: 4, name: "Lazer & Restaurantes", color: "#8b5cf6", type: "expense", budget_limit: 250 },
-      { id: 5, name: "Transportes & Carro", color: "#06b6d4", type: "expense", budget_limit: 150 },
-      { id: 6, name: "Investimentos & Poupança", color: "#3b82f6", type: "income", budget_limit: null },
+      { id: 1, name: "Salário & Rendimentos", color: "#10b981", type: "income", budget_limit: null, group_id: null },
+      { id: 2, name: "Habitação & Renda", color: "#ef4444", type: "expense", budget_limit: 850, group_id: 1 },
+      { id: 3, name: "Supermercado & Alimentação", color: "#f59e0b", type: "expense", budget_limit: 450, group_id: 1 },
+      { id: 4, name: "Lazer & Restaurantes", color: "#8b5cf6", type: "expense", budget_limit: 250, group_id: 2 },
+      { id: 5, name: "Transportes & Carro", color: "#06b6d4", type: "expense", budget_limit: 150, group_id: 1 },
+      { id: 6, name: "Investimentos & Poupança", color: "#3b82f6", type: "income", budget_limit: null, group_id: null },
     ],
     transactions: [
       // Current month transactions
-      { id: 1, amount: 3200, description: "Salário Empresa", type: "income", date: new Date(curYear, curMonth, 2, 10, 0).toISOString(), category_id: 1 },
-      { id: 2, amount: 800, description: "Renda Apartamento", type: "expense", date: new Date(curYear, curMonth, 4, 12, 0).toISOString(), category_id: 2 },
-      { id: 3, amount: 185.50, description: "Supermercado Continente", type: "expense", date: new Date(curYear, curMonth, 8, 16, 30).toISOString(), category_id: 3 },
-      { id: 4, amount: 65.00, description: "Jantar Amigos", type: "expense", date: new Date(curYear, curMonth, 12, 20, 15).toISOString(), category_id: 4 },
-      { id: 5, amount: 75.00, description: "Combustível BP", type: "expense", date: new Date(curYear, curMonth, 15, 9, 0).toISOString(), category_id: 5 },
+      { id: 1, amount: 3200, description: "Salário Empresa", type: "income", date: new Date(curYear, curMonth, 2, 10, 0).toISOString(), category_id: 1, receipt_image: null },
+      { id: 2, amount: 800, description: "Renda Apartamento", type: "expense", date: new Date(curYear, curMonth, 4, 12, 0).toISOString(), category_id: 2, receipt_image: null },
+      { id: 3, amount: 185.50, description: "Supermercado Continente", type: "expense", date: new Date(curYear, curMonth, 8, 16, 30).toISOString(), category_id: 3, receipt_image: null },
+      { id: 4, amount: 65.00, description: "Jantar Amigos", type: "expense", date: new Date(curYear, curMonth, 12, 20, 15).toISOString(), category_id: 4, receipt_image: null },
+      { id: 5, amount: 75.00, description: "Combustível BP", type: "expense", date: new Date(curYear, curMonth, 15, 9, 0).toISOString(), category_id: 5, receipt_image: null },
       // Future scheduled transaction this month
-      { id: 6, amount: 45.00, description: "Ginásio Mensalidade", type: "expense", date: new Date(curYear, curMonth, 28, 8, 0).toISOString(), category_id: 4 },
+      { id: 6, amount: 45.00, description: "Ginásio Mensalidade", type: "expense", date: new Date(curYear, curMonth, 28, 8, 0).toISOString(), category_id: 4, receipt_image: null },
       
       // Previous month transactions
-      { id: 7, amount: 3200, description: "Salário Empresa", type: "income", date: new Date(curYear, curMonth - 1, 2, 10, 0).toISOString(), category_id: 1 },
-      { id: 8, amount: 800, description: "Renda Apartamento", type: "expense", date: new Date(curYear, curMonth - 1, 4, 12, 0).toISOString(), category_id: 2 },
-      { id: 9, amount: 390.00, description: "Compras Mês", type: "expense", date: new Date(curYear, curMonth - 1, 14, 15, 0).toISOString(), category_id: 3 },
-      { id: 10, amount: 140.00, description: "Jantares e Cinema", type: "expense", date: new Date(curYear, curMonth - 1, 20, 21, 0).toISOString(), category_id: 4 },
+      { id: 7, amount: 3200, description: "Salário Empresa", type: "income", date: new Date(curYear, curMonth - 1, 2, 10, 0).toISOString(), category_id: 1, receipt_image: null },
+      { id: 8, amount: 800, description: "Renda Apartamento", type: "expense", date: new Date(curYear, curMonth - 1, 4, 12, 0).toISOString(), category_id: 2, receipt_image: null },
+      { id: 9, amount: 390.00, description: "Compras Mês", type: "expense", date: new Date(curYear, curMonth - 1, 14, 15, 0).toISOString(), category_id: 3, receipt_image: null },
+      { id: 10, amount: 140.00, description: "Jantares e Cinema", type: "expense", date: new Date(curYear, curMonth - 1, 20, 21, 0).toISOString(), category_id: 4, receipt_image: null },
       
       // 2 months ago
-      { id: 11, amount: 3200, description: "Salário Empresa", type: "income", date: new Date(curYear, curMonth - 2, 2, 10, 0).toISOString(), category_id: 1 },
-      { id: 12, amount: 800, description: "Renda Apartamento", type: "expense", date: new Date(curYear, curMonth - 2, 4, 12, 0).toISOString(), category_id: 2 },
-      { id: 13, amount: 420.00, description: "Compras Mês", type: "expense", date: new Date(curYear, curMonth - 2, 12, 18, 0).toISOString(), category_id: 3 },
+      { id: 11, amount: 3200, description: "Salário Empresa", type: "income", date: new Date(curYear, curMonth - 2, 2, 10, 0).toISOString(), category_id: 1, receipt_image: null },
+      { id: 12, amount: 800, description: "Renda Apartamento", type: "expense", date: new Date(curYear, curMonth - 2, 4, 12, 0).toISOString(), category_id: 2, receipt_image: null },
+      { id: 13, amount: 420.00, description: "Compras Mês", type: "expense", date: new Date(curYear, curMonth - 2, 12, 18, 0).toISOString(), category_id: 3, receipt_image: null },
     ],
     investments: [
       { id: 1, name: "S&P 500 ETF (VUAA)", asset_type: "ETF", balance: 8500, target: 15000, date: new Date().toISOString() },
@@ -137,6 +141,72 @@ if (typeof window !== 'undefined') {
       localStorage.setItem('profileImage', data.profile_image);
     }
     return [200, db.user];
+  });
+
+  // Category Groups Mocks
+  mock.onGet('/category-groups').reply(() => {
+    const db = getDB();
+    const groups = db.category_groups || [];
+    const categories = db.categories || [];
+    const res = groups.map((g: any) => {
+      const catIds = categories.filter((c: any) => c.group_id === g.id).map((c: any) => c.id);
+      return {
+        ...g,
+        category_ids: g.category_ids && g.category_ids.length > 0 ? g.category_ids : catIds
+      };
+    });
+    return [200, res];
+  });
+
+  mock.onPost('/category-groups').reply((config) => {
+    const data = JSON.parse(config.data);
+    const db = getDB();
+    const newId = ++currentId;
+    const newGroup = { ...data, id: newId };
+    if (!db.category_groups) db.category_groups = [];
+    db.category_groups.push(newGroup);
+    if (data.category_ids && Array.isArray(data.category_ids) && db.categories) {
+      db.categories = db.categories.map((c: any) => 
+        data.category_ids.includes(c.id) ? { ...c, group_id: newId } : c
+      );
+    }
+    saveDB(db);
+    return [200, newGroup];
+  });
+
+  mock.onPut(/\/category-groups\/\d+/).reply((config) => {
+    const id = parseInt(config.url!.split('/').pop()!);
+    const data = JSON.parse(config.data);
+    const db = getDB();
+    const idx = (db.category_groups || []).findIndex((g: any) => g.id === id);
+    if (idx >= 0) {
+      db.category_groups[idx] = { ...db.category_groups[idx], ...data };
+      if (data.category_ids && Array.isArray(data.category_ids) && db.categories) {
+        db.categories = db.categories.map((c: any) => {
+          if (c.group_id === id && !data.category_ids.includes(c.id)) {
+            return { ...c, group_id: null };
+          }
+          if (data.category_ids.includes(c.id)) {
+            return { ...c, group_id: id };
+          }
+          return c;
+        });
+      }
+      saveDB(db);
+      return [200, db.category_groups[idx]];
+    }
+    return [404, { message: "Not found" }];
+  });
+
+  mock.onDelete(/\/category-groups\/\d+/).reply((config) => {
+    const id = parseInt(config.url!.split('/').pop()!);
+    const db = getDB();
+    db.category_groups = (db.category_groups || []).filter((g: any) => g.id !== id);
+    if (db.categories) {
+      db.categories = db.categories.map((c: any) => c.group_id === id ? { ...c, group_id: null } : c);
+    }
+    saveDB(db);
+    return [200, { message: "Deleted" }];
   });
 
   // Summary Mock (matching cumulative logic)
@@ -338,6 +408,19 @@ if (typeof window !== 'undefined') {
     db.transactions.unshift(newTx);
     saveDB(db);
     return [200, newTx];
+  });
+
+  mock.onPut(/\/transactions\/\d+/).reply((config) => {
+    const id = parseInt(config.url!.split('/').pop()!);
+    const data = JSON.parse(config.data);
+    const db = getDB();
+    const idx = (db.transactions || []).findIndex((t: any) => t.id === id);
+    if (idx >= 0) {
+      db.transactions[idx] = { ...db.transactions[idx], ...data };
+      saveDB(db);
+      return [200, db.transactions[idx]];
+    }
+    return [404, { message: "Not found" }];
   });
 
   mock.onDelete(/\/transactions\/\d+/).reply((config) => {

@@ -25,15 +25,17 @@ import {
   RotateCcw,
   Check,
   ChevronLeft, 
-  ChevronRight 
+  ChevronRight,
+  FolderKanban,
+  Plus,
+  Trash2,
+  Edit2
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { 
   useSettings, 
   PALETTE_PRESETS, 
-  CARD_ACCENT_OPTIONS, 
-  PaletteId, 
-  CardAccentId 
+  CARD_ACCENT_OPTIONS 
 } from "@/lib/SettingsContext";
 import { exportToCSV, exportToPDF } from "@/lib/exportUtils";
 import { api } from "@/lib/api";
@@ -57,15 +59,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     setHistoryCardAccent,
     historyCustomColor,
     setHistoryCustomColor,
-    topExpensesCardAccent,
-    setTopExpensesCardAccent,
-    topExpensesCustomColor,
-    setTopExpensesCustomColor,
     resetToDefaults
   } = useSettings();
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [activeSettingsTab, setActiveSettingsTab] = useState<"general" | "palette" | "cards">("general");
+  const [activeSettingsTab, setActiveSettingsTab] = useState<"general" | "palette" | "cards" | "groups">("general");
   const [mounted, setMounted] = useState(false);
   const [username, setUsername] = useState("Finance");
   const [profileImage, setProfileImage] = useState<string | null>(null);
@@ -76,11 +74,32 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [categoryFilter, setCategoryFilter] = useState<"all" | "expense" | "income">("all");
   const [updatingCatId, setUpdatingCatId] = useState<number | null>(null);
 
+  // Category Groups Management in Settings
+  const [groupsList, setGroupsList] = useState<any[]>([]);
+  const [isCreatingGroup, setIsCreatingGroup] = useState(false);
+  const [editingGroupId, setEditingGroupId] = useState<number | null>(null);
+  const [groupFormName, setGroupFormName] = useState("");
+  const [groupFormColor, setGroupFormColor] = useState("#6366f1");
+  const [groupFormType, setGroupFormType] = useState<"expense" | "income">("expense");
+  const [groupFormSelectedCatIds, setGroupFormSelectedCatIds] = useState<number[]>([]);
+  const [savingGroup, setSavingGroup] = useState(false);
+
+  const fetchCategoriesAndGroups = async () => {
+    try {
+      const [catsRes, groupsRes] = await Promise.all([
+        api.get("/categories"),
+        api.get("/category-groups")
+      ]);
+      setCategoriesList(catsRes.data);
+      setGroupsList(groupsRes.data);
+    } catch (err) {
+      console.error("Erro ao buscar categorias e grupos", err);
+    }
+  };
+
   useEffect(() => {
     if (isSettingsOpen) {
-      api.get("/categories")
-        .then(res => setCategoriesList(res.data))
-        .catch(console.error);
+      fetchCategoriesAndGroups();
     }
   }, [isSettingsOpen]);
 
@@ -92,13 +111,74 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         name: category.name,
         color: newColor,
         type: category.type,
-        budget_limit: category.budget_limit
+        budget_limit: category.budget_limit,
+        group_id: category.group_id
       });
       window.dispatchEvent(new CustomEvent("categories-updated"));
     } catch (err) {
       console.error("Erro ao atualizar cor da categoria", err);
     } finally {
       setUpdatingCatId(null);
+    }
+  };
+
+  const handleOpenCreateGroup = () => {
+    setEditingGroupId(null);
+    setGroupFormName("");
+    setGroupFormColor("#6366f1");
+    setGroupFormType("expense");
+    setGroupFormSelectedCatIds([]);
+    setIsCreatingGroup(true);
+  };
+
+  const handleOpenEditGroup = (group: any) => {
+    setEditingGroupId(group.id);
+    setGroupFormName(group.name);
+    setGroupFormColor(group.color || "#6366f1");
+    setGroupFormType(group.type);
+    setGroupFormSelectedCatIds(group.category_ids || []);
+    setIsCreatingGroup(true);
+  };
+
+  const handleSaveGroup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!groupFormName.trim()) return;
+    setSavingGroup(true);
+    try {
+      const payload = {
+        name: groupFormName.trim(),
+        color: groupFormColor,
+        type: groupFormType,
+        category_ids: groupFormSelectedCatIds
+      };
+
+      if (editingGroupId) {
+        await api.put(`/category-groups/${editingGroupId}`, payload);
+      } else {
+        await api.post("/category-groups", payload);
+      }
+
+      await fetchCategoriesAndGroups();
+      setIsCreatingGroup(false);
+      setEditingGroupId(null);
+      window.dispatchEvent(new CustomEvent("categories-updated"));
+      window.dispatchEvent(new CustomEvent("groups-updated"));
+    } catch (err) {
+      console.error("Erro ao salvar grupo de categorias", err);
+    } finally {
+      setSavingGroup(false);
+    }
+  };
+
+  const handleDeleteGroup = async (groupId: number) => {
+    if (!confirm("Tens a certeza que desejas eliminar este grupo? As categorias associadas serão mantidas.")) return;
+    try {
+      await api.delete(`/category-groups/${groupId}`);
+      await fetchCategoriesAndGroups();
+      window.dispatchEvent(new CustomEvent("categories-updated"));
+      window.dispatchEvent(new CustomEvent("groups-updated"));
+    } catch (err) {
+      console.error("Erro ao eliminar grupo", err);
     }
   };
 
@@ -164,13 +244,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   const navItems = [
-    { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-    { name: "Gestão", href: "/dashboard/gestao", icon: Wallet },
-    { name: "Investimentos", href: "/dashboard/investimentos", icon: TrendingUp },
-    { name: "Previsão", href: "/dashboard/previsao", icon: LineChart },
-    { name: "Simulação", href: "/dashboard/simulacao", icon: Lightbulb },
-    { name: "Orçamentos", href: "/dashboard/orcamentos", icon: PieChart },
-    { name: "Relatórios", href: "/dashboard/relatorios", icon: FileText },
+    { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard, mobileLabel: "Início" },
+    { name: "Gestão", href: "/dashboard/gestao", icon: Wallet, mobileLabel: "Gestão" },
+    { name: "Investir", href: "/dashboard/investimentos", icon: TrendingUp, mobileLabel: "Investir" },
+    { name: "Previsão", href: "/dashboard/previsao", icon: LineChart, mobileLabel: "Previsão" },
+    { name: "Simular", href: "/dashboard/simulacao", icon: Lightbulb, mobileLabel: "Simular" },
+    { name: "Orçamentos", href: "/dashboard/orcamentos", icon: PieChart, mobileLabel: "Orçamentos" },
+    { name: "Relatórios", href: "/dashboard/relatorios", icon: FileText, mobileLabel: "Relatórios" },
   ];
 
   return (
@@ -189,16 +269,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         style={{ backgroundColor: 'var(--bg-glow-3, var(--primary-glow))' }}
       />
 
-      {/* Sidebar Navigation */}
-      <nav className={`w-full ${isCollapsed ? 'md:w-20' : 'md:w-64'} bg-white dark:bg-slate-900 md:h-screen md:rounded-none md:border-r border-b md:border-b-0 border-slate-200/50 dark:border-slate-800/50 flex flex-col z-10 transition-all duration-300 relative shrink-0`}>
-        <div className={`p-4 sm:p-6 flex items-center justify-between md:block ${isCollapsed ? 'md:px-0 md:text-center md:flex md:flex-col md:items-center' : ''}`}>
+      {/* Top Mobile Bar & Desktop Sidebar Navigation */}
+      <nav className={`w-full ${isCollapsed ? 'md:w-20' : 'md:w-64'} bg-white dark:bg-slate-900 md:h-screen md:rounded-none md:border-r border-b md:border-b-0 border-slate-200/50 dark:border-slate-800/50 flex flex-col z-20 transition-all duration-300 relative shrink-0`}>
+        {/* Header User profile */}
+        <div className={`p-3.5 sm:p-5 flex items-center justify-between md:block ${isCollapsed ? 'md:px-0 md:text-center md:flex md:flex-col md:items-center' : ''}`}>
           {!isCollapsed ? (
             <div className="flex items-center gap-3">
               {profileImage ? (
-                <img src={profileImage} alt="Profile" className="w-10 h-10 rounded-full object-cover border-2 border-primary shadow-sm" />
+                <img src={profileImage} alt="Profile" className="w-9 h-9 sm:w-10 sm:h-10 rounded-full object-cover border-2 border-primary shadow-sm" />
               ) : (
                 <div 
-                  className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold border-2 shadow-sm transition-all duration-500"
+                  className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-white font-bold border-2 shadow-sm transition-all duration-500"
                   style={{
                     background: 'linear-gradient(135deg, var(--primary), var(--secondary))',
                     borderColor: 'var(--primary)'
@@ -208,8 +289,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 </div>
               )}
               <div className="flex flex-col min-w-0">
-                <span className="font-bold text-slate-900 dark:text-white leading-tight truncate">{username}</span>
-                <span className="text-xs text-emerald-500 font-medium">Online</span>
+                <span className="font-bold text-slate-900 dark:text-white leading-tight truncate text-sm sm:text-base">{username}</span>
+                <span className="text-[11px] sm:text-xs text-emerald-500 font-medium flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                  Online
+                </span>
               </div>
             </div>
           ) : (
@@ -230,18 +314,28 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
             </div>
           )}
-          <div className="flex items-center gap-3 md:hidden">
-            <button onClick={() => setIsSettingsOpen(true)} className="p-2 text-slate-500 hover:text-primary transition-colors" title="Configurações">
-              <Settings className="w-5 h-5" />
+
+          {/* Quick Actions in Mobile Top Bar */}
+          <div className="flex items-center gap-2 md:hidden">
+            <button 
+              onClick={() => setIsSettingsOpen(true)} 
+              className="p-2 text-slate-500 dark:text-slate-400 hover:text-primary dark:hover:text-primary rounded-xl bg-slate-100 dark:bg-slate-800 transition-colors" 
+              title="Configurações"
+            >
+              <Settings className="w-4 h-4" />
             </button>
-            <button onClick={handleLogout} className="p-2 text-slate-500 hover:text-red-500 transition-colors" title="Terminar Sessão">
-              <LogOut className="w-5 h-5" />
+            <button 
+              onClick={handleLogout} 
+              className="p-2 text-slate-500 dark:text-slate-400 hover:text-rose-500 dark:hover:text-rose-400 rounded-xl bg-slate-100 dark:bg-slate-800 transition-colors" 
+              title="Terminar Sessão"
+            >
+              <LogOut className="w-4 h-4" />
             </button>
           </div>
         </div>
         
-        {/* Navigation list */}
-        <div className="flex-1 px-3 pb-3 md:px-4 md:pb-4 md:pt-2 flex md:flex-col gap-1.5 overflow-x-auto md:overflow-y-auto min-h-0 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+        {/* Desktop Navigation list (Hidden on mobile) */}
+        <div className="hidden md:flex flex-1 px-3 pb-3 md:px-4 md:pb-4 md:pt-2 flex-col gap-1.5 overflow-y-auto min-h-0 [scrollbar-width:none]">
           {navItems.map((item) => {
             const normalizedPathname = pathname.endsWith('/') && pathname !== '/' ? pathname.slice(0, -1) : pathname;
             const isActive = normalizedPathname === item.href;
@@ -269,6 +363,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           })}
         </div>
         
+        {/* Desktop Sidebar Footer */}
         <div className="hidden md:flex flex-col p-4 space-y-2 relative border-t border-slate-100 dark:border-slate-800/50">
           <button 
             onClick={() => setIsSettingsOpen(true)} 
@@ -296,12 +391,46 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       </nav>
 
-      {/* Main Content Area */}
-      <main className="flex-1 p-3.5 sm:p-6 md:p-8 z-10 overflow-y-auto flex flex-col">
+      {/* Main Content Area with Bottom Padding for Mobile Nav */}
+      <main className="flex-1 p-3.5 sm:p-6 md:p-8 pb-28 md:pb-8 z-10 overflow-y-auto flex flex-col">
         <div className="flex-1 max-w-7xl w-full mx-auto">
           {children}
         </div>
       </main>
+
+      {/* 📱 Mobile Fixed Bottom Navigation Bar */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-t border-slate-200/80 dark:border-slate-800/80 px-2 py-1.5 shadow-[0_-4px_25px_rgba(0,0,0,0.08)] flex items-center justify-around">
+        {navItems.map((item) => {
+          const normalizedPathname = pathname.endsWith('/') && pathname !== '/' ? pathname.slice(0, -1) : pathname;
+          const isActive = normalizedPathname === item.href;
+          const Icon = item.icon;
+          return (
+            <Link
+              key={item.name}
+              href={item.href}
+              className={`flex flex-col items-center justify-center py-1 px-1.5 rounded-xl transition-all relative ${
+                isActive 
+                  ? "text-primary font-bold" 
+                  : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
+              }`}
+            >
+              <div className={`p-1.5 rounded-xl transition-all ${
+                isActive 
+                  ? "bg-primary text-white shadow-sm ring-2 ring-primary/20 scale-105" 
+                  : "bg-transparent"
+              }`}>
+                <Icon className="w-4 h-4" />
+              </div>
+              <span className={`text-[10px] mt-0.5 tracking-tight ${isActive ? "font-bold text-primary dark:text-primary" : "font-medium text-slate-500 dark:text-slate-400"}`}>
+                {item.mobileLabel}
+              </span>
+              {isActive && (
+                <span className="absolute -top-1 w-1 h-1 rounded-full bg-primary animate-pulse" />
+              )}
+            </Link>
+          );
+        })}
+      </div>
 
       {/* Enhanced Tabbed Settings Modal */}
       {isSettingsOpen && mounted && (
@@ -361,6 +490,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 }`}
               >
                 <Layers className="w-4 h-4" /> Personalizar Cards
+              </button>
+              <button
+                onClick={() => setActiveSettingsTab("groups")}
+                className={`py-3 px-3 sm:px-4 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-2 whitespace-nowrap ${
+                  activeSettingsTab === "groups"
+                    ? "border-primary text-primary"
+                    : "border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-300"
+                }`}
+              >
+                <FolderKanban className="w-4 h-4" /> Grupos de Categorias
               </button>
             </div>
             
@@ -804,7 +943,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                               </div>
 
                               <div className="flex items-center gap-2 self-end sm:self-auto">
-                                {/* Quick swatches */}
                                 <div className="flex items-center gap-1">
                                   {["#ef4444", "#f97316", "#f59e0b", "#10b981", "#06b6d4", "#3b82f6", "#8b5cf6", "#ec4899"].map((presetHex) => (
                                     <button
@@ -820,7 +958,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                   ))}
                                 </div>
 
-                                {/* Native color picker */}
                                 <div className="flex items-center gap-1.5 pl-1.5 border-l border-slate-200 dark:border-slate-700">
                                   <input
                                     type="color"
@@ -838,6 +975,265 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                           ))
                       )}
                     </div>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 4: GRUPOS DE CATEGORIAS */}
+              {activeSettingsTab === "groups" && (
+                <div className="space-y-6 animate-in fade-in duration-200">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">
+                        Grupos de Categorias
+                      </h4>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        Agrupa categorias semelhantes (ex: Supermercado + Luz + Renda = "Casa") para visualização unificada no Dashboard
+                      </p>
+                    </div>
+                    {!isCreatingGroup && (
+                      <button
+                        onClick={handleOpenCreateGroup}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary text-white text-xs font-bold rounded-xl shadow-sm hover:opacity-90 transition-all"
+                      >
+                        <Plus className="w-3.5 h-3.5" /> Novo Grupo
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Create / Edit Form */}
+                  {isCreatingGroup && (
+                    <form onSubmit={handleSaveGroup} className="p-4 rounded-xl border border-primary/30 bg-primary/5 dark:bg-primary/10 space-y-4 animate-in zoom-in-95 duration-150">
+                      <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-700">
+                        <span className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                          <FolderKanban className="w-4 h-4 text-primary" />
+                          {editingGroupId ? "Editar Grupo" : "Criar Novo Grupo"}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => { setIsCreatingGroup(false); setEditingGroupId(null); }}
+                          className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                            Nome do Grupo
+                          </label>
+                          <input
+                            type="text"
+                            required
+                            placeholder="Ex: Casa, Alimentação, Trabalho..."
+                            value={groupFormName}
+                            onChange={(e) => setGroupFormName(e.target.value)}
+                            className="w-full px-3 py-2 text-xs font-medium border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white outline-none focus:ring-1 focus:ring-primary"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                            Tipo de Movimento
+                          </label>
+                          <div className="grid grid-cols-2 gap-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setGroupFormType("expense");
+                                setGroupFormSelectedCatIds([]);
+                              }}
+                              className={`py-1.5 text-xs font-bold rounded-lg border transition-all ${
+                                groupFormType === "expense"
+                                  ? "border-rose-500 bg-rose-500/10 text-rose-600 dark:text-rose-400"
+                                  : "border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400"
+                              }`}
+                            >
+                              Despesa
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setGroupFormType("income");
+                                setGroupFormSelectedCatIds([]);
+                              }}
+                              className={`py-1.5 text-xs font-bold rounded-lg border transition-all ${
+                                groupFormType === "income"
+                                  ? "border-emerald-500 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                                  : "border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400"
+                              }`}
+                            >
+                              Receita
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Color Picker for Group */}
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                          Cor do Grupo
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="color"
+                            value={groupFormColor}
+                            onChange={(e) => setGroupFormColor(e.target.value)}
+                            className="w-8 h-8 rounded-lg cursor-pointer bg-transparent border border-slate-300 dark:border-slate-700"
+                          />
+                          <div className="flex items-center gap-1.5">
+                            {["#6366f1", "#f43f5e", "#10b981", "#f59e0b", "#06b6d4", "#ec4899", "#8b5cf6"].map((hex) => (
+                              <button
+                                key={hex}
+                                type="button"
+                                onClick={() => setGroupFormColor(hex)}
+                                className={`w-4 h-4 rounded-full border transition-transform ${
+                                  groupFormColor === hex ? "ring-2 ring-primary scale-110" : "border-black/10"
+                                }`}
+                                style={{ backgroundColor: hex }}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Category Selection */}
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                          Seleciona as Categorias que compõem este grupo:
+                        </label>
+                        <div className="max-h-36 overflow-y-auto space-y-1.5 p-2 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                          {categoriesList.filter(c => c.type === groupFormType).length === 0 ? (
+                            <p className="text-xs text-slate-400 text-center py-2">Sem categorias deste tipo disponíveis.</p>
+                          ) : (
+                            categoriesList
+                              .filter(c => c.type === groupFormType)
+                              .map(cat => {
+                                const isChecked = groupFormSelectedCatIds.includes(cat.id);
+                                return (
+                                  <label
+                                    key={cat.id}
+                                    className="flex items-center justify-between p-1.5 rounded hover:bg-slate-50 dark:hover:bg-slate-700/50 cursor-pointer text-xs"
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      <input
+                                        type="checkbox"
+                                        checked={isChecked}
+                                        onChange={(e) => {
+                                          if (e.target.checked) {
+                                            setGroupFormSelectedCatIds(prev => [...prev, cat.id]);
+                                          } else {
+                                            setGroupFormSelectedCatIds(prev => prev.filter(id => id !== cat.id));
+                                          }
+                                        }}
+                                        className="rounded border-slate-300 text-primary focus:ring-primary"
+                                      />
+                                      <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: cat.color }} />
+                                      <span className="font-medium text-slate-800 dark:text-slate-200">{cat.name}</span>
+                                    </div>
+                                    {cat.group_name && cat.group_id !== editingGroupId && (
+                                      <span className="text-[10px] text-slate-400">Em: {cat.group_name}</span>
+                                    )}
+                                  </label>
+                                );
+                              })
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex justify-end gap-2 pt-2">
+                        <button
+                          type="button"
+                          onClick={() => { setIsCreatingGroup(false); setEditingGroupId(null); }}
+                          className="px-3 py-1.5 text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                        >
+                          Cancelar
+                        </button>
+                        <button
+                          type="submit"
+                          disabled={savingGroup}
+                          className="px-4 py-1.5 bg-primary text-white text-xs font-bold rounded-lg shadow-sm hover:opacity-90 transition-all disabled:opacity-50"
+                        >
+                          {savingGroup ? "A guardar..." : "Guardar Grupo"}
+                        </button>
+                      </div>
+                    </form>
+                  )}
+
+                  {/* Existing Groups List */}
+                  <div className="space-y-2.5 max-h-64 overflow-y-auto pr-1 [scrollbar-width:thin]">
+                    {groupsList.length === 0 ? (
+                      <div className="text-center py-8 text-xs text-slate-400 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-dashed border-slate-200 dark:border-slate-800">
+                        Nenhum grupo de categorias criado ainda. Clica em "Novo Grupo" para juntar categorias!
+                      </div>
+                    ) : (
+                      groupsList.map(group => {
+                        const assignedCats = categoriesList.filter(c => group.category_ids?.includes(c.id));
+                        return (
+                          <div
+                            key={group.id}
+                            className="p-3 rounded-xl bg-white dark:bg-slate-800/80 border border-slate-200/70 dark:border-slate-700/70 flex flex-col gap-2 hover:border-slate-300 dark:hover:border-slate-600 transition-all"
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <div
+                                  className="w-3.5 h-3.5 rounded-full shrink-0 shadow-xs"
+                                  style={{ backgroundColor: group.color }}
+                                />
+                                <span className="font-bold text-xs sm:text-sm text-slate-800 dark:text-slate-100 truncate">
+                                  {group.name}
+                                </span>
+                                <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase shrink-0 ${
+                                  group.type === "income" 
+                                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" 
+                                    : "bg-rose-500/10 text-rose-600 dark:text-rose-400"
+                                }`}>
+                                  {group.type === "income" ? "Receita" : "Despesa"}
+                                </span>
+                              </div>
+
+                              <div className="flex items-center gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenEditGroup(group)}
+                                  className="p-1.5 text-slate-400 hover:text-primary hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                                  title="Editar grupo"
+                                >
+                                  <Edit2 className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteGroup(group.id)}
+                                  className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg transition-colors"
+                                  title="Eliminar grupo"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Subcategories tags */}
+                            <div className="flex flex-wrap gap-1.5 items-center pt-1 border-t border-slate-100 dark:border-slate-700/50">
+                              <span className="text-[10px] text-slate-400 font-medium">Categorias:</span>
+                              {assignedCats.length === 0 ? (
+                                <span className="text-[10px] text-slate-400 italic">Nenhuma categoria associada</span>
+                              ) : (
+                                assignedCats.map(cat => (
+                                  <span
+                                    key={cat.id}
+                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700/60 text-[10px] font-medium text-slate-700 dark:text-slate-300"
+                                  >
+                                    <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: cat.color }} />
+                                    {cat.name}
+                                  </span>
+                                ))
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
                   </div>
                 </div>
               )}
