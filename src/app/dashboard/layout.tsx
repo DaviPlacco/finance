@@ -988,7 +988,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         Grupos de Categorias
                       </h4>
                       <p className="text-xs text-slate-500 dark:text-slate-400">
-                        Agrupa categorias semelhantes (ex: Supermercado + Luz + Renda = "Casa") para visualização unificada no Dashboard
+                        Agrupa categorias semelhantes (ex: Supermercado + Luz + Renda = &quot;Casa&quot;) para visualização unificada no Dashboard
                       </p>
                     </div>
                     {!isCreatingGroup && (
@@ -1165,7 +1165,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   <div className="space-y-2.5 max-h-64 overflow-y-auto pr-1 [scrollbar-width:thin]">
                     {groupsList.length === 0 ? (
                       <div className="text-center py-8 text-xs text-slate-400 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-dashed border-slate-200 dark:border-slate-800">
-                        Nenhum grupo de categorias criado ainda. Clica em "Novo Grupo" para juntar categorias!
+                        Nenhum grupo de categorias criado ainda. Clica em &quot;Novo Grupo&quot; para juntar categorias!
                       </div>
                     ) : (
                       groupsList.map(group => {
