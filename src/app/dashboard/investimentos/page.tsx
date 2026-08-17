@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
+import { useMonthFilter } from "@/hooks/useMonthFilter";
 import { api } from "@/lib/api";
 import { TrendingUp, Plus, Target, PiggyBank, Pencil, Trash2, X, Minus } from "lucide-react";
 import { CustomSelect } from "@/components/CustomSelect";
@@ -23,7 +24,7 @@ export default function InvestimentosPage() {
 
   const [chartData, setChartData] = useState([]);
   const [filterYear, setFilterYear] = useState("2026");
-  const [filterMonth, setFilterMonth] = useState("Todos");
+  const [filterMonth, setFilterMonth] = useMonthFilter('todos');
   const [filterDay, setFilterDay] = useState("Todos");
 
   const [adjustModalOpen, setAdjustModalOpen] = useState(false);

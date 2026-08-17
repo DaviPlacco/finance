@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import { useMonthFilter } from "@/hooks/useMonthFilter";
 import { Download, FileText, Calendar, CheckCircle, Clock } from "lucide-react";
 import { CustomSelect } from "@/components/CustomSelect";
 import { toast } from "sonner";
@@ -17,10 +18,8 @@ type ReportHistory = {
 
 export default function RelatoriosPage() {
   const currentYear = new Date().getFullYear().toString();
-  const currentMonth = (new Date().getMonth() + 1).toString();
-  
   const [filterYear, setFilterYear] = useState(currentYear);
-  const [filterMonth, setFilterMonth] = useState(currentMonth);
+  const [filterMonth, setFilterMonth] = useMonthFilter('current');
   const [isGenerating, setIsGenerating] = useState(false);
 
   const [history, setHistory] = useState<ReportHistory[]>([]);

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
+import { useMonthFilter } from "@/hooks/useMonthFilter";
 import { api } from "@/lib/api";
 import { 
   Plus, 
@@ -52,7 +53,7 @@ export default function GestaoPage() {
 
   // Filter state
   const [filterYear, setFilterYear] = useState(new Date().getFullYear().toString());
-  const [filterMonth, setFilterMonth] = useState("");
+  const [filterMonth, setFilterMonth] = useMonthFilter('all');
   const [filterType, setFilterType] = useState("");
   const [filterCategoryId, setFilterCategoryId] = useState("");
 
