@@ -29,7 +29,8 @@ import {
   FolderKanban,
   Plus,
   Trash2,
-  Edit2
+  Edit2,
+  Smile
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { 
@@ -38,8 +39,10 @@ import {
   CARD_ACCENT_OPTIONS 
 } from "@/lib/SettingsContext";
 import { exportToCSV, exportToPDF } from "@/lib/exportUtils";
-import { api } from "@/lib/api";
+import { CategoryIcon } from "@/components/CategoryIcon";
+import { CategoryIconPickerModal } from "@/components/CategoryIconPickerModal";
 import { toast } from "sonner";
+import { api } from "@/lib/api";
 import { SmartAdvisorToastManager } from "@/components/SmartAdvisorToast";
 import { ConfirmModal } from "@/components/ConfirmModal";
 
@@ -83,10 +86,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return nameStr.charAt(0).toUpperCase();
   };
 
-  // Category Colors Management in Settings
+  // Category Colors & Icons Management in Settings
   const [categoriesList, setCategoriesList] = useState<any[]>([]);
   const [categoryFilter, setCategoryFilter] = useState<"all" | "expense" | "income">("all");
   const [updatingCatId, setUpdatingCatId] = useState<number | null>(null);
+  const [editingIconCategory, setEditingIconCategory] = useState<any | null>(null);
 
   // Category Groups Management in Settings
   const [groupsList, setGroupsList] = useState<any[]>([]);
@@ -126,6 +130,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       await api.put(`/categories/${category.id}`, {
         name: category.name,
         color: newColor,
+        icon: category.icon,
         type: category.type,
         budget_limit: category.budget_limit,
         group_id: category.group_id
@@ -135,6 +140,29 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       console.error("Erro ao atualizar cor da categoria", err);
     } finally {
       setUpdatingCatId(null);
+    }
+  };
+
+  const handleCategoryIconChange = async (newIcon: string | null) => {
+    if (!editingIconCategory) return;
+    const cat = editingIconCategory;
+    setCategoriesList(prev => prev.map(c => c.id === cat.id ? { ...c, icon: newIcon } : c));
+    try {
+      await api.put(`/categories/${cat.id}`, {
+        name: cat.name,
+        color: cat.color,
+        icon: newIcon,
+        type: cat.type,
+        budget_limit: cat.budget_limit,
+        group_id: cat.group_id
+      });
+      toast.success(`Ícone da categoria "${cat.name}" atualizado!`);
+      window.dispatchEvent(new CustomEvent("categories-updated"));
+    } catch (err) {
+      console.error("Erro ao atualizar ícone da categoria", err);
+      toast.error("Erro ao guardar o ícone da categoria.");
+    } finally {
+      setEditingIconCategory(null);
     }
   };
 
@@ -1031,7 +1059,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     </div>
 
                     {/* Category list */}
-                    <div className="max-h-64 overflow-y-auto space-y-2 pr-1 pt-2 [scrollbar-width:thin]">
+                    <div className="max-h-72 overflow-y-auto space-y-2.5 pr-1 pt-2 [scrollbar-width:thin]">
                       {categoriesList.length === 0 ? (
                         <div className="text-center py-6 text-xs text-slate-400">
                           A carregar categorias...
@@ -1042,23 +1070,42 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                           .map((cat) => (
                             <div
                               key={cat.id}
-                              className="flex flex-col sm:flex-row sm:items-center justify-between p-2.5 rounded-lg bg-white dark:bg-slate-800/80 border border-slate-200/70 dark:border-slate-700/70 gap-2.5 hover:border-slate-300 dark:hover:border-slate-600 transition-all"
+                              className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-xl bg-white dark:bg-slate-800/80 border border-slate-200/70 dark:border-slate-700/70 gap-3 hover:border-slate-300 dark:hover:border-slate-600 transition-all shadow-xs"
                             >
-                              <div className="flex items-center gap-2.5 min-w-0">
-                                <div
-                                  className="w-3.5 h-3.5 rounded-full shrink-0 shadow-xs border border-white/20"
-                                  style={{ backgroundColor: cat.color }}
-                                />
-                                <span className="font-bold text-xs text-slate-800 dark:text-slate-100 truncate">
-                                  {cat.name}
-                                </span>
-                                <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase shrink-0 ${
-                                  cat.type === "income" 
-                                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" 
-                                    : "bg-rose-500/10 text-rose-600 dark:text-rose-400"
-                                }`}>
-                                  {cat.type === "income" ? "Receita" : "Despesa"}
-                                </span>
+                              <div className="flex items-center gap-3 min-w-0">
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingIconCategory(cat)}
+                                  className="p-1 rounded-xl hover:scale-105 hover:bg-slate-100 dark:hover:bg-slate-700/80 transition-all shrink-0 group/icon relative"
+                                  title="Clique para alterar o ícone/emoji ou usar bolinha"
+                                >
+                                  <CategoryIcon color={cat.color} icon={cat.icon} size="md" />
+                                  <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[9px] flex items-center justify-center shadow-xs opacity-0 group-hover/icon:opacity-100 transition-opacity font-bold">
+                                    ✏️
+                                  </span>
+                                </button>
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-bold text-xs text-slate-800 dark:text-slate-100 truncate">
+                                      {cat.name}
+                                    </span>
+                                    <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase shrink-0 ${
+                                      cat.type === "income" 
+                                        ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" 
+                                        : "bg-rose-500/10 text-rose-600 dark:text-rose-400"
+                                    }`}>
+                                      {cat.type === "income" ? "Receita" : "Despesa"}
+                                    </span>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditingIconCategory(cat)}
+                                    className="text-[11px] text-primary hover:underline font-semibold flex items-center gap-1 mt-0.5"
+                                  >
+                                    <Smile className="w-3 h-3" />
+                                    <span>{cat.icon ? "Alterar Ícone" : "Escolher Ícone / Emoji"}</span>
+                                  </button>
+                                </div>
                               </div>
 
                               <div className="flex items-center gap-2 self-end sm:self-auto">
@@ -1096,6 +1143,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     </div>
                   </div>
                 </div>
+              )}
+
+              {/* Modal de Escolha de Ícone / Emoji */}
+              {editingIconCategory && (
+                <CategoryIconPickerModal
+                  isOpen={Boolean(editingIconCategory)}
+                  onClose={() => setEditingIconCategory(null)}
+                  categoryName={editingIconCategory.name}
+                  categoryColor={editingIconCategory.color || "#6366f1"}
+                  currentIcon={editingIconCategory.icon}
+                  onSelectIcon={handleCategoryIconChange}
+                />
               )}
 
               {/* TAB 4: GRUPOS DE CATEGORIAS */}

@@ -6,6 +6,7 @@ import { api } from "@/lib/api";
 import { PieChart, TrendingDown, AlertTriangle, CheckCircle2, Trash2, X, PiggyBank, Pencil, Plus } from "lucide-react";
 import { CustomSelect } from "@/components/CustomSelect";
 import { ConfirmModal } from "@/components/ConfirmModal";
+import { CategoryIcon } from "@/components/CategoryIcon";
 import { toast } from "sonner";
 
 export default function OrcamentosPage() {
@@ -400,9 +401,9 @@ export default function OrcamentosPage() {
               <div key={cat.id} className="glass-card p-6 flex flex-col hover:-translate-y-1 active:scale-[0.98] transition-transform duration-300">
                 <div className="flex justify-between items-start mb-6">
                   <div>
-                    <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                      <span className="w-3 h-3 rounded-full" style={{ backgroundColor: cat.color }}></span>
-                      {cat.name}
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2.5">
+                      <CategoryIcon color={cat.color} icon={cat.icon} size="sm" />
+                      <span>{cat.name}</span>
                     </h3>
                     <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Limite: {formatCurrency(limit)}</p>
                   </div>
@@ -491,13 +492,15 @@ export default function OrcamentosPage() {
                     onChange={(val) => setSelectedCategoryId(val)}
                     options={allExpenseCategories.map((c: any) => ({
                       value: String(c.id),
-                      label: c.budget_limit ? `${c.name} (Atual: ${formatCurrency(c.budget_limit)})` : c.name
+                      label: c.budget_limit ? `${c.name} (Atual: ${formatCurrency(c.budget_limit)})` : c.name,
+                      color: c.color,
+                      icon: c.icon
                     }))}
                   />
                 ) : (
                   currentSelectedCategory && (
                     <div className="flex items-center gap-2.5 p-3.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl">
-                      <span className="w-3.5 h-3.5 rounded-full shrink-0" style={{ backgroundColor: currentSelectedCategory.color }} />
+                      <CategoryIcon color={currentSelectedCategory.color} icon={currentSelectedCategory.icon} size="sm" />
                       <span className="font-bold text-slate-900 dark:text-white">{currentSelectedCategory.name}</span>
                     </div>
                   )

@@ -37,6 +37,7 @@ import {
 } from "recharts";
 import { CustomSelect } from "@/components/CustomSelect";
 import { useSettings } from "@/lib/SettingsContext";
+import { CategoryIcon } from "@/components/CategoryIcon";
 import Link from "next/link";
 
 export default function DashboardPage() {
@@ -227,6 +228,7 @@ export default function DashboardPage() {
             id: cat.id,
             name: cat.name,
             color: cat.color || group.color,
+            icon: cat.icon || null,
             amount: amt
           });
         }
@@ -239,6 +241,7 @@ export default function DashboardPage() {
           groupId: group.id,
           name: group.name,
           color: group.color || "#6366f1",
+          icon: group.icon || null,
           amount: totalGroupAmount,
           isGroup: true,
           subcategories,
@@ -256,6 +259,7 @@ export default function DashboardPage() {
           catId: cat.id,
           name: cat.name,
           color: cat.color || "#94a3b8",
+          icon: cat.icon || null,
           amount: amt,
           isGroup: false,
           subcategories: []
@@ -298,6 +302,7 @@ export default function DashboardPage() {
         remaining,
         exceeded,
         color: cat.color || primaryColor || "#6366f1",
+        icon: cat.icon || null,
         isOver: gasto > limite
       };
     }).sort((a, b) => b.limite - a.limite);
@@ -753,16 +758,22 @@ export default function DashboardPage() {
                   <div className="relative z-10">
                     <div className="flex justify-between items-center mb-2">
                       <span className="text-xs font-semibold text-slate-500">{new Date(t.date).toLocaleDateString('pt-PT')}</span>
-                      <span 
-                        className="text-xs font-bold px-2 py-1 rounded-full whitespace-nowrap max-w-[100px] truncate"
-                        style={{ 
-                          backgroundColor: `${categories.find((c: any) => c.id === t.category_id)?.color || (t.type === 'income' ? '#10b981' : '#f43f5e')}20`, 
-                          color: categories.find((c: any) => c.id === t.category_id)?.color || (t.type === 'income' ? '#047857' : '#be123c') 
-                        }}
-                        title={categories.find((c: any) => c.id === t.category_id)?.name || (t.type === 'income' ? 'Receita' : 'Despesa')}
-                      >
-                        {categories.find((c: any) => c.id === t.category_id)?.name || (t.type === 'income' ? 'Receita' : 'Despesa')}
-                      </span>
+                      {(() => {
+                        const cat = categories.find((c: any) => c.id === t.category_id);
+                        return (
+                          <span 
+                            className="text-xs font-bold px-2 py-1 rounded-full whitespace-nowrap max-w-[120px] truncate flex items-center gap-1.5"
+                            style={{ 
+                              backgroundColor: `${cat?.color || (t.type === 'income' ? '#10b981' : '#f43f5e')}20`, 
+                              color: cat?.color || (t.type === 'income' ? '#047857' : '#be123c') 
+                            }}
+                            title={cat?.name || (t.type === 'income' ? 'Receita' : 'Despesa')}
+                          >
+                            <CategoryIcon color={cat?.color || (t.type === 'income' ? '#10b981' : '#f43f5e')} icon={cat?.icon} size="xs" showBackground={false} />
+                            <span className="truncate">{cat?.name || (t.type === 'income' ? 'Receita' : 'Despesa')}</span>
+                          </span>
+                        );
+                      })()}
                     </div>
                     <p className="font-bold text-slate-800 dark:text-slate-100 truncate">{t.description}</p>
                     <p className={`font-extrabold text-lg mt-1 ${t.type === 'income' ? 'text-emerald-600' : 'text-rose-600'}`}>
@@ -820,8 +831,8 @@ export default function DashboardPage() {
                   />
                   
                   <div className="flex justify-between items-start mb-3 relative z-10">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <div className="w-3.5 h-3.5 rounded-full shrink-0 shadow-xs" style={{ backgroundColor: item.color }} />
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <CategoryIcon color={item.color} icon={item.icon} size="sm" />
                       <div className="min-w-0">
                         <span className="font-bold text-sm text-slate-800 dark:text-slate-200 truncate block" title={item.name}>
                           {item.name}
@@ -1101,8 +1112,8 @@ export default function DashboardPage() {
                     />
 
                     <div className="flex items-center justify-between gap-2 relative z-10">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <div className="w-3.5 h-3.5 rounded-full shrink-0 shadow-xs" style={{ backgroundColor: item.color }} />
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <CategoryIcon color={item.color} icon={item.icon} size="sm" />
                         <span className="font-bold text-sm text-slate-800 dark:text-slate-200 truncate" title={item.name}>
                           {item.name}
                         </span>
@@ -1188,7 +1199,7 @@ export default function DashboardPage() {
                       <div key={sub.id} className="p-3 rounded-xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-700/60 space-y-1.5">
                         <div className="flex items-center justify-between text-xs">
                           <div className="flex items-center gap-2">
-                            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: sub.color }} />
+                            <CategoryIcon color={sub.color} icon={sub.icon} size="xs" />
                             <span className="font-bold text-slate-800 dark:text-slate-200">{sub.name}</span>
                           </div>
                           <div className="flex items-center gap-2 font-mono">

@@ -24,6 +24,7 @@ import {
 import { CustomSelect } from "@/components/CustomSelect";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { useSettings } from "@/lib/SettingsContext";
+import { CategoryIcon } from "@/components/CategoryIcon";
 import { toast } from "sonner";
 
 export default function GestaoPage() {
@@ -398,7 +399,7 @@ export default function GestaoPage() {
                   required
                   value={categoryId} 
                   onChange={val => setCategoryId(val as string)} 
-                  options={categories.filter((c: any) => c.type === type).map((cat: any) => ({ value: cat.id, label: cat.name }))}
+                  options={categories.filter((c: any) => c.type === type).map((cat: any) => ({ value: cat.id, label: cat.name, color: cat.color, icon: cat.icon }))}
                   placeholder="Selecione uma categoria"
                   onAddNew={handleAddNewCategory}
                   addNewLabel="Nova Categoria"
@@ -493,7 +494,7 @@ export default function GestaoPage() {
                     if (cat && cat.budget_limit) setBudgetAmount(cat.budget_limit.toString());
                     else setBudgetAmount("");
                   }} 
-                  options={categories.filter((c: any) => c.type === "expense").map((cat: any) => ({ value: cat.id, label: cat.name }))}
+                  options={categories.filter((c: any) => c.type === "expense").map((cat: any) => ({ value: cat.id, label: cat.name, color: cat.color, icon: cat.icon }))}
                   placeholder="Selecione uma despesa"
                 />
               </div>
@@ -570,11 +571,11 @@ export default function GestaoPage() {
               <div>
                 <label className="block text-[11px] font-bold text-slate-500 mb-1 uppercase tracking-wider">Categoria</label>
                 <CustomSelect 
-                  value={filterCategoryId}
-                  onChange={val => setFilterCategoryId(val as string)}
+                  value={filterCategoryId} 
+                  onChange={val => setFilterCategoryId(val as string)} 
                   options={[
                     { value: "", label: "Todas" },
-                    ...categories.map((c: any) => ({ value: c.id, label: c.name }))
+                    ...categories.map((c: any) => ({ value: c.id, label: c.name, color: c.color, icon: c.icon }))
                   ]}
                 />
               </div>
@@ -692,7 +693,7 @@ export default function GestaoPage() {
                                 border: `1px solid ${category?.color || '#94a3b8'}30`
                               }}
                             >
-                              <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: category?.color || '#94a3b8' }} />
+                              <CategoryIcon color={category?.color || '#94a3b8'} icon={category?.icon} size="xs" showBackground={false} />
                               <span className="truncate max-w-[120px]">{category?.name || 'Sem Categoria'}</span>
                             </span>
                           </td>

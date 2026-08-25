@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { CustomSelect } from "@/components/CustomSelect";
 import { ConfirmModal } from "@/components/ConfirmModal";
+import { CategoryIcon } from "@/components/CategoryIcon";
 import { toast } from "sonner";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useSettings } from "@/lib/SettingsContext";
@@ -1122,11 +1123,15 @@ export default function InvestimentosPage() {
                             <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold border ${badgeBg}`}>
                               {icon} {badgeLabel}
                             </span>
-                            {g.category_name && (
-                              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
-                                {g.category_name}
-                              </span>
-                            )}
+                            {g.category_name && (() => {
+                              const cat = categories.find((c: any) => c.id === g.category_id);
+                              return (
+                                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md flex items-center gap-1.5">
+                                  <CategoryIcon color={cat?.color} icon={cat?.icon} size="xs" showBackground={false} />
+                                  <span>{g.category_name}</span>
+                                </span>
+                              );
+                            })()}
                             {g.investment_name && (
                               <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
                                 {g.investment_name}
@@ -1364,7 +1369,7 @@ export default function InvestimentosPage() {
                     onChange={(val) => setGoalCategoryId(val as string)}
                     options={[
                       { value: "", label: "Todas as Despesas (Total)" },
-                      ...categories.filter(c => c.type === 'expense').map(c => ({ value: String(c.id), label: c.name }))
+                      ...categories.filter(c => c.type === 'expense').map(c => ({ value: String(c.id), label: c.name, color: c.color, icon: c.icon }))
                     ]}
                   />
                 </div>
