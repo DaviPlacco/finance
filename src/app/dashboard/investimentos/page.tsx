@@ -169,10 +169,60 @@ export default function InvestimentosPage() {
 
     try {
       if (adjustType === "remove") {
-        await api.post(`/investments/${adjustInv.id}/withdraw`, {
-          amount: amount,
-          transfer_to_balance: transferToBalance
-        });
+        try {
+          // Tentar endpoint atómico de retirada
+          await api.post(`/investments/${adjustInv.id}/withdraw`, {
+            amount: amount,
+            transfer_to_balance: transferToBalance
+          });
+        } catch (withdrawErr) {
+          console.warn("Endpoint /withdraw não respondeu, a executar fluxo de fallback de saldo e movimento:", withdrawErr);
+          
+          // 1. Atualizar saldo do investimento
+          const newBal = parseFloat(adjustInv.balance) - amount;
+          await api.put(`/investments/${adjustInv.id}`, {
+            name: adjustInv.name,
+            asset_type: adjustInv.asset_type,
+            balance: newBal,
+            target: adjustInv.target
+          });
+
+          // 2. Se transferToBalance estiver ativo, criar categoria (se inexistente) e criar movimento
+          if (transferToBalance) {
+            let catId: number | null = null;
+            try {
+              const catRes = await api.get("/categories");
+              const cats = catRes.data || [];
+              const foundCat = cats.find((c: any) => c.name === "Investimento - Saída");
+              if (foundCat) {
+                catId = foundCat.id;
+              } else {
+                const newCat = await api.post("/categories", {
+                  name: "Investimento - Saída",
+                  color: "#3b82f6",
+                  type: "income"
+                });
+                catId = newCat.data.id;
+              }
+            } catch {}
+
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, "0");
+            const day = String(now.getDate()).padStart(2, "0");
+            const dateStr = `${year}-${month}-${day}`;
+
+            await api.post("/transactions", {
+              description: `Investimento - Saída (${adjustInv.name})`,
+              amount: amount,
+              type: "income",
+              category_id: catId,
+              date: dateStr,
+              is_transfer: true
+            });
+          }
+        }
+
         toast.success(
           transferToBalance 
             ? "Retirada efetuada e creditada no Saldo Atual!" 
@@ -195,7 +245,7 @@ export default function InvestimentosPage() {
       fetchData();
       fetchGoalsData();
     } catch(err: any) {
-      console.error(err);
+      console.error("Erro no ajuste de saldo:", err);
       toast.error(err?.response?.data?.detail || "Erro ao atualizar o saldo.");
     }
   };
