@@ -805,9 +805,15 @@ export default function InvestimentosPage() {
                   <TrendingUp className="w-5 h-5 text-primary" /> Evolução Patrimonial
                 </h3>
                 <div className="flex flex-wrap gap-2">
-                  <CustomSelect value={filterYear} onChange={setFilterYear as any} options={[{value:"Todos",label:"Ano (Todos)"},{value:"2025",label:"2025"},{value:"2026",label:"2026"}]} />
-                  <CustomSelect value={filterMonth} onChange={setFilterMonth as any} options={[{value:"Todos",label:"Mês (Todos)"},{value:"1",label:"Jan"},{value:"2",label:"Fev"},{value:"3",label:"Mar"},{value:"4",label:"Abr"},{value:"5",label:"Mai"},{value:"6",label:"Jun"},{value:"7",label:"Jul"},{value:"8",label:"Ago"},{value:"9",label:"Set"},{value:"10",label:"Out"},{value:"11",label:"Nov"},{value:"12",label:"Dez"}]} />
-                  <CustomSelect value={filterDay} onChange={setFilterDay as any} options={[{value:"Todos",label:"Dia (Todos)"},{value:"1",label:"01"},{value:"5",label:"05"},{value:"10",label:"10"},{value:"15",label:"15"},{value:"20",label:"20"},{value:"25",label:"25"}]} />
+                  <div className="w-24 sm:w-28">
+                    <CustomSelect value={filterYear} onChange={setFilterYear as any} options={[{value:"Todos",label:"Todos"},{value:"2025",label:"2025"},{value:"2026",label:"2026"}]} />
+                  </div>
+                  <div className="w-24 sm:w-28">
+                    <CustomSelect value={filterMonth} onChange={setFilterMonth as any} options={[{value:"Todos",label:"Todos"},{value:"1",label:"Jan"},{value:"2",label:"Fev"},{value:"3",label:"Mar"},{value:"4",label:"Abr"},{value:"5",label:"Mai"},{value:"6",label:"Jun"},{value:"7",label:"Jul"},{value:"8",label:"Ago"},{value:"9",label:"Set"},{value:"10",label:"Out"},{value:"11",label:"Nov"},{value:"12",label:"Dez"}]} />
+                  </div>
+                  <div className="w-24 sm:w-28">
+                    <CustomSelect value={filterDay} onChange={setFilterDay as any} options={[{value:"Todos",label:"Todos"},{value:"1",label:"01"},{value:"5",label:"05"},{value:"10",label:"10"},{value:"15",label:"15"},{value:"20",label:"20"},{value:"25",label:"25"}]} />
+                  </div>
                 </div>
               </div>
               <div className="h-64 w-full">
@@ -912,30 +918,34 @@ export default function InvestimentosPage() {
 
           <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5 shrink-0">
             <div className="flex items-center gap-2">
-              <CustomSelect 
-                value={goalFilterYear} 
-                onChange={setGoalFilterYear as any} 
-                options={[{value:"Todos",label:"Ano (Todos)"},{value:"2025",label:"2025"},{value:"2026",label:"2026"}]} 
-              />
-              <CustomSelect 
-                value={goalFilterMonth} 
-                onChange={setGoalFilterMonth as any} 
-                options={[
-                  {value:"Todos",label:"Mês (Todos)"},
-                  {value:"1",label:"Jan"},
-                  {value:"2",label:"Fev"},
-                  {value:"3",label:"Mar"},
-                  {value:"4",label:"Abr"},
-                  {value:"5",label:"Mai"},
-                  {value:"6",label:"Jun"},
-                  {value:"7",label:"Jul"},
-                  {value:"8",label:"Ago"},
-                  {value:"9",label:"Set"},
-                  {value:"10",label:"Out"},
-                  {value:"11",label:"Nov"},
-                  {value:"12",label:"Dez"}
-                ]} 
-              />
+              <div className="w-28 sm:w-32">
+                <CustomSelect 
+                  value={goalFilterYear} 
+                  onChange={setGoalFilterYear as any} 
+                  options={[{value:"Todos",label:"Todos"},{value:"2025",label:"2025"},{value:"2026",label:"2026"}]} 
+                />
+              </div>
+              <div className="w-28 sm:w-32">
+                <CustomSelect 
+                  value={goalFilterMonth} 
+                  onChange={setGoalFilterMonth as any} 
+                  options={[
+                    {value:"Todos",label:"Todos"},
+                    {value:"1",label:"Jan"},
+                    {value:"2",label:"Fev"},
+                    {value:"3",label:"Mar"},
+                    {value:"4",label:"Abr"},
+                    {value:"5",label:"Mai"},
+                    {value:"6",label:"Jun"},
+                    {value:"7",label:"Jul"},
+                    {value:"8",label:"Ago"},
+                    {value:"9",label:"Set"},
+                    {value:"10",label:"Out"},
+                    {value:"11",label:"Nov"},
+                    {value:"12",label:"Dez"}
+                  ]} 
+                />
+              </div>
             </div>
             <button
               onClick={handleOpenNewGoalModal}

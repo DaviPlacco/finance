@@ -54,12 +54,12 @@ export function CustomSelect({ options, value, onChange, placeholder = "Selecion
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className={`w-full px-4 py-2.5 text-left border ${isOpen ? 'border-primary ring-2 ring-primary/20' : 'border-slate-200 dark:border-slate-700'} rounded-xl bg-white/50 dark:bg-slate-800/50 focus:ring-2 focus:ring-primary focus:border-transparent outline-none flex items-center justify-between transition-all`}
+        className={`w-full min-w-fit px-3.5 py-2 text-left border ${isOpen ? 'border-primary ring-2 ring-primary/20' : 'border-slate-200 dark:border-slate-700'} rounded-xl bg-white/50 dark:bg-slate-800/50 focus:ring-2 focus:ring-primary focus:border-transparent outline-none flex items-center justify-between gap-2.5 whitespace-nowrap transition-all text-sm`}
       >
-        <span className={selectedOption ? "text-slate-900 dark:text-white font-medium" : "text-slate-500 dark:text-slate-400"}>
+        <span className={`whitespace-nowrap ${selectedOption ? "text-slate-900 dark:text-white font-semibold" : "text-slate-500 dark:text-slate-400 font-medium"}`}>
           {selectedOption ? selectedOption.label : placeholder}
         </span>
-        <ChevronDown className={`w-5 h-5 text-slate-400 transition-transform duration-200 ${isOpen ? "rotate-180 text-primary" : ""}`} />
+        <ChevronDown className={`w-4 h-4 text-slate-400 shrink-0 transition-transform duration-200 ${isOpen ? "rotate-180 text-primary" : ""}`} />
       </button>
 
       {isOpen && (
