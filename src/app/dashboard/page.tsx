@@ -15,7 +15,10 @@ import {
   X,
   Receipt,
   Calendar,
-  Sparkles
+  Sparkles,
+  Target,
+  ChevronRight,
+  PieChart
 } from "lucide-react";
 import { 
   BarChart, 
@@ -28,10 +31,12 @@ import {
   LineChart, 
   Line,
   AreaChart,
-  Area
+  Area,
+  ComposedChart
 } from "recharts";
 import { CustomSelect } from "@/components/CustomSelect";
 import { useSettings } from "@/lib/SettingsContext";
+import Link from "next/link";
 
 export default function DashboardPage() {
   const { primaryColor } = useSettings();
@@ -58,6 +63,7 @@ export default function DashboardPage() {
   // Chart Type Switches
   const [cashFlowChartType, setCashFlowChartType] = useState<"bar" | "line" | "area">("bar");
   const [wealthChartType, setWealthChartType] = useState<"line" | "area" | "bar">("line");
+  const [budgetChartType, setBudgetChartType] = useState<"composed" | "bar" | "line">("composed");
 
   // Selected Group for Premium Pop-up Modal
   const [selectedGroupModal, setSelectedGroupModal] = useState<any | null>(null);
@@ -72,16 +78,56 @@ export default function DashboardPage() {
       if (filterYear) query.append("year", filterYear);
       if (filterMonth) query.append("month", filterMonth);
 
-      const [sumRes, transRes, catRes, groupsRes] = await Promise.all([
-        api.get(`/summary?${query.toString()}`),
-        api.get(`/transactions?${query.toString()}`),
-        api.get("/categories"),
-        api.get("/category-groups")
+      const [sumRes, transRes, catRes, groupsRes, goalsRes] = await Promise.all([
+        api.get(`/summary?${query.toString()}`).catch(() => ({ data: { balance: 0, income: 0, expense: 0, investments: 0, chartData: [] } })),
+        api.get(`/transactions?${query.toString()}`).catch(() => ({ data: [] })),
+        api.get("/categories").catch(() => ({ data: [] })),
+        api.get("/category-groups").catch(() => ({ data: [] })),
+        api.get("/goals").catch(() => ({ data: [] }))
       ]);
       setSummary(sumRes.data);
-      setTransactions(transRes.data);
-      setCategories(catRes.data);
-      setCategoryGroups(groupsRes.data);
+      setTransactions(transRes.data || []);
+      
+      let fetchedCats: any[] = Array.isArray(catRes.data) ? catRes.data : [];
+      if (fetchedCats.length > 0) {
+        try { localStorage.setItem("pl_categories_cache", JSON.stringify(fetchedCats)); } catch {}
+      } else {
+        try {
+          const cached = localStorage.getItem("pl_categories_cache");
+          if (cached) fetchedCats = JSON.parse(cached);
+        } catch {}
+      }
+
+      // Sincronizar tetos de despesa definidos em metas caso a categoria não tenha budget_limit
+      const goalsList: any[] = Array.isArray(goalsRes?.data) ? goalsRes.data : [];
+      try {
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && key.startsWith("pl_goals_")) {
+            const items = JSON.parse(localStorage.getItem(key) || "[]");
+            if (Array.isArray(items)) {
+              items.forEach((g: any) => {
+                if (g && g.goal_type === "expense_ceiling" && g.category_id && !goalsList.some(ex => ex.id === g.id)) {
+                  goalsList.push(g);
+                }
+              });
+            }
+          }
+        }
+      } catch {}
+
+      const mergedCats = fetchedCats.map((cat: any) => {
+        if (!cat.budget_limit || Number(cat.budget_limit) <= 0) {
+          const matchingGoal = goalsList.find((g: any) => g.goal_type === "expense_ceiling" && String(g.category_id) === String(cat.id));
+          if (matchingGoal && matchingGoal.target_amount > 0) {
+            return { ...cat, budget_limit: matchingGoal.target_amount };
+          }
+        }
+        return cat;
+      });
+
+      setCategories(mergedCats);
+      setCategoryGroups(Array.isArray(groupsRes.data) ? groupsRes.data : []);
     } catch (err) {
       console.error(err);
     } finally {
@@ -216,8 +262,56 @@ export default function DashboardPage() {
       }
     });
 
-    return groupedItems.sort((a, b) => b.amount - a.amount);
-  }, [transactions, categories, categoryGroups]);
+    return groupedItems.sort((a, b) => b.amount - a.amount).slice(0, 12);
+  }, [categories, categoryGroups, transactions]);
+
+  // Cálculos de Orçamentos vs Gastos Reais para o novo gráfico
+  const { budgetChartData, totalBudgeted, totalSpentInBudgeted, totalBudgetPercent } = useMemo(() => {
+    const isExpense = (type: any) => {
+      const t = String(type || '').toLowerCase();
+      return t === 'expense' || t === 'expenses' || t === 'despesa' || t === 'despesas';
+    };
+
+    const categorySpending: Record<string, number> = {};
+    transactions.filter((t: any) => isExpense(t.type)).forEach((t: any) => {
+      if (t.category_id) {
+        categorySpending[String(t.category_id)] = (categorySpending[String(t.category_id)] || 0) + (t.amount || 0);
+      }
+    });
+
+    const budgeted = categories.filter((c: any) => isExpense(c.type) && c.budget_limit && Number(c.budget_limit) > 0);
+
+    const data = budgeted.map((cat: any) => {
+      const limite = Number(cat.budget_limit) || 0;
+      const gasto = categorySpending[String(cat.id)] || 0;
+      const percent = limite > 0 ? Math.round((gasto / limite) * 100) : 0;
+      const remaining = Math.max(0, limite - gasto);
+      const exceeded = Math.max(0, gasto - limite);
+
+      return {
+        id: cat.id,
+        name: cat.name,
+        limite,
+        gasto,
+        percent,
+        remaining,
+        exceeded,
+        color: cat.color || primaryColor || "#6366f1",
+        isOver: gasto > limite
+      };
+    }).sort((a, b) => b.limite - a.limite);
+
+    const totalLim = data.reduce((acc, item) => acc + item.limite, 0);
+    const totalSpent = data.reduce((acc, item) => acc + item.gasto, 0);
+    const totalPct = totalLim > 0 ? Math.round((totalSpent / totalLim) * 100) : 0;
+
+    return {
+      budgetChartData: data,
+      totalBudgeted: totalLim,
+      totalSpentInBudgeted: totalSpent,
+      totalBudgetPercent: totalPct
+    };
+  }, [categories, transactions, primaryColor]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-PT', { style: 'currency', currency: 'EUR' }).format(value);
@@ -748,6 +842,276 @@ export default function DashboardPage() {
                 </div>
               );
             })}
+          </div>
+        </div>
+      )}
+
+      {/* 🎯 Gráfico de Orçamentos Estipulados vs Gastos Reais */}
+      {budgetChartData.length > 0 && (
+        <div className="mt-8 space-y-4 animate-in slide-in-from-bottom-5 fade-in duration-500 delay-200">
+          <div className="glass-card p-5 sm:p-6 border border-slate-200/80 dark:border-slate-800 relative overflow-hidden">
+            {/* Ambient Background Glow */}
+            <div 
+              className="absolute -top-24 -right-24 w-60 h-60 blur-[80px] pointer-events-none rounded-full opacity-25 dark:opacity-20"
+              style={{ backgroundColor: primaryColor || '#6366f1' }}
+            />
+
+            {/* Header com Título, Indicadores Resumidos e Alternador de Estilo */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 relative z-10">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="p-2 rounded-xl bg-primary/10 text-primary border border-primary/20 shrink-0">
+                    <Target className="w-5 h-5" />
+                  </span>
+                  <div>
+                    <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                      Orçamentos Estipulados vs Gastos Reais
+                    </h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      Comparação entre os tetos definidos (barras) e o total gasto real (linha de execução) no período selecionado
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* KPI Badges & Style Switcher */}
+              <div className="flex flex-wrap items-center gap-3">
+                {/* Resumo Rápido */}
+                <div className="hidden sm:flex items-center gap-2 bg-slate-100/80 dark:bg-slate-800/60 px-3 py-1.5 rounded-xl border border-slate-200/50 dark:border-slate-700/50 text-xs">
+                  <span className="text-slate-500 dark:text-slate-400 font-medium">Teto Global:</span>
+                  <strong className="text-slate-900 dark:text-white font-bold">{formatCurrency(totalBudgeted)}</strong>
+                  <span className="text-slate-300 dark:text-slate-600">|</span>
+                  <span className="text-slate-500 dark:text-slate-400 font-medium">Gasto:</span>
+                  <strong className={totalSpentInBudgeted > totalBudgeted ? "text-rose-600 dark:text-rose-400 font-bold" : "text-emerald-600 dark:text-emerald-400 font-bold"}>
+                    {formatCurrency(totalSpentInBudgeted)}
+                  </strong>
+                  <span className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded-md ${
+                    totalSpentInBudgeted > totalBudgeted 
+                      ? "bg-rose-500/10 text-rose-600 dark:text-rose-400" 
+                      : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                  }`}>
+                    {totalBudgetPercent}%
+                  </span>
+                </div>
+
+                {/* Chart Style Switcher */}
+                <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl border border-slate-200/60 dark:border-slate-700/60">
+                  <button
+                    type="button"
+                    onClick={() => setBudgetChartType("composed")}
+                    className={`p-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${
+                      budgetChartType === "composed" 
+                        ? "bg-white dark:bg-slate-700 text-primary shadow-xs" 
+                        : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                    }`}
+                    title="Barras de Teto + Linha de Gastos"
+                  >
+                    <Layers className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline text-[11px]">Composto</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBudgetChartType("bar")}
+                    className={`p-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${
+                      budgetChartType === "bar" 
+                        ? "bg-white dark:bg-slate-700 text-primary shadow-xs" 
+                        : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                    }`}
+                    title="Barras Comparativas"
+                  >
+                    <BarChart3 className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline text-[11px]">Barras</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBudgetChartType("line")}
+                    className={`p-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${
+                      budgetChartType === "line" 
+                        ? "bg-white dark:bg-slate-700 text-primary shadow-xs" 
+                        : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                    }`}
+                    title="Linhas de Execução"
+                  >
+                    <LineChartIcon className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline text-[11px]">Linhas</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Visual Color Legend */}
+            <div className="flex flex-wrap items-center justify-between gap-4 mb-4 pb-2 border-b border-slate-100 dark:border-slate-800 text-xs">
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-1.5 font-semibold text-slate-700 dark:text-slate-300">
+                  <span className="w-3 h-3 rounded-md bg-primary shadow-xs" />
+                  <span>Valor Estipulado (Teto Orçamental)</span>
+                </div>
+                <div className="flex items-center gap-1.5 font-semibold text-slate-700 dark:text-slate-300">
+                  <span className="w-3 h-3 rounded-full bg-rose-500 shadow-xs" />
+                  <span>Valor Gasto Real</span>
+                </div>
+              </div>
+              <Link 
+                href="/dashboard/orcamentos" 
+                className="inline-flex items-center gap-1 text-[11px] font-bold text-primary hover:underline"
+              >
+                Gerir Orçamentos <ChevronRight className="w-3 h-3" />
+              </Link>
+            </div>
+
+            {/* Recharts Container */}
+            <div className="h-[280px] w-full mt-2">
+              <ResponsiveContainer width="100%" height="100%">
+                {budgetChartType === "composed" ? (
+                  <ComposedChart data={budgetChartData} margin={{ top: 15, right: 15, left: -10, bottom: 25 }}>
+                    <defs>
+                      <linearGradient id="budgetLimitBarGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor={primaryColor || "#6366f1"} stopOpacity={0.85} />
+                        <stop offset="100%" stopColor={primaryColor || "#6366f1"} stopOpacity={0.35} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" className="dark:stroke-slate-800" />
+                    <XAxis 
+                      dataKey="name" 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tick={{ fill: '#64748b', fontSize: 12, fontWeight: 600 }} 
+                      dy={10} 
+                    />
+                    <YAxis 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tick={{ fill: '#64748b', fontSize: 12 }} 
+                      tickFormatter={(val) => `€${val >= 1000 ? `${(val/1000).toFixed(1)}k` : val}`} 
+                      width={48} 
+                    />
+                    <Tooltip 
+                      formatter={(value: any, name: any) => [
+                        formatCurrency(Number(value) || 0), 
+                        name === 'limite' ? 'Teto Estipulado' : 'Valor Gasto'
+                      ]}
+                      contentStyle={{ 
+                        backgroundColor: 'rgba(15, 23, 42, 0.9)', 
+                        backdropFilter: 'blur(12px)', 
+                        border: '1px solid rgba(255, 255, 255, 0.1)', 
+                        borderRadius: '12px', 
+                        color: '#f8fafc',
+                        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)'
+                      }} 
+                      itemStyle={{ color: '#e2e8f0', fontWeight: 600 }}
+                    />
+                    <Bar 
+                      dataKey="limite" 
+                      name="limite" 
+                      fill="url(#budgetLimitBarGrad)" 
+                      radius={[8, 8, 0, 0]} 
+                      barSize={36} 
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="gasto" 
+                      name="gasto" 
+                      stroke="#f43f5e" 
+                      strokeWidth={3.5} 
+                      dot={{ r: 5, fill: '#f43f5e', strokeWidth: 2, stroke: '#ffffff' }} 
+                      activeDot={{ r: 8, fill: '#f43f5e', strokeWidth: 3, stroke: '#ffffff' }} 
+                    />
+                  </ComposedChart>
+                ) : budgetChartType === "bar" ? (
+                  <BarChart data={budgetChartData} margin={{ top: 15, right: 15, left: -10, bottom: 25 }}>
+                    <defs>
+                      <linearGradient id="budgetBarLimit" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor={primaryColor || "#6366f1"} stopOpacity={1} />
+                        <stop offset="100%" stopColor={primaryColor || "#6366f1"} stopOpacity={0.7} />
+                      </linearGradient>
+                      <linearGradient id="budgetBarSpent" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#f43f5e" stopOpacity={1} />
+                        <stop offset="100%" stopColor="#e11d48" stopOpacity={0.7} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" className="dark:stroke-slate-800" />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12, fontWeight: 600 }} dy={10} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} tickFormatter={(val) => `€${val >= 1000 ? `${(val/1000).toFixed(1)}k` : val}`} width={48} />
+                    <Tooltip 
+                      formatter={(value: any, name: any) => [
+                        formatCurrency(Number(value) || 0), 
+                        name === 'limite' ? 'Teto Estipulado' : 'Valor Gasto'
+                      ]}
+                      contentStyle={{ backgroundColor: 'rgba(15, 23, 42, 0.9)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '12px', color: '#f8fafc' }} 
+                      itemStyle={{ color: '#e2e8f0', fontWeight: 600 }}
+                    />
+                    <Bar dataKey="limite" name="limite" fill="url(#budgetBarLimit)" radius={[6, 6, 0, 0]} barSize={20} />
+                    <Bar dataKey="gasto" name="gasto" fill="url(#budgetBarSpent)" radius={[6, 6, 0, 0]} barSize={20} />
+                  </BarChart>
+                ) : (
+                  <LineChart data={budgetChartData} margin={{ top: 15, right: 15, left: -10, bottom: 25 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" className="dark:stroke-slate-800" />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12, fontWeight: 600 }} dy={10} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} tickFormatter={(val) => `€${val >= 1000 ? `${(val/1000).toFixed(1)}k` : val}`} width={48} />
+                    <Tooltip 
+                      formatter={(value: any, name: any) => [
+                        formatCurrency(Number(value) || 0), 
+                        name === 'limite' ? 'Teto Estipulado' : 'Valor Gasto'
+                      ]}
+                      contentStyle={{ backgroundColor: 'rgba(15, 23, 42, 0.9)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '12px', color: '#f8fafc' }} 
+                      itemStyle={{ color: '#e2e8f0', fontWeight: 600 }}
+                    />
+                    <Line type="monotone" dataKey="limite" name="limite" stroke={primaryColor || "#6366f1"} strokeWidth={3} strokeDasharray="5 5" dot={{ r: 4, fill: primaryColor || "#6366f1" }} />
+                    <Line type="monotone" dataKey="gasto" name="gasto" stroke="#f43f5e" strokeWidth={3.5} dot={{ r: 5, fill: '#f43f5e' }} activeDot={{ r: 7 }} />
+                  </LineChart>
+                )}
+              </ResponsiveContainer>
+            </div>
+
+            {/* Cards de Resumo por Categoria Orçamentada */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 mt-6 pt-4 border-t border-slate-100 dark:border-slate-800">
+              {budgetChartData.map((item) => {
+                const isOver = item.gasto > item.limite;
+                const percentColor = isOver 
+                  ? "text-rose-600 dark:text-rose-400 bg-rose-500/10 border-rose-500/20" 
+                  : item.percent >= 70 
+                    ? "text-amber-600 dark:text-amber-400 bg-amber-500/10 border-amber-500/20" 
+                    : "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/20";
+
+                return (
+                  <div 
+                    key={item.id}
+                    className="p-3.5 rounded-xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-700/60 space-y-2 hover:border-primary/40 transition-colors"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                        <span className="font-bold text-xs text-slate-800 dark:text-slate-200 truncate" title={item.name}>
+                          {item.name}
+                        </span>
+                      </div>
+                      <span className={`text-[10px] font-black px-2 py-0.5 rounded-md border ${percentColor}`}>
+                        {item.percent}%
+                      </span>
+                    </div>
+
+                    <div className="flex items-baseline justify-between text-xs font-semibold">
+                      <span className="text-slate-500 dark:text-slate-400">
+                        Gasto: <strong className="text-slate-900 dark:text-white font-bold">{formatCurrency(item.gasto)}</strong>
+                      </span>
+                      <span className="text-slate-400 text-[11px]">
+                        Teto: {formatCurrency(item.limite)}
+                      </span>
+                    </div>
+
+                    {/* Progress Bar */}
+                    <div className="w-full bg-slate-200 dark:bg-slate-700 h-1.5 rounded-full overflow-hidden">
+                      <div 
+                        className={`h-full rounded-full transition-all duration-500 ${
+                          isOver ? "bg-rose-500" : item.percent >= 70 ? "bg-amber-500" : "bg-emerald-500"
+                        }`}
+                        style={{ width: `${Math.min(item.percent, 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
       )}
