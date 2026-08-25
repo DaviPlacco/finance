@@ -514,15 +514,23 @@ export default function DashboardPage() {
             </div>
 
             {/* Visual Color Legend */}
-            <div className="flex items-center gap-4 mb-4 pb-2 border-b border-slate-100 dark:border-slate-800 text-xs">
-              <div className="flex items-center gap-1.5 font-semibold text-slate-700 dark:text-slate-300">
-                <span className="w-3 h-3 rounded-full bg-emerald-500 shadow-xs" />
-                <span>Receitas</span>
+            <div className="flex flex-wrap items-center justify-between gap-4 mb-4 pb-2 border-b border-slate-100 dark:border-slate-800 text-xs">
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-1.5 font-semibold text-slate-700 dark:text-slate-300">
+                  <span className="w-3 h-3 rounded-full bg-emerald-500 shadow-xs" />
+                  <span>Receitas</span>
+                </div>
+                <div className="flex items-center gap-1.5 font-semibold text-slate-700 dark:text-slate-300">
+                  <span className="w-3 h-3 rounded-full bg-rose-500 shadow-xs" />
+                  <span>Despesas</span>
+                </div>
               </div>
-              <div className="flex items-center gap-1.5 font-semibold text-slate-700 dark:text-slate-300">
-                <span className="w-3 h-3 rounded-full bg-rose-500 shadow-xs" />
-                <span>Despesas</span>
-              </div>
+              <Link 
+                href="/dashboard/gestao" 
+                className="inline-flex items-center gap-1 text-[11px] font-bold text-primary hover:underline"
+              >
+                Gerir Transações <ChevronRight className="w-3 h-3" />
+              </Link>
             </div>
           </div>
 
@@ -646,11 +654,17 @@ export default function DashboardPage() {
             </div>
 
             {/* Visual Color Legend */}
-            <div className="flex items-center gap-4 mb-4 pb-2 border-b border-slate-100 dark:border-slate-800 text-xs relative z-10">
+            <div className="flex flex-wrap items-center justify-between gap-4 mb-4 pb-2 border-b border-slate-100 dark:border-slate-800 text-xs relative z-10">
               <div className="flex items-center gap-1.5 font-semibold text-slate-700 dark:text-slate-300">
                 <span className="w-3 h-3 rounded-full shadow-xs" style={{ backgroundColor: primaryColor || '#8b5cf6' }} />
                 <span>Património Líquido</span>
               </div>
+              <Link 
+                href="/dashboard/investimentos" 
+                className="inline-flex items-center gap-1 text-[11px] font-bold text-primary hover:underline"
+              >
+                Gerir Investimentos <ChevronRight className="w-3 h-3" />
+              </Link>
             </div>
           </div>
 
