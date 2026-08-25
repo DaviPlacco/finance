@@ -468,11 +468,12 @@ export default function InvestimentosPage() {
     });
 
     let completedGoalsCount = 0;
-    let totalProgressSum = 0;
+    let totalSuccessScoreSum = 0;
 
     const computedGoals = goals.map(goal => {
       let currentVal = 0;
       let progress = 0;
+      let successScore = 0;
       let remainingDistance = 0;
       let dailyPace = 0;
       let status: 'completed' | 'on_track' | 'behind' | 'exceeded' = 'on_track';
@@ -485,14 +486,15 @@ export default function InvestimentosPage() {
         } else {
           currentVal = investments.reduce((acc, i) => acc + (i.balance || 0), 0);
         }
-        progress = Math.min(100, (currentVal / goal.target_amount) * 100);
+        progress = goal.target_amount > 0 ? (currentVal / goal.target_amount) * 100 : 0;
+        successScore = Math.min(100, Math.max(0, progress));
         remainingDistance = Math.max(0, goal.target_amount - currentVal);
         dailyPace = remainingDays > 0 ? remainingDistance / remainingDays : 0;
 
         if (progress >= 100) {
           status = "completed";
           completedGoalsCount++;
-          advisorMessage = `🎉 Meta alcançada! Atingiste o objetivo de ${formatCurrency(goal.target_amount)} em aportes.`;
+          advisorMessage = `🎉 Meta alcançada! Atingiste o objetivo de ${formatCurrency(goal.target_amount)} em património investido.`;
         } else if (isCurrentMonth && (progress >= (currentDay / daysInMonth) * 100)) {
           status = "on_track";
           advisorMessage = `🚀 Ritmo excelente! Faltam ${formatCurrency(remainingDistance)} em ${remainingDays} dias (${formatCurrency(dailyPace)}/dia).`;
@@ -507,27 +509,40 @@ export default function InvestimentosPage() {
         } else {
           currentVal = totalExpense;
         }
-        progress = Math.min(100, (currentVal / goal.target_amount) * 100);
+        progress = goal.target_amount > 0 ? (currentVal / goal.target_amount) * 100 : 0;
         const marginRemaining = goal.target_amount - currentVal;
         dailyPace = remainingDays > 0 && marginRemaining > 0 ? marginRemaining / remainingDays : 0;
 
         if (currentVal > goal.target_amount) {
           status = "exceeded";
-          advisorMessage = `🚨 Teto ultrapassado em ${formatCurrency(currentVal - goal.target_amount)}! Congela gastos não essenciais nesta categoria.`;
-        } else if (currentVal === 0 || progress <= 100) {
-          if (!isCurrentMonth || (currentVal / goal.target_amount) <= (currentDay / daysInMonth)) {
-            status = "on_track";
-            if (!isCurrentMonth && currentVal <= goal.target_amount) completedGoalsCount++;
-            advisorMessage = `🛡️ Gastos controlados! Tens ${formatCurrency(marginRemaining)} de margem disponível (${formatCurrency(dailyPace)}/dia).`;
+          successScore = 0; // Teto estourado: 0% de conformidade/sucesso
+          advisorMessage = `🚨 Teto ultrapassado em ${formatCurrency(currentVal - goal.target_amount)} (${Math.round(progress)}% do teto consumido)! Congela gastos supérfluos nesta categoria.`;
+        } else {
+          if (!isCurrentMonth) {
+            status = "completed";
+            completedGoalsCount++;
+            successScore = 100;
+            advisorMessage = `🛡️ Meta cumprida! Fechaste o mês abaixo do teto com ${formatCurrency(marginRemaining)} poupados.`;
           } else {
-            status = "behind";
-            advisorMessage = `⚠️ Ritmo de despesas elevado: limita os gastos a um máximo de ${formatCurrency(dailyPace)}/dia para não estourar o teto.`;
+            const expectedConsumptionRatio = currentDay / daysInMonth;
+            const actualConsumptionRatio = currentVal / goal.target_amount;
+            
+            if (actualConsumptionRatio <= expectedConsumptionRatio) {
+              status = "on_track";
+              successScore = 100;
+              advisorMessage = `🛡️ Gastos controlados! Tens ${formatCurrency(marginRemaining)} de margem disponível (${formatCurrency(dailyPace)}/dia).`;
+            } else {
+              status = "behind";
+              successScore = Math.max(10, Math.round((marginRemaining / goal.target_amount) * 100));
+              advisorMessage = `⚠️ Ritmo acelerado: limita os gastos a no máximo ${formatCurrency(dailyPace)}/dia para não estourar o teto.`;
+            }
           }
         }
       }
       else if (goal.goal_type === "net_savings") {
         currentVal = netSavings;
-        progress = goal.target_amount > 0 ? Math.min(100, Math.max(0, (netSavings / goal.target_amount) * 100)) : 0;
+        progress = goal.target_amount > 0 ? (netSavings / goal.target_amount) * 100 : 0;
+        successScore = Math.min(100, Math.max(0, progress));
         remainingDistance = Math.max(0, goal.target_amount - netSavings);
         dailyPace = remainingDays > 0 ? remainingDistance / remainingDays : 0;
 
@@ -545,7 +560,8 @@ export default function InvestimentosPage() {
       }
       else if (goal.goal_type === "savings_rate") {
         currentVal = currentSavingsRate;
-        progress = goal.target_amount > 0 ? Math.min(100, Math.max(0, (currentSavingsRate / goal.target_amount) * 100)) : 0;
+        progress = goal.target_amount > 0 ? (currentSavingsRate / goal.target_amount) * 100 : 0;
+        successScore = Math.min(100, Math.max(0, progress));
         const diffRate = Math.max(0, goal.target_amount - currentSavingsRate);
 
         if (currentSavingsRate >= goal.target_amount) {
@@ -561,12 +577,13 @@ export default function InvestimentosPage() {
         }
       }
 
-      totalProgressSum += progress;
+      totalSuccessScoreSum += successScore;
 
       return {
         ...goal,
         currentVal,
         progress,
+        successScore,
         remainingDistance,
         dailyPace,
         status,
@@ -574,7 +591,7 @@ export default function InvestimentosPage() {
       };
     });
 
-    const averageProgress = goals.length > 0 ? Math.round(totalProgressSum / goals.length) : 0;
+    const averageProgress = goals.length > 0 ? Math.round(totalSuccessScoreSum / goals.length) : 0;
 
     return {
       computedGoals,
@@ -973,17 +990,17 @@ export default function InvestimentosPage() {
                     <div className="h-2.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden mb-5">
                       <div 
                         className={`h-full rounded-full ${progressColor} transition-all duration-1000 ease-out`}
-                        style={{ width: `${g.progress}%` }}
+                        style={{ width: `${Math.min(100, Math.max(0, g.progress))}%` }}
                       />
                     </div>
                   </div>
 
                   {/* AI Smart Advisory Box */}
-                  <div className="p-3.5 rounded-xl bg-slate-900/90 dark:bg-slate-950/90 border border-slate-800 text-white flex items-start gap-3 mt-2 shadow-inner">
-                    <div className="p-1.5 bg-amber-500/20 text-amber-400 rounded-lg shrink-0 mt-0.5">
+                  <div className="p-3.5 rounded-xl bg-slate-100/90 dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 text-slate-800 dark:text-white flex items-start gap-3 mt-2 shadow-sm">
+                    <div className="p-1.5 bg-amber-500/20 text-amber-500 dark:text-amber-400 rounded-lg shrink-0 mt-0.5">
                       <Lightbulb className="w-4 h-4" />
                     </div>
-                    <div className="text-xs text-slate-300 font-medium leading-relaxed">
+                    <div className="text-xs text-slate-600 dark:text-slate-300 font-medium leading-relaxed">
                       {g.advisorMessage}
                     </div>
                   </div>
