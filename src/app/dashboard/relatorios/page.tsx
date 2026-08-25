@@ -18,6 +18,7 @@ type ReportHistory = {
 
 export default function RelatoriosPage() {
   const currentYear = new Date().getFullYear().toString();
+  
   const [filterYear, setFilterYear] = useState(currentYear);
   const [filterMonth, setFilterMonth] = useMonthFilter('current');
   const [isGenerating, setIsGenerating] = useState(false);

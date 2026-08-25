@@ -39,6 +39,8 @@ import {
 } from "@/lib/SettingsContext";
 import { exportToCSV, exportToPDF } from "@/lib/exportUtils";
 import { api } from "@/lib/api";
+import { toast } from "sonner";
+import { SmartAdvisorToastManager } from "@/components/SmartAdvisorToast";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -65,9 +67,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [activeSettingsTab, setActiveSettingsTab] = useState<"general" | "palette" | "cards" | "groups">("general");
   const [mounted, setMounted] = useState(false);
-  const [username, setUsername] = useState("Finance");
+  const [username, setUsername] = useState("PL Finance");
+  const [displayName, setDisplayName] = useState("");
+  const [savingName, setSavingName] = useState(false);
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [isCollapsed, setIsCollapsed] = useState(false);
+
+  const getInitials = (nameStr: string) => {
+    if (!nameStr) return "U";
+    const parts = nameStr.trim().split(/\s+/);
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return nameStr.charAt(0).toUpperCase();
+  };
 
   // Category Colors Management in Settings
   const [categoriesList, setCategoriesList] = useState<any[]>([]);
@@ -182,18 +195,66 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   };
 
+  const handleSaveDisplayName = async () => {
+    const trimmed = displayName.trim();
+    if (!trimmed) {
+      toast.error("Por favor, introduz um nome válido.");
+      return;
+    }
+    setSavingName(true);
+    try {
+      const res = await api.put("/users/me/profile", { name: trimmed });
+      const finalName = res.data.name || trimmed;
+      setUsername(finalName);
+      setDisplayName(finalName);
+      localStorage.setItem("username", finalName);
+      window.dispatchEvent(new CustomEvent("user-updated", { detail: { name: finalName } }));
+      toast.success("Nome de exibição atualizado com sucesso!");
+    } catch (err: any) {
+      console.error("Erro ao atualizar nome:", err);
+      toast.error("Não foi possível atualizar o nome.");
+    } finally {
+      setSavingName(false);
+    }
+  };
+
+  useEffect(() => {
+    const handleUserUpdate = (e: any) => {
+      const newName = e.detail?.name || localStorage.getItem("username");
+      if (newName) {
+        setUsername(newName);
+        setDisplayName(newName);
+      }
+    };
+    window.addEventListener("user-updated", handleUserUpdate);
+    return () => {
+      window.removeEventListener("user-updated", handleUserUpdate);
+    };
+  }, []);
+
   useEffect(() => {
     setMounted(true);
-    const token = localStorage.getItem("token");
-    if (!token) {
+    const isAuth = localStorage.getItem("isAuthenticated");
+    if (!isAuth) {
       router.push("/");
     } else {
       setLoading(false);
       const storedName = localStorage.getItem("username");
       if (storedName) {
         setUsername(storedName.charAt(0).toUpperCase() + storedName.slice(1));
+        setDisplayName(storedName);
       }
       api.get("/users/me").then(res => {
+        if (res.data.name && res.data.name.trim()) {
+          setUsername(res.data.name.trim());
+          setDisplayName(res.data.name.trim());
+          localStorage.setItem("username", res.data.name.trim());
+        } else if (res.data.username) {
+          if (!storedName) {
+            setUsername(res.data.username);
+            setDisplayName(res.data.username);
+          }
+        }
         if (res.data.profile_image) {
           setProfileImage(res.data.profile_image);
         } else {
@@ -210,8 +271,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       let timeoutId: NodeJS.Timeout;
       const resetTimer = () => {
         clearTimeout(timeoutId);
-        timeoutId = setTimeout(() => {
-          localStorage.removeItem("token");
+        timeoutId = setTimeout(async () => {
+          try {
+            await fetch('/api/auth/logout', { method: 'POST' });
+          } catch(e) {}
+          localStorage.removeItem("isAuthenticated");
           localStorage.removeItem("username");
           router.push("/");
         }, 900 * 1000); // 15 minutes
@@ -233,8 +297,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   }, [router]);
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } catch(e) {}
+    localStorage.removeItem("isAuthenticated");
     localStorage.removeItem("username");
     router.push("/");
   };
@@ -275,18 +342,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div className={`p-3.5 sm:p-5 flex items-center justify-between md:block ${isCollapsed ? 'md:px-0 md:text-center md:flex md:flex-col md:items-center' : ''}`}>
           {!isCollapsed ? (
             <div className="flex items-center gap-3">
-              {profileImage ? (
-                <img src={profileImage} alt="Profile" className="w-9 h-9 sm:w-10 sm:h-10 rounded-full object-cover border-2 border-primary shadow-sm" />
-              ) : (
+              {!profileImage && (
                 <div 
-                  className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-white font-bold border-2 shadow-sm transition-all duration-500"
+                  className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-white font-bold border-2 shadow-sm transition-all duration-500 text-xs sm:text-sm"
                   style={{
                     background: 'linear-gradient(135deg, var(--primary), var(--secondary))',
                     borderColor: 'var(--primary)'
                   }}
                 >
-                  {username.charAt(0).toUpperCase()}
+                  {getInitials(username)}
                 </div>
+              )}
+              {profileImage && (
+                <img src={profileImage} alt="Profile" className="w-9 h-9 sm:w-10 sm:h-10 rounded-full object-cover border-2 border-primary shadow-sm" />
               )}
               <div className="flex flex-col min-w-0">
                 <span className="font-bold text-slate-900 dark:text-white leading-tight truncate text-sm sm:text-base">{username}</span>
@@ -302,13 +370,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <img src={profileImage} alt="Profile" className="w-10 h-10 rounded-full object-cover border-2 border-primary shadow-sm" />
               ) : (
                 <div 
-                  className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold border-2 shadow-sm transition-all duration-500"
+                  className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold border-2 shadow-sm transition-all duration-500 text-xs sm:text-sm"
                   style={{
                     background: 'linear-gradient(135deg, var(--primary), var(--secondary))',
                     borderColor: 'var(--primary)'
                   }}
                 >
-                  {username.charAt(0).toUpperCase()}
+                  {getInitials(username)}
                 </div>
               )}
               <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
@@ -569,6 +637,48 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                           {val}
                         </button>
                       ))}
+                    </div>
+                  </div>
+
+                  {/* Display Name Setting */}
+                  <div>
+                    <label className="block text-sm font-bold text-slate-800 dark:text-slate-200 mb-1">
+                      Nome de Exibição (Perfil)
+                    </label>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-2.5">
+                      Personaliza como queres ser chamado(a) nas saudações e em todo o painel interno.
+                    </p>
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                        <input
+                          type="text"
+                          value={displayName}
+                          onChange={(e) => setDisplayName(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              handleSaveDisplayName();
+                            }
+                          }}
+                          placeholder="Ex: Davi Placco"
+                          className="w-full pl-10 pr-3 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all shadow-sm"
+                        />
+                      </div>
+                      <button
+                        onClick={handleSaveDisplayName}
+                        disabled={savingName || !displayName.trim()}
+                        className="px-4 py-2.5 bg-primary hover:bg-primary/90 disabled:opacity-50 text-white font-bold text-xs sm:text-sm rounded-xl transition-all shadow-sm flex items-center gap-1.5 shrink-0"
+                      >
+                        {savingName ? (
+                          <span>A guardar...</span>
+                        ) : (
+                          <>
+                            <Check className="w-4 h-4" />
+                            <span>Guardar</span>
+                          </>
+                        )}
+                      </button>
                     </div>
                   </div>
 
@@ -982,8 +1092,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               {/* TAB 4: GRUPOS DE CATEGORIAS */}
               {activeSettingsTab === "groups" && (
                 <div className="space-y-6 animate-in fade-in duration-200">
-                  <div className="flex items-center justify-between">
-                    <div>
+                  <div className="flex items-start sm:items-center justify-between gap-4">
+                    <div className="space-y-0.5">
                       <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">
                         Grupos de Categorias
                       </h4>
@@ -994,9 +1104,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     {!isCreatingGroup && (
                       <button
                         onClick={handleOpenCreateGroup}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary text-white text-xs font-bold rounded-xl shadow-sm hover:opacity-90 transition-all"
+                        className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-primary text-white text-xs font-bold rounded-xl shadow-sm shadow-primary/20 hover:bg-primary/90 transition-all shrink-0 whitespace-nowrap active:scale-95"
                       >
-                        <Plus className="w-3.5 h-3.5" /> Novo Grupo
+                        <Plus className="w-4 h-4 shrink-0" /> Novo Grupo
                       </button>
                     )}
                   </div>
@@ -1251,6 +1361,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </div>
       )}
+
+      {/* 💡 Gestor de Toasts Inteligentes (de 10 em 10 min com cruzamento de dados) */}
+      <SmartAdvisorToastManager />
     </div>
   );
 }

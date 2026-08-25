@@ -55,7 +55,7 @@ export const exportToCSV = async () => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
-    link.setAttribute("download", `Finance_Relatorio_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute("download", `PLFinance_Relatorio_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -81,7 +81,7 @@ export const exportToPDF = async () => {
     // Add Logo / Title
     doc.setFontSize(22);
     doc.setTextColor(79, 70, 229); // Primary Indigo-600
-    doc.text("Finance", 14, 20);
+    doc.text("PL Finance", 14, 20);
     
     doc.setFontSize(12);
     doc.setTextColor(100, 116, 139); // Slate-500
@@ -176,7 +176,7 @@ export const exportToPDF = async () => {
     doc.text(`Saldo Total: ${formatCurrency(balance)}`, 14, finalY + 22);
     doc.setFont("helvetica", "normal");
 
-    doc.save(`Finance_Relatorio_${new Date().toISOString().split('T')[0]}.pdf`);
+    doc.save(`PLFinance_Relatorio_${new Date().toISOString().split('T')[0]}.pdf`);
 
   } catch (error) {
     console.error("Erro ao exportar PDF:", error);
@@ -200,7 +200,7 @@ export const exportPrevisaoToCSV = (chartData: any[]) => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
-    link.setAttribute("download", `Finance_Previsao_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute("download", `PLFinance_Previsao_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -216,7 +216,7 @@ export const exportPrevisaoToPDF = (chartData: any[], results: any, customYears:
 
     doc.setFontSize(22);
     doc.setTextColor(79, 70, 229);
-    doc.text("Finance", 14, 20);
+    doc.text("PL Finance", 14, 20);
     
     doc.setFontSize(12);
     doc.setTextColor(100, 116, 139);
@@ -256,7 +256,7 @@ export const exportPrevisaoToPDF = (chartData: any[], results: any, customYears:
     doc.text(`Em 30 Anos: ${formatCurrency(results.year30)}`, 14, finalY + 20);
     doc.text(`Meta (${customYears} Anos): ${formatCurrency(results.custom)}`, 14, finalY + 26);
 
-    doc.save(`Finance_Previsao_${new Date().toISOString().split('T')[0]}.pdf`);
+    doc.save(`PLFinance_Previsao_${new Date().toISOString().split('T')[0]}.pdf`);
 
   } catch (error) {
     console.error("Erro ao exportar PDF:", error);
@@ -289,7 +289,7 @@ export const exportSimulacaoToCSV = (incomes: any[], expenses: any[]) => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
-    link.setAttribute("download", `Finance_Simulacao_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute("download", `PLFinance_Simulacao_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -305,7 +305,7 @@ export const exportSimulacaoToPDF = (incomes: any[], expenses: any[]) => {
 
     doc.setFontSize(22);
     doc.setTextColor(79, 70, 229);
-    doc.text("Finance", 14, 20);
+    doc.text("PL Finance", 14, 20);
     
     doc.setFontSize(12);
     doc.setTextColor(100, 116, 139);
@@ -377,7 +377,7 @@ export const exportSimulacaoToPDF = (incomes: any[], expenses: any[]) => {
     doc.text(`Saldo Previsto: ${formatCurrency(balance)}`, 14, finalY + 22);
     doc.setFont("helvetica", "normal");
 
-    doc.save(`Finance_Simulacao_${new Date().toISOString().split('T')[0]}.pdf`);
+    doc.save(`PLFinance_Simulacao_${new Date().toISOString().split('T')[0]}.pdf`);
 
   } catch (error) {
     console.error("Erro ao exportar PDF:", error);
@@ -411,7 +411,7 @@ export const exportGeneralMonthlyReportPDF = async (year: number, month: number)
     // Cabeçalho Principal
     doc.setFontSize(22);
     doc.setTextColor(79, 70, 229);
-    doc.text("Finance", 14, 20);
+    doc.text("PL Finance", 14, 20);
     
     doc.setFontSize(12);
     doc.setTextColor(100, 116, 139);
@@ -541,7 +541,7 @@ export const exportGeneralMonthlyReportPDF = async (year: number, month: number)
       doc.text("Sem registos de investimentos.", 14, invY + 10);
     }
 
-    doc.save(`Finance_Fecho_Mes_${month.toString().padStart(2, '0')}_${year}.pdf`);
+    doc.save(`PLFinance_Fecho_Mes_${month.toString().padStart(2, '0')}_${year}.pdf`);
   } catch (error) {
     console.error("Erro ao gerar relatório geral:", error);
     toast.error("Erro ao exportar PDF.");

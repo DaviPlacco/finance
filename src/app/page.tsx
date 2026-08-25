@@ -26,11 +26,17 @@ export default function LoginPage() {
       formData.append("username", username);
       formData.append("password", password);
 
-      const response = await api.post("/token", formData, {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: formData.toString()
       });
+      
+      if (!res.ok) {
+        throw new Error("Credenciais inválidas");
+      }
 
-      localStorage.setItem("token", response.data.access_token);
+      localStorage.setItem("isAuthenticated", "true");
       localStorage.setItem("username", username);
       sessionStorage.setItem("showWelcome", "true");
       toast.success(isRegistering ? "Conta criada com sucesso!" : `Bem-vindo de volta, ${username}!`);
@@ -55,7 +61,7 @@ export default function LoginPage() {
       <div className="glass-card animated-border-card w-full max-w-md p-8 md:p-10 z-10 mx-4 shadow-2xl shadow-indigo-900/10">
         <div className="text-center mb-10">
           <h1 className="text-3xl font-extrabold text-foreground tracking-tight mb-2">
-            Finance
+            PL Finance
           </h1>
           <p className="text-slate-500 dark:text-slate-400 font-medium">Acesso Exclusivo</p>
         </div>

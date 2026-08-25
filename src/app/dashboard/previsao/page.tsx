@@ -86,7 +86,7 @@ export default function PrevisaoPage() {
     return `€${value}`;
   };
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
+  const renderTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
         <div className="glass-card bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-slate-200/90 dark:border-slate-800 p-4 rounded-xl shadow-xl dark:shadow-[0_12px_36px_rgba(0,0,0,0.5)] min-w-[220px]">
@@ -289,7 +289,7 @@ export default function PrevisaoPage() {
                 tickFormatter={yAxisTickFormatter} 
                 width={55} 
               />
-              <Tooltip content={<CustomTooltip />} />
+              <Tooltip content={renderTooltip} />
               <Area 
                 type="monotone" 
                 dataKey="Total" 

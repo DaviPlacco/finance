@@ -46,6 +46,15 @@ export default function DashboardPage() {
   const [username, setUsername] = useState("Utilizador");
   const [profileImage, setProfileImage] = useState<string | null>(null);
 
+  const getInitials = (nameStr: string) => {
+    if (!nameStr) return "U";
+    const parts = nameStr.trim().split(/\s+/);
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return nameStr.charAt(0).toUpperCase();
+  };
+
   // Chart Type Switches
   const [cashFlowChartType, setCashFlowChartType] = useState<"bar" | "line" | "area">("bar");
   const [wealthChartType, setWealthChartType] = useState<"line" | "area" | "bar">("line");
@@ -95,11 +104,19 @@ export default function DashboardPage() {
     const handleUpdates = async () => {
       fetchData();
     };
+    const handleUserUpdate = (e: any) => {
+      const newName = e.detail?.name || localStorage.getItem("username");
+      if (newName) {
+        setUsername(newName);
+      }
+    };
     window.addEventListener("categories-updated", handleUpdates);
     window.addEventListener("groups-updated", handleUpdates);
+    window.addEventListener("user-updated", handleUserUpdate);
     return () => {
       window.removeEventListener("categories-updated", handleUpdates);
       window.removeEventListener("groups-updated", handleUpdates);
+      window.removeEventListener("user-updated", handleUserUpdate);
     };
   }, []);
 
@@ -114,6 +131,12 @@ export default function DashboardPage() {
       setUsername(storedName.charAt(0).toUpperCase() + storedName.slice(1));
     }
     api.get("/users/me").then(res => {
+      if (res.data.name && res.data.name.trim()) {
+        setUsername(res.data.name.trim());
+        localStorage.setItem("username", res.data.name.trim());
+      } else if (res.data.username && !storedName) {
+        setUsername(res.data.username);
+      }
       if (res.data.profile_image) {
         setProfileImage(res.data.profile_image);
       } else {
@@ -602,11 +625,11 @@ export default function DashboardPage() {
         <div className="mt-4 relative">
           <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Últimos Movimentos</h3>
           <div 
-            className="relative w-full overflow-hidden flex pt-24 pb-20 -mt-20 -mb-12"
-            style={{ maskImage: 'linear-gradient(to right, transparent, black 15%, black 85%, transparent)', WebkitMaskImage: 'linear-gradient(to right, transparent, black 15%, black 85%, transparent)' }}
+            className="relative w-full overflow-hidden pt-24 pb-20 -mt-20 -mb-12"
+            style={{ maskImage: 'linear-gradient(to right, transparent, black 40px, black calc(100% - 40px), transparent)', WebkitMaskImage: 'linear-gradient(to right, transparent, black 40px, black calc(100% - 40px), transparent)' }}
           >
-            <div className="animate-marquee flex gap-4 mt-4" style={{ animationDuration: `${Math.max(transactions.length * 4, 30)}s` }}>
-              {[...transactions, ...transactions, ...transactions].map((t: any, i: number) => (
+            <div className="animate-marquee flex gap-4 mt-4 shrink-0 w-max" style={{ animationDuration: `${Math.max(transactions.length * 4, 30)}s` }}>
+              {Array(Math.max(1, Math.ceil(10 / transactions.length)) * 2).fill(transactions).flat().map((t: any, i: number) => (
                 <div 
                   key={i} 
                   className="card-history-item relative group flex-shrink-0 w-64 glass-card p-4 border border-slate-200/60 dark:border-slate-800 transition-all duration-500 cursor-pointer bg-white dark:bg-slate-900 hover:-translate-y-4 hover:-rotate-[5deg] hover:z-20"
@@ -710,7 +733,7 @@ export default function DashboardPage() {
                   {/* Progress bar background */}
                   <div className="w-full bg-slate-100 dark:bg-slate-800/50 h-2 rounded-full overflow-hidden relative z-10 mt-2">
                     <div 
-                      className="h-full rounded-full transition-all duration-1000 ease-out" 
+                      className="h-full rounded-full transition-all duration-1000 ease-out"
                       style={{ 
                         width: `${percent}%`, 
                         backgroundColor: item.color 
@@ -886,7 +909,7 @@ export default function DashboardPage() {
                         backgroundImage: 'linear-gradient(135deg, var(--primary), var(--secondary))'
                       }}
                     >
-                      {username.charAt(0).toUpperCase()}
+                      {getInitials(username)}
                     </span>
                   )}
                 </div>

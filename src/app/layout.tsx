@@ -16,8 +16,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Finance",
-  description: "Gerenciamento inteligente de finanças pessoais",
+  title: "PL Finance",
+  description: "A tua plataforma de gestão financeira inteligente e premium.",
 };
 
 export default function RootLayout({
