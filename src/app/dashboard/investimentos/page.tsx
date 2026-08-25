@@ -133,11 +133,14 @@ export default function InvestimentosPage() {
 
   async function fetchGoalsData() {
     try {
+      const isAllYears = !goalFilterYear || goalFilterYear === "Todos";
+      const isAllMonths = !goalFilterMonth || goalFilterMonth === "Todos" || goalFilterMonth === "todos";
+
       const query = new URLSearchParams();
-      if (goalFilterYear && goalFilterYear !== "Todos") {
+      if (!isAllYears) {
         query.append("year", goalFilterYear);
       }
-      if (goalFilterMonth && goalFilterMonth !== "Todos" && goalFilterMonth !== "todos") {
+      if (!isAllMonths) {
         query.append("month", goalFilterMonth);
       }
 
@@ -146,48 +149,54 @@ export default function InvestimentosPage() {
         api.get(`/transactions?${query.toString()}`).catch(() => ({ data: [] }))
       ]);
 
-      const fetchedGoals = goalsRes.data || [];
-      const localKey = `pl_goals_${goalFilterYear}_${goalFilterMonth}`;
+      const fetchedGoals: GoalItem[] = Array.isArray(goalsRes.data) ? goalsRes.data : [];
       
-      if (Array.isArray(fetchedGoals) && fetchedGoals.length > 0) {
-        setGoals(fetchedGoals);
-        try { localStorage.setItem(localKey, JSON.stringify(fetchedGoals)); } catch {}
-      } else {
-        try {
-          const local = localStorage.getItem(localKey);
-          if (local) {
-            setGoals(JSON.parse(local));
-          } else if (goalFilterMonth === "Todos" || goalFilterMonth === "todos") {
-            const allGoals: GoalItem[] = [];
-            const yearsToCheck = (goalFilterYear === "Todos" || !goalFilterYear) 
-              ? ["2024", "2025", "2026", "2027", "2028"] 
-              : [goalFilterYear];
-
-            for (const y of yearsToCheck) {
-              for (let m = 1; m <= 12; m++) {
-                const monthLocal = localStorage.getItem(`pl_goals_${y}_${m}`);
-                if (monthLocal) {
-                  try {
-                    const parsed: GoalItem[] = JSON.parse(monthLocal);
-                    parsed.forEach(g => {
-                      if (!allGoals.some(existing => existing.id === g.id)) {
-                        allGoals.push(g);
-                      }
-                    });
-                  } catch {}
-                }
+      // Coletar todas as metas guardadas localmente de forma inteligente
+      const allLocalGoals: GoalItem[] = [];
+      try {
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && key.startsWith("pl_goals_") && !key.includes("Todos") && !key.includes("todos")) {
+            try {
+              const items = JSON.parse(localStorage.getItem(key) || "[]");
+              if (Array.isArray(items)) {
+                items.forEach((g: any) => {
+                  if (g && g.id && !allLocalGoals.some(ex => ex.id === g.id)) {
+                    allLocalGoals.push(g);
+                  }
+                });
               }
-            }
-            setGoals(allGoals);
-          } else {
-            setGoals(fetchedGoals);
+            } catch {}
           }
-        } catch {
-          setGoals(fetchedGoals);
         }
-      }
+      } catch {}
 
-      setTransactions(transRes.data || []);
+      // Combinar metas do backend e do localStorage sem duplicar
+      const combinedMap = new Map<number | string, GoalItem>();
+      
+      fetchedGoals.forEach(g => {
+        if (g && g.id) combinedMap.set(g.id, g);
+      });
+      
+      allLocalGoals.forEach(g => {
+        if (g && g.id && !combinedMap.has(g.id)) {
+          combinedMap.set(g.id, g);
+        }
+      });
+
+      const combinedList = Array.from(combinedMap.values());
+
+      // Filtrar a lista combinada pelos filtros ativos de Ano e Mês
+      const filteredGoals = combinedList.filter(g => {
+        const goalYearStr = g.year ? String(g.year) : "";
+        const goalMonthStr = g.month ? String(g.month) : "";
+        const matchYear = isAllYears || goalYearStr === String(goalFilterYear);
+        const matchMonth = isAllMonths || goalMonthStr === String(goalFilterMonth);
+        return matchYear && matchMonth;
+      });
+
+      setGoals(filteredGoals);
+      setTransactions(Array.isArray(transRes.data) ? transRes.data : []);
     } catch (err) {
       console.error("Erro ao carregar metas:", err);
     }
@@ -397,9 +406,8 @@ export default function InvestimentosPage() {
     if (!goalToDelete) return;
     setIsDeletingGoal(true);
     const goalId = goalToDelete.id;
-    const localKey = `pl_goals_${goalFilterYear}_${goalFilterMonth}`;
     try {
-      await api.delete(`/goals/${goalId}`);
+      await api.delete(`/goals/${goalId}`).catch(() => {});
       toast.success("Meta eliminada com sucesso!");
     } catch (err) {
       console.warn("Backend /goals delete fallback to local:", err);
@@ -407,10 +415,18 @@ export default function InvestimentosPage() {
     }
 
     try {
-      const existing: GoalItem[] = JSON.parse(localStorage.getItem(localKey) || "[]");
-      const updated = existing.filter(g => g.id !== goalId);
-      localStorage.setItem(localKey, JSON.stringify(updated));
-      setGoals(updated);
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith("pl_goals_")) {
+          try {
+            const existing: GoalItem[] = JSON.parse(localStorage.getItem(key) || "[]");
+            if (Array.isArray(existing)) {
+              const updated = existing.filter(g => g.id !== goalId);
+              localStorage.setItem(key, JSON.stringify(updated));
+            }
+          } catch {}
+        }
+      }
     } catch {}
 
     setGoalToDelete(null);
@@ -440,12 +456,19 @@ export default function InvestimentosPage() {
     try {
       await Promise.all(selectedGoals.map(id => api.delete(`/goals/${id}`).catch(() => {})));
       
-      const localKey = `pl_goals_${goalFilterYear}_${goalFilterMonth}`;
       try {
-        const existing: GoalItem[] = JSON.parse(localStorage.getItem(localKey) || "[]");
-        const updated = existing.filter(g => !selectedGoals.includes(g.id));
-        localStorage.setItem(localKey, JSON.stringify(updated));
-        setGoals(updated);
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && key.startsWith("pl_goals_")) {
+            try {
+              const existing: GoalItem[] = JSON.parse(localStorage.getItem(key) || "[]");
+              if (Array.isArray(existing)) {
+                const updated = existing.filter(g => !selectedGoals.includes(g.id));
+                localStorage.setItem(key, JSON.stringify(updated));
+              }
+            } catch {}
+          }
+        }
       } catch {}
 
       toast.success(`${selectedGoals.length} ${selectedGoals.length === 1 ? 'meta eliminada' : 'metas eliminadas'} com sucesso.`);
@@ -502,14 +525,22 @@ export default function InvestimentosPage() {
     } catch (err) {
       console.warn("Backend /goals save fallback to local storage:", err);
       try {
-        const existing: GoalItem[] = JSON.parse(localStorage.getItem(localKey) || "[]");
         const category_name = categories.find(c => c.id === payload.category_id)?.name;
         const investment_name = investments.find(i => i.id === payload.investment_id)?.name;
 
         if (editingGoalId) {
-          const updated = existing.map(g => g.id === editingGoalId ? { ...g, ...payload, category_name, investment_name, id: editingGoalId } : g);
-          localStorage.setItem(localKey, JSON.stringify(updated));
-          setGoals(updated);
+          for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith("pl_goals_")) {
+              try {
+                const existing: GoalItem[] = JSON.parse(localStorage.getItem(key) || "[]");
+                if (Array.isArray(existing) && existing.some(g => g.id === editingGoalId)) {
+                  const updated = existing.map(g => g.id === editingGoalId ? { ...g, ...payload, category_name, investment_name, id: editingGoalId } : g);
+                  localStorage.setItem(key, JSON.stringify(updated));
+                }
+              } catch {}
+            }
+          }
           toast.success("Meta mensal atualizada com sucesso!");
         } else {
           const newGoal: GoalItem = {
@@ -520,9 +551,9 @@ export default function InvestimentosPage() {
             investment_name,
             created_at: new Date().toISOString()
           };
-          const updated = [newGoal, ...existing];
+          const existing: GoalItem[] = JSON.parse(localStorage.getItem(localKey) || "[]");
+          const updated = [newGoal, ...existing.filter(g => g.id !== newGoal.id)];
           localStorage.setItem(localKey, JSON.stringify(updated));
-          setGoals(updated);
           toast.success("Nova meta mensal criada com sucesso!");
         }
       } catch (localErr) {
