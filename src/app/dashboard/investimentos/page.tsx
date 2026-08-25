@@ -159,17 +159,23 @@ export default function InvestimentosPage() {
             setGoals(JSON.parse(local));
           } else if (goalFilterMonth === "Todos" || goalFilterMonth === "todos") {
             const allGoals: GoalItem[] = [];
-            for (let m = 1; m <= 12; m++) {
-              const monthLocal = localStorage.getItem(`pl_goals_${goalFilterYear}_${m}`);
-              if (monthLocal) {
-                try {
-                  const parsed: GoalItem[] = JSON.parse(monthLocal);
-                  parsed.forEach(g => {
-                    if (!allGoals.some(existing => existing.id === g.id)) {
-                      allGoals.push(g);
-                    }
-                  });
-                } catch {}
+            const yearsToCheck = (goalFilterYear === "Todos" || !goalFilterYear) 
+              ? ["2024", "2025", "2026", "2027", "2028"] 
+              : [goalFilterYear];
+
+            for (const y of yearsToCheck) {
+              for (let m = 1; m <= 12; m++) {
+                const monthLocal = localStorage.getItem(`pl_goals_${y}_${m}`);
+                if (monthLocal) {
+                  try {
+                    const parsed: GoalItem[] = JSON.parse(monthLocal);
+                    parsed.forEach(g => {
+                      if (!allGoals.some(existing => existing.id === g.id)) {
+                        allGoals.push(g);
+                      }
+                    });
+                  } catch {}
+                }
               }
             }
             setGoals(allGoals);
