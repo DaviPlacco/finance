@@ -28,6 +28,11 @@ export default function OrcamentosPage() {
   const [filterYear, setFilterYear] = useState(currentYear);
   const [filterMonth, setFilterMonth] = useMonthFilter('current');
 
+  const isExpense = (type: any) => {
+    const t = String(type || '').toLowerCase();
+    return t === 'expense' || t === 'expenses' || t === 'despesa' || t === 'despesas';
+  };
+
   useEffect(() => {
     fetchData();
   }, [filterYear, filterMonth]);
@@ -43,16 +48,62 @@ export default function OrcamentosPage() {
   async function fetchData() {
     try {
       const query = new URLSearchParams();
-      query.append("year", filterYear);
-      query.append("month", filterMonth);
+      if (filterYear && filterYear !== "Todos") {
+        query.append("year", filterYear);
+      }
+      if (filterMonth && filterMonth !== "Todos" && filterMonth !== "") {
+        query.append("month", filterMonth);
+      }
       query.append("type", "expense");
 
-      const [transRes, catRes] = await Promise.all([
-        api.get(`/transactions?${query.toString()}`),
-        api.get("/categories")
+      const [transRes, catRes, goalsRes] = await Promise.all([
+        api.get(`/transactions?${query.toString()}`).catch(() => ({ data: [] })),
+        api.get("/categories").catch(() => ({ data: [] })),
+        api.get("/goals").catch(() => ({ data: [] }))
       ]);
-      setTransactions(transRes.data);
-      setCategories(catRes.data);
+
+      let fetchedCats: any[] = Array.isArray(catRes.data) ? catRes.data : [];
+      
+      // Fallback cache local para categorias
+      if (fetchedCats.length > 0) {
+        try { localStorage.setItem("pl_categories_cache", JSON.stringify(fetchedCats)); } catch {}
+      } else {
+        try {
+          const cached = localStorage.getItem("pl_categories_cache");
+          if (cached) fetchedCats = JSON.parse(cached);
+        } catch {}
+      }
+
+      // Sincronizar tetos de despesa definidos em metas caso a categoria não tenha budget_limit
+      const goalsList: any[] = Array.isArray(goalsRes.data) ? goalsRes.data : [];
+      try {
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && key.startsWith("pl_goals_")) {
+            const items = JSON.parse(localStorage.getItem(key) || "[]");
+            if (Array.isArray(items)) {
+              items.forEach(g => {
+                if (g && g.goal_type === "expense_ceiling" && g.category_id && !goalsList.some(ex => ex.id === g.id)) {
+                  goalsList.push(g);
+                }
+              });
+            }
+          }
+        }
+      } catch {}
+
+      const mergedCats = fetchedCats.map((cat: any) => {
+        if (!cat.budget_limit || Number(cat.budget_limit) <= 0) {
+          const matchingGoal = goalsList.find(g => g.goal_type === "expense_ceiling" && String(g.category_id) === String(cat.id));
+          if (matchingGoal && matchingGoal.target_amount > 0) {
+            return { ...cat, budget_limit: matchingGoal.target_amount };
+          }
+        }
+        return cat;
+      });
+
+      setCategories(mergedCats);
+      setTransactions(Array.isArray(transRes.data) ? transRes.data : []);
     } catch (err) {
       console.error(err);
     } finally {
@@ -76,14 +127,21 @@ export default function OrcamentosPage() {
         group_id: budgetToDelete.category.group_id
       });
       toast.success("Orçamento eliminado com sucesso!");
+    } catch (err) {
+      console.warn("Backend /categories delete fallback to local:", err);
+      try {
+        const updated = categories.map((c: any) => String(c.id) === String(budgetToDelete.id) ? { ...c, budget_limit: null } : c);
+        setCategories(updated);
+        localStorage.setItem("pl_categories_cache", JSON.stringify(updated));
+        toast.success("Orçamento eliminado com sucesso!");
+      } catch {
+        toast.error("Erro ao eliminar a previsão.");
+      }
+    } finally {
       setBudgetToDelete(null);
+      setIsDeletingBudget(false);
       fetchData();
       window.dispatchEvent(new Event("categories-updated"));
-    } catch (err) {
-      console.error(err);
-      toast.error("Erro ao eliminar a previsão.");
-    } finally {
-      setIsDeletingBudget(false);
     }
   };
 
@@ -96,7 +154,7 @@ export default function OrcamentosPage() {
 
   const handleOpenNewModal = () => {
     setIsCreatingNew(true);
-    const expenseCategories = categories.filter((c: any) => c.type === 'expense');
+    const expenseCategories = categories.filter((c: any) => isExpense(c.type));
     const firstWithoutBudget = expenseCategories.find((c: any) => !c.budget_limit || c.budget_limit <= 0);
     const defaultCatId = firstWithoutBudget ? String(firstWithoutBudget.id) : (expenseCategories[0] ? String(expenseCategories[0].id) : "");
     setSelectedCategoryId(defaultCatId);
@@ -130,22 +188,29 @@ export default function OrcamentosPage() {
         group_id: cat.group_id
       });
       toast.success(isCreatingNew ? "Orçamento criado com sucesso!" : "Orçamento atualizado com sucesso!");
+    } catch (err) {
+      console.warn("Backend /categories save fallback to local:", err);
+      try {
+        const updated = categories.map((c: any) => String(c.id) === String(cat.id) ? { ...c, budget_limit: amount } : c);
+        setCategories(updated);
+        localStorage.setItem("pl_categories_cache", JSON.stringify(updated));
+        toast.success(isCreatingNew ? "Orçamento criado com sucesso!" : "Orçamento atualizado com sucesso!");
+      } catch {
+        toast.error("Erro ao guardar o orçamento.");
+      }
+    } finally {
+      setIsSaving(false);
       setEditModalOpen(false);
       fetchData();
       window.dispatchEvent(new Event("categories-updated"));
-    } catch (err) {
-      console.error("Erro ao salvar orçamento:", err);
-      toast.error("Erro ao guardar o orçamento.");
-    } finally {
-      setIsSaving(false);
     }
   };
 
   if (loading) return <div className="animate-pulse p-8">A carregar previsões...</div>;
 
   // Filter categories that have a budget limit and are expenses
-  const budgetCategories = categories.filter((c: any) => c.type === 'expense' && c.budget_limit && c.budget_limit > 0);
-  const allExpenseCategories = categories.filter((c: any) => c.type === 'expense');
+  const budgetCategories = categories.filter((c: any) => isExpense(c.type) && c.budget_limit && Number(c.budget_limit) > 0);
+  const allExpenseCategories = categories.filter((c: any) => isExpense(c.type));
 
   // Calculate spent amount per category
   const categorySpending: Record<string, number> = {};
@@ -233,9 +298,39 @@ export default function OrcamentosPage() {
           >
             <Plus className="w-4 h-4" /> Definir Orçamento
           </button>
-          <div className="flex gap-2">
-            <CustomSelect value={filterYear} onChange={setFilterYear as any} options={[{value:"2025",label:"2025"},{value:"2026",label:"2026"}]} />
-            <CustomSelect value={filterMonth} onChange={setFilterMonth as any} options={[{value:"1",label:"Jan"},{value:"2",label:"Fev"},{value:"3",label:"Mar"},{value:"4",label:"Abr"},{value:"5",label:"Mai"},{value:"6",label:"Jun"},{value:"7",label:"Jul"},{value:"8",label:"Ago"},{value:"9",label:"Set"},{value:"10",label:"Out"},{value:"11",label:"Nov"},{value:"12",label:"Dez"}]} />
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="w-28 sm:w-32">
+              <CustomSelect 
+                value={filterYear} 
+                onChange={setFilterYear as any} 
+                options={[
+                  { value: "Todos", label: "Todos" },
+                  { value: "2025", label: "2025" },
+                  { value: "2026", label: "2026" }
+                ]} 
+              />
+            </div>
+            <div className="w-28 sm:w-32">
+              <CustomSelect 
+                value={filterMonth || "Todos"} 
+                onChange={(val) => setFilterMonth(val === "Todos" ? "" : String(val))} 
+                options={[
+                  { value: "Todos", label: "Todos" },
+                  { value: "1", label: "Jan" },
+                  { value: "2", label: "Fev" },
+                  { value: "3", label: "Mar" },
+                  { value: "4", label: "Abr" },
+                  { value: "5", label: "Mai" },
+                  { value: "6", label: "Jun" },
+                  { value: "7", label: "Jul" },
+                  { value: "8", label: "Ago" },
+                  { value: "9", label: "Set" },
+                  { value: "10", label: "Out" },
+                  { value: "11", label: "Nov" },
+                  { value: "12", label: "Dez" }
+                ]} 
+              />
+            </div>
           </div>
         </div>
       </div>
