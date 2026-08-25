@@ -23,6 +23,7 @@ import {
 import { 
   BarChart, 
   Bar, 
+  Cell,
   XAxis, 
   YAxis, 
   CartesianGrid, 
@@ -978,12 +979,6 @@ export default function DashboardPage() {
               <ResponsiveContainer width="100%" height="100%">
                 {budgetChartType === "composed" ? (
                   <ComposedChart data={budgetChartData} margin={{ top: 15, right: 15, left: -10, bottom: 25 }}>
-                    <defs>
-                      <linearGradient id="budgetLimitBarGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor={primaryColor || "#6366f1"} stopOpacity={0.85} />
-                        <stop offset="100%" stopColor={primaryColor || "#6366f1"} stopOpacity={0.35} />
-                      </linearGradient>
-                    </defs>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" className="dark:stroke-slate-800" />
                     <XAxis 
                       dataKey="name" 
@@ -1017,10 +1012,17 @@ export default function DashboardPage() {
                     <Bar 
                       dataKey="limite" 
                       name="limite" 
-                      fill="url(#budgetLimitBarGrad)" 
                       radius={[8, 8, 0, 0]} 
                       barSize={36} 
-                    />
+                    >
+                      {budgetChartData.map((entry, index) => (
+                        <Cell 
+                          key={`budget-composed-cell-${index}`} 
+                          fill={entry.color || primaryColor || "#6366f1"} 
+                          fillOpacity={0.85} 
+                        />
+                      ))}
+                    </Bar>
                     <Line 
                       type="monotone" 
                       dataKey="gasto" 
@@ -1034,10 +1036,6 @@ export default function DashboardPage() {
                 ) : budgetChartType === "bar" ? (
                   <BarChart data={budgetChartData} margin={{ top: 15, right: 15, left: -10, bottom: 25 }}>
                     <defs>
-                      <linearGradient id="budgetBarLimit" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor={primaryColor || "#6366f1"} stopOpacity={1} />
-                        <stop offset="100%" stopColor={primaryColor || "#6366f1"} stopOpacity={0.7} />
-                      </linearGradient>
                       <linearGradient id="budgetBarSpent" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="0%" stopColor="#f43f5e" stopOpacity={1} />
                         <stop offset="100%" stopColor="#e11d48" stopOpacity={0.7} />
@@ -1054,7 +1052,11 @@ export default function DashboardPage() {
                       contentStyle={{ backgroundColor: 'rgba(15, 23, 42, 0.9)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '12px', color: '#f8fafc' }} 
                       itemStyle={{ color: '#e2e8f0', fontWeight: 600 }}
                     />
-                    <Bar dataKey="limite" name="limite" fill="url(#budgetBarLimit)" radius={[6, 6, 0, 0]} barSize={20} />
+                    <Bar dataKey="limite" name="limite" radius={[6, 6, 0, 0]} barSize={20}>
+                      {budgetChartData.map((entry, index) => (
+                        <Cell key={`budget-bar-cell-${index}`} fill={entry.color || primaryColor || "#6366f1"} />
+                      ))}
+                    </Bar>
                     <Bar dataKey="gasto" name="gasto" fill="url(#budgetBarSpent)" radius={[6, 6, 0, 0]} barSize={20} />
                   </BarChart>
                 ) : (
@@ -1078,7 +1080,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Cards de Resumo por Categoria Orçamentada */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 mt-6 pt-4 border-t border-slate-100 dark:border-slate-800">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mt-6 pt-4 border-t border-slate-100 dark:border-slate-800">
               {budgetChartData.map((item) => {
                 const isOver = item.gasto > item.limite;
                 const percentColor = isOver 
@@ -1090,12 +1092,18 @@ export default function DashboardPage() {
                 return (
                   <div 
                     key={item.id}
-                    className="p-3.5 rounded-xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-700/60 space-y-2 hover:border-primary/40 transition-colors"
+                    className="card-budget-item relative overflow-hidden group p-4 rounded-2xl glass-card border border-slate-200/60 dark:border-slate-800 space-y-3 transition-all duration-500 hover:-translate-y-1.5 hover:shadow-xl cursor-default"
                   >
-                    <div className="flex items-center justify-between gap-2">
+                    {/* Ambient Glow Orb on Hover (idêntico ao Top Categorias) */}
+                    <div 
+                      className="absolute -bottom-10 left-1/2 -translate-x-1/2 w-36 h-24 blur-[38px] pointer-events-none rounded-full transition-opacity duration-500 opacity-0 group-hover:opacity-40" 
+                      style={{ backgroundColor: item.color || 'var(--primary)' }}
+                    />
+
+                    <div className="flex items-center justify-between gap-2 relative z-10">
                       <div className="flex items-center gap-2 min-w-0">
-                        <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
-                        <span className="font-bold text-xs text-slate-800 dark:text-slate-200 truncate" title={item.name}>
+                        <div className="w-3.5 h-3.5 rounded-full shrink-0 shadow-xs" style={{ backgroundColor: item.color }} />
+                        <span className="font-bold text-sm text-slate-800 dark:text-slate-200 truncate" title={item.name}>
                           {item.name}
                         </span>
                       </div>
@@ -1104,22 +1112,23 @@ export default function DashboardPage() {
                       </span>
                     </div>
 
-                    <div className="flex items-baseline justify-between text-xs font-semibold">
+                    <div className="flex items-baseline justify-between text-xs font-semibold relative z-10">
                       <span className="text-slate-500 dark:text-slate-400">
-                        Gasto: <strong className="text-slate-900 dark:text-white font-bold">{formatCurrency(item.gasto)}</strong>
+                        Gasto: <strong className={isOver ? "text-rose-600 dark:text-rose-400 font-bold" : "text-slate-900 dark:text-white font-bold"}>{formatCurrency(item.gasto)}</strong>
                       </span>
                       <span className="text-slate-400 text-[11px]">
                         Teto: {formatCurrency(item.limite)}
                       </span>
                     </div>
 
-                    {/* Progress Bar */}
-                    <div className="w-full bg-slate-200 dark:bg-slate-700 h-1.5 rounded-full overflow-hidden">
+                    {/* Progress Bar Container with Category Color */}
+                    <div className="w-full bg-slate-100 dark:bg-slate-800/50 h-2 rounded-full overflow-hidden relative z-10 mt-1">
                       <div 
-                        className={`h-full rounded-full transition-all duration-500 ${
-                          isOver ? "bg-rose-500" : item.percent >= 70 ? "bg-amber-500" : "bg-emerald-500"
-                        }`}
-                        style={{ width: `${Math.min(item.percent, 100)}%` }}
+                        className="h-full rounded-full transition-all duration-1000 ease-out"
+                        style={{ 
+                          width: `${Math.min(item.percent, 100)}%`,
+                          backgroundColor: item.color 
+                        }} 
                       />
                     </div>
                   </div>
