@@ -20,6 +20,7 @@ import {
   ChevronRight,
   PieChart
 } from "lucide-react";
+import { ModalPortal } from "@/components/ModalPortal";
 import { 
   BarChart, 
   Bar, 
@@ -1161,7 +1162,8 @@ export default function DashboardPage() {
 
       {/* 🌟 Premium Pop-up Modal for Category Group Drill-down */}
       {selectedGroupModal && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-md animate-in fade-in duration-200">
+        <ModalPortal>
+          <div className="fixed inset-0 z-[150] w-screen h-screen flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-md animate-in fade-in duration-200">
           <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-lg border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col max-h-[88vh] animate-in zoom-in-95 duration-200">
             {/* Modal Header */}
             <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/70 dark:bg-slate-900/70">
@@ -1274,11 +1276,13 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
+      </ModalPortal>
       )}
 
       {/* Welcome Premium Modal */}
       {showWelcome && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-700">
+        <ModalPortal>
+          <div className="fixed inset-0 z-[150] w-screen h-screen flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-700">
           <div 
             className="relative w-full max-w-md rounded-[20px] overflow-hidden p-[2px] group"
             style={{
@@ -1379,6 +1383,7 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
+      </ModalPortal>
       )}
     </div>
   );

@@ -26,6 +26,7 @@ import {
 import { CustomSelect } from "@/components/CustomSelect";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { CategoryIcon, getStoredCategoryIcons } from "@/components/CategoryIcon";
+import { ModalPortal } from "@/components/ModalPortal";
 import { toast } from "sonner";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useSettings } from "@/lib/SettingsContext";
@@ -762,7 +763,7 @@ export default function InvestimentosPage() {
   const totalInvested = investments.reduce((acc: number, curr: any) => acc + curr.balance, 0);
 
   return (
-    <div className="space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="space-y-12 animate-in fade-in duration-300">
       
       {/* ========================================================================= */}
       {/* SECÇÃO 1: INVESTIMENTOS & EVOLUÇÃO PATRIMONIAL */}
@@ -1242,191 +1243,195 @@ export default function InvestimentosPage() {
       {/* MODAL: AJUSTAR SALDO DE ATIVO */}
       {/* ========================================================================= */}
       {adjustModalOpen && adjustInv && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-2xl shadow-2xl p-6 relative border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-200">
-            <button onClick={() => setAdjustModalOpen(false)} className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-              <X className="w-5 h-5" />
-            </button>
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
-              {adjustType === "add" ? "Adicionar Valor" : "Retirar Valor"}
-            </h2>
-            <p className="text-slate-500 dark:text-slate-400 mb-6 text-sm">
-              Ajusta o saldo do teu ativo <strong className="text-slate-700 dark:text-slate-200">{adjustInv.name}</strong>.
-            </p>
-            <form onSubmit={handleAdjustBalance} className="space-y-6">
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Valor (€)</label>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">€</span>
-                  <input 
-                    type="number" 
-                    step="0.01" 
-                    required 
-                    autoFocus
-                    value={adjustAmount} 
-                    onChange={e => setAdjustAmount(e.target.value)} 
-                    className="w-full pl-10 pr-4 py-3 text-lg font-bold border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary outline-none transition-all" 
-                    placeholder="0.00" 
-                  />
-                </div>
-              </div>
-
-              {adjustType === "remove" && (
-                <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 space-y-2">
-                  <label className="flex items-center gap-2.5 cursor-pointer">
-                    <input 
-                      type="checkbox"
-                      checked={transferToBalance}
-                      onChange={(e) => setTransferToBalance(e.target.checked)}
-                      className="w-4 h-4 text-primary rounded border-slate-300 focus:ring-primary accent-primary"
-                    />
-                    <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                      Creditar diretamente no &quot;Saldo Atual&quot;
-                    </span>
-                  </label>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 pl-6 leading-tight">
-                    Cria automaticamente o movimento <strong>&quot;Investimento - Saída&quot;</strong> creditado na tua conta sem inflacionar as receitas operacionais do mês.
-                  </p>
-                </div>
-              )}
-
-              <button 
-                type="submit" 
-                className={`w-full py-4 text-white font-bold rounded-xl shadow-lg transition-all ${
-                  adjustType === "add" 
-                  ? "bg-emerald-500 hover:bg-emerald-600 shadow-emerald-500/30" 
-                  : "bg-rose-500 hover:bg-rose-600 shadow-rose-500/30"
-                }`}
-              >
-                {adjustType === "add" ? "Confirmar Adição" : "Confirmar Remoção"}
+        <ModalPortal>
+          <div className="fixed inset-0 z-[150] w-screen h-screen flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md animate-in fade-in duration-200">
+            <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-2xl shadow-2xl p-6 relative border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-200">
+              <button onClick={() => setAdjustModalOpen(false)} className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                <X className="w-5 h-5" />
               </button>
-            </form>
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
+                {adjustType === "add" ? "Adicionar Valor" : "Retirar Valor"}
+              </h2>
+              <p className="text-slate-500 dark:text-slate-400 mb-6 text-sm">
+                Ajusta o saldo do teu ativo <strong className="text-slate-700 dark:text-slate-200">{adjustInv.name}</strong>.
+              </p>
+              <form onSubmit={handleAdjustBalance} className="space-y-6">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Valor (€)</label>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">€</span>
+                    <input 
+                      type="number" 
+                      step="0.01" 
+                      required 
+                      autoFocus
+                      value={adjustAmount} 
+                      onChange={e => setAdjustAmount(e.target.value)} 
+                      className="w-full pl-10 pr-4 py-3 text-lg font-bold border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary outline-none transition-all" 
+                      placeholder="0.00" 
+                    />
+                  </div>
+                </div>
+
+                {adjustType === "remove" && (
+                  <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 space-y-2">
+                    <label className="flex items-center gap-2.5 cursor-pointer">
+                      <input 
+                        type="checkbox"
+                        checked={transferToBalance}
+                        onChange={(e) => setTransferToBalance(e.target.checked)}
+                        className="w-4 h-4 text-primary rounded border-slate-300 focus:ring-primary accent-primary"
+                      />
+                      <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                        Creditar diretamente no &quot;Saldo Atual&quot;
+                      </span>
+                    </label>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 pl-6 leading-tight">
+                      Cria automaticamente o movimento <strong>&quot;Investimento - Saída&quot;</strong> creditado na tua conta sem inflacionar as receitas operacionais do mês.
+                    </p>
+                  </div>
+                )}
+
+                <button 
+                  type="submit" 
+                  className={`w-full py-4 text-white font-bold rounded-xl shadow-lg transition-all ${
+                    adjustType === "add" 
+                    ? "bg-emerald-500 hover:bg-emerald-600 shadow-emerald-500/30" 
+                    : "bg-rose-500 hover:bg-rose-600 shadow-rose-500/30"
+                  }`}
+                >
+                  {adjustType === "add" ? "Confirmar Adição" : "Confirmar Remoção"}
+                </button>
+              </form>
+            </div>
           </div>
-        </div>
+        </ModalPortal>
       )}
 
       {/* ========================================================================= */}
       {/* MODAL: CRIAR / EDITAR META MENSAL */}
       {/* ========================================================================= */}
       {goalModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-2xl shadow-2xl p-6 relative border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-200">
-            <button 
-              onClick={() => setGoalModalOpen(false)} 
-              className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
-            
-            <div className="flex items-center gap-3 mb-2">
-              <div className="p-2.5 rounded-xl bg-primary/10 text-primary">
-                <Target className="w-5 h-5" />
-              </div>
-              <h2 className="text-xl font-bold text-slate-900 dark:text-white">
-                {editingGoalId ? "Editar Meta Mensal" : "Nova Meta Mensal"}
-              </h2>
-            </div>
-
-            <p className="text-slate-500 dark:text-slate-400 mb-6 text-sm">
-              Define um objetivo para o mês de <strong className="text-slate-700 dark:text-slate-200">{goalFilterMonth}/{goalFilterYear}</strong> com monitorização inteligente.
-            </p>
-
-            <form onSubmit={handleSaveGoal} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Título da Meta</label>
-                <input 
-                  type="text" 
-                  required 
-                  autoFocus
-                  value={goalTitle} 
-                  onChange={e => setGoalTitle(e.target.value)} 
-                  className="w-full px-4 py-2.5 text-sm font-semibold border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary outline-none transition-all" 
-                  placeholder="Ex: Aporte no S&P500, Reduzir Alimentação..." 
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Tipo de Meta</label>
-                <CustomSelect
-                  value={goalType}
-                  onChange={(val) => setGoalType(val as any)}
-                  options={[
-                    { value: "investment_deposit", label: "Aporte em Investimento (€)" },
-                    { value: "expense_ceiling", label: "Teto de Despesa (€)" },
-                    { value: "net_savings", label: "Poupança Líquida do Mês (€)" },
-                    { value: "savings_rate", label: "Taxa de Poupança (% da Receita)" }
-                  ]}
-                />
-              </div>
-
-              {goalType === "investment_deposit" && (
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Ativo de Investimento (Opcional)</label>
-                  <CustomSelect
-                    value={goalInvestmentId}
-                    onChange={(val) => setGoalInvestmentId(val as string)}
-                    options={[
-                      { value: "", label: "Todos os Investimentos (Total)" },
-                      ...investments.map(i => ({ value: String(i.id), label: `${i.name} (${i.asset_type})` }))
-                    ]}
-                  />
+        <ModalPortal>
+          <div className="fixed inset-0 z-[150] w-screen h-screen flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md animate-in fade-in duration-200">
+            <div className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-2xl shadow-2xl p-6 relative border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-200">
+              <button 
+                onClick={() => setGoalModalOpen(false)} 
+                className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              
+              <div className="flex items-center gap-3 mb-2">
+                <div className="p-2.5 rounded-xl bg-primary/10 text-primary">
+                  <Target className="w-5 h-5" />
                 </div>
-              )}
+                <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+                  {editingGoalId ? "Editar Meta Mensal" : "Nova Meta Mensal"}
+                </h2>
+              </div>
 
-              {goalType === "expense_ceiling" && (
+              <p className="text-slate-500 dark:text-slate-400 mb-6 text-sm">
+                Define um objetivo para o mês de <strong className="text-slate-700 dark:text-slate-200">{goalFilterMonth}/{goalFilterYear}</strong> com monitorização inteligente.
+              </p>
+
+              <form onSubmit={handleSaveGoal} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Categoria de Despesa (Opcional)</label>
-                  <CustomSelect
-                    value={goalCategoryId}
-                    onChange={(val) => setGoalCategoryId(val as string)}
-                    options={[
-                      { value: "", label: "Todas as Despesas (Total)" },
-                      ...categories.filter(c => c.type === 'expense').map(c => ({ value: String(c.id), label: c.name, color: c.color, icon: c.icon }))
-                    ]}
-                  />
-                </div>
-              )}
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  {goalType === "savings_rate" ? "Taxa Alvo (%)" : "Valor Alvo (€)"}
-                </label>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">
-                    {goalType === "savings_rate" ? "%" : "€"}
-                  </span>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Título da Meta</label>
                   <input 
-                    type="number" 
-                    step="0.01" 
-                    min="0.01"
+                    type="text" 
                     required 
-                    value={goalTargetAmount} 
-                    onChange={e => setGoalTargetAmount(e.target.value)} 
-                    className="w-full pl-10 pr-4 py-2.5 text-base font-bold border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary outline-none transition-all" 
-                    placeholder={goalType === "savings_rate" ? "30" : "500.00"} 
+                    autoFocus
+                    value={goalTitle} 
+                    onChange={e => setGoalTitle(e.target.value)} 
+                    className="w-full px-4 py-2.5 text-sm font-semibold border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary outline-none transition-all" 
+                    placeholder="Ex: Aporte no S&P500, Reduzir Alimentação..." 
                   />
                 </div>
-              </div>
 
-              <div className="flex items-center gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setGoalModalOpen(false)}
-                  className="w-1/2 py-3 font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all text-sm"
-                >
-                  Cancelar
-                </button>
-                <button 
-                  type="submit" 
-                  disabled={isSavingGoal}
-                  className="w-1/2 py-3 bg-primary hover:bg-primary/90 text-white font-bold rounded-xl shadow-lg shadow-primary/30 transition-all disabled:opacity-50 text-sm"
-                >
-                  {isSavingGoal ? "A guardar..." : "Guardar Meta"}
-                </button>
-              </div>
-            </form>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Tipo de Meta</label>
+                  <CustomSelect
+                    value={goalType}
+                    onChange={(val) => setGoalType(val as any)}
+                    options={[
+                      { value: "investment_deposit", label: "Aporte em Investimento (€)" },
+                      { value: "expense_ceiling", label: "Teto de Despesa (€)" },
+                      { value: "net_savings", label: "Poupança Líquida do Mês (€)" },
+                      { value: "savings_rate", label: "Taxa de Poupança (% da Receita)" }
+                    ]}
+                  />
+                </div>
+
+                {goalType === "investment_deposit" && (
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Ativo de Investimento (Opcional)</label>
+                    <CustomSelect
+                      value={goalInvestmentId}
+                      onChange={(val) => setGoalInvestmentId(val as string)}
+                      options={[
+                        { value: "", label: "Todos os Investimentos (Total)" },
+                        ...investments.map(i => ({ value: String(i.id), label: `${i.name} (${i.asset_type})` }))
+                      ]}
+                    />
+                  </div>
+                )}
+
+                {goalType === "expense_ceiling" && (
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Categoria de Despesa (Opcional)</label>
+                    <CustomSelect
+                      value={goalCategoryId}
+                      onChange={(val) => setGoalCategoryId(val as string)}
+                      options={[
+                        { value: "", label: "Todas as Despesas (Total)" },
+                        ...categories.filter(c => c.type === 'expense').map(c => ({ value: String(c.id), label: c.name, color: c.color, icon: c.icon }))
+                      ]}
+                    />
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    {goalType === "savings_rate" ? "Taxa Alvo (%)" : "Valor Alvo (€)"}
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">
+                      {goalType === "savings_rate" ? "%" : "€"}
+                    </span>
+                    <input 
+                      type="number" 
+                      step="0.01" 
+                      min="0.01"
+                      required 
+                      value={goalTargetAmount} 
+                      onChange={e => setGoalTargetAmount(e.target.value)} 
+                      className="w-full pl-10 pr-4 py-2.5 text-base font-bold border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary outline-none transition-all" 
+                      placeholder={goalType === "savings_rate" ? "30" : "500.00"} 
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setGoalModalOpen(false)}
+                    className="w-1/2 py-3 font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all text-sm"
+                  >
+                    Cancelar
+                  </button>
+                  <button 
+                    type="submit" 
+                    disabled={isSavingGoal}
+                    className="w-1/2 py-3 bg-primary hover:bg-primary/90 text-white font-bold rounded-xl shadow-lg shadow-primary/30 transition-all disabled:opacity-50 text-sm"
+                  >
+                    {isSavingGoal ? "A guardar..." : "Guardar Meta"}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
-        </div>
+        </ModalPortal>
       )}
 
       {/* FLOATING ACTION BAR FOR GOALS BULK SELECTION COM TRANSIÇÃO SUAVE */}

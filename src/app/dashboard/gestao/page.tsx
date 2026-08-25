@@ -25,6 +25,7 @@ import { CustomSelect } from "@/components/CustomSelect";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { useSettings } from "@/lib/SettingsContext";
 import { CategoryIcon, getStoredCategoryIcons } from "@/components/CategoryIcon";
+import { ModalPortal } from "@/components/ModalPortal";
 import { toast } from "sonner";
 
 export default function GestaoPage() {
@@ -883,40 +884,43 @@ export default function GestaoPage() {
 
         {/* Modal Nova Categoria */}
         {isAddingCategory && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-            <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 w-full max-w-sm shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-200">
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Nova Categoria</h3>
-              <input 
-                type="text" 
-                value={newCatName} 
-                onChange={e => setNewCatName(e.target.value)} 
-                placeholder="Ex: Streaming, Ginásio..." 
-                className="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary outline-none mb-6 text-sm font-medium"
-                autoFocus
-              />
-              <div className="flex gap-3">
-                <button 
-                  onClick={() => { setIsAddingCategory(false); setNewCatName(""); }} 
-                  className="flex-1 py-2.5 font-semibold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors text-sm"
-                >
-                  Cancelar
-                </button>
-                <button 
-                  onClick={confirmAddCategory}
-                  disabled={!newCatName.trim()}
-                  className="flex-1 py-2.5 bg-primary text-white font-bold rounded-xl hover:bg-primary/90 transition-colors disabled:opacity-50 text-sm shadow-lg shadow-primary/20"
-                >
-                  Guardar
-                </button>
+          <ModalPortal>
+            <div className="fixed inset-0 z-[150] w-screen h-screen flex items-center justify-center bg-black/70 backdrop-blur-md p-4 animate-in fade-in duration-200">
+              <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 w-full max-w-sm shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-200">
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Nova Categoria</h3>
+                <input 
+                  type="text" 
+                  value={newCatName} 
+                  onChange={e => setNewCatName(e.target.value)} 
+                  placeholder="Ex: Streaming, Ginásio..." 
+                  className="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary outline-none mb-6 text-sm font-medium" 
+                  autoFocus
+                />
+                <div className="flex gap-3">
+                  <button 
+                    onClick={() => { setIsAddingCategory(false); setNewCatName(""); }} 
+                    className="flex-1 py-2.5 font-semibold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors text-sm"
+                  >
+                    Cancelar
+                  </button>
+                  <button 
+                    onClick={confirmAddCategory}
+                    disabled={!newCatName.trim()}
+                    className="flex-1 py-2.5 bg-primary text-white font-bold rounded-xl hover:bg-primary/90 transition-colors disabled:opacity-50 text-sm shadow-lg shadow-primary/20"
+                  >
+                    Guardar
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
+          </ModalPortal>
         )}
 
         {/* 🖼️ Modal Lightbox do Comprovativo / Talão */}
         {viewingReceipt && (
-          <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200">
-            <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200">
+          <ModalPortal>
+            <div className="fixed inset-0 z-[150] w-screen h-screen flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200">
+              <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200">
               {/* Header */}
               <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50">
                 <div className="flex items-center gap-2.5">
@@ -968,6 +972,7 @@ export default function GestaoPage() {
               </div>
             </div>
           </div>
+        </ModalPortal>
         )}
       </div>
 

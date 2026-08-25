@@ -41,6 +41,7 @@ import {
 import { exportToCSV, exportToPDF } from "@/lib/exportUtils";
 import { CategoryIcon, getStoredCategoryIcons, saveStoredCategoryIcon } from "@/components/CategoryIcon";
 import { CategoryIconPickerModal } from "@/components/CategoryIconPickerModal";
+import { ModalPortal } from "@/components/ModalPortal";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { SmartAdvisorToastManager } from "@/components/SmartAdvisorToast";
@@ -544,7 +545,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* Enhanced Tabbed Settings Modal */}
       {isSettingsOpen && mounted && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-md animate-in fade-in duration-200">
+        <ModalPortal>
+          <div className="fixed inset-0 z-[150] w-screen h-screen flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-md animate-in fade-in duration-200">
           <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col max-h-[92vh] animate-in zoom-in-95 duration-200">
             {/* Header */}
             <div className="p-5 sm:p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50 shrink-0">
@@ -1433,6 +1435,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
           </div>
         </div>
+      </ModalPortal>
       )}
 
       {/* 💡 Gestor de Toasts Inteligentes (de 10 em 10 min com cruzamento de dados) */}

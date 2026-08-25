@@ -3,6 +3,7 @@
 import React, { useState, useMemo } from "react";
 import { X, Search, Sparkles, Check, Smile, CircleDot } from "lucide-react";
 import { CategoryIcon } from "./CategoryIcon";
+import { ModalPortal } from "./ModalPortal";
 
 interface CategoryIconPickerModalProps {
   isOpen: boolean;
@@ -253,7 +254,8 @@ export function CategoryIconPickerModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[140] flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-md animate-in fade-in duration-200">
+    <ModalPortal>
+      <div className="fixed inset-0 z-[200] w-screen h-screen flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-md animate-in fade-in duration-200">
       <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-lg border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200">
         {/* Header */}
         <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/80 dark:bg-slate-900/80">
@@ -456,5 +458,6 @@ export function CategoryIconPickerModal({
         </div>
       </div>
     </div>
+  </ModalPortal>
   );
 }

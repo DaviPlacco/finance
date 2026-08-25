@@ -7,6 +7,7 @@ import { PieChart, TrendingDown, AlertTriangle, CheckCircle2, Trash2, X, PiggyBa
 import { CustomSelect } from "@/components/CustomSelect";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { CategoryIcon, getStoredCategoryIcons } from "@/components/CategoryIcon";
+import { ModalPortal } from "@/components/ModalPortal";
 import { toast } from "sonner";
 
 export default function OrcamentosPage() {
@@ -468,7 +469,8 @@ export default function OrcamentosPage() {
 
       {/* MODAL DE EDIÇÃO / CRIAÇÃO DE ORÇAMENTO */}
       {editModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-200">
+        <ModalPortal>
+          <div className="fixed inset-0 z-[150] w-screen h-screen flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md animate-in fade-in duration-200">
           <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-2xl shadow-2xl p-6 relative border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-200">
             <button 
               onClick={() => setEditModalOpen(false)} 
@@ -553,6 +555,7 @@ export default function OrcamentosPage() {
             </form>
           </div>
         </div>
+      </ModalPortal>
       )}
 
       {/* ========================================================================= */}

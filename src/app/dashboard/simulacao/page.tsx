@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from "react";
 import { Lightbulb, Plus, Trash2, TrendingUp, TrendingDown, Wallet, Calculator, FileText, Download, Save, X, Eye } from "lucide-react";
 import { exportSimulacaoToCSV, exportSimulacaoToPDF } from "@/lib/exportUtils";
 import { api } from "@/lib/api";
+import { ModalPortal } from "@/components/ModalPortal";
 import { toast } from "sonner";
 
 type Transaction = {
@@ -467,40 +468,43 @@ export default function SimulacaoPage() {
 
       {/* Modal Guardar Simulação */}
       {showSaveModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl p-6 w-full max-w-md animate-in zoom-in-95 duration-200">
-            <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-4">Guardar Simulação</h3>
-            <p className="text-slate-500 dark:text-slate-400 text-sm mb-4">Dá um nome para identificares esta simulação no futuro (ex: Cenário Pessimista Agosto).</p>
-            <input 
-              type="text" 
-              placeholder="Nome da simulação..." 
-              value={simulationName}
-              onChange={(e) => setSimulationName(e.target.value)}
-              className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800/50 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-medium mb-6"
-              autoFocus
-            />
-            <div className="flex gap-3">
-              <button 
-                onClick={() => setShowSaveModal(false)}
-                className="flex-1 px-4 py-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors font-semibold"
-              >
-                Cancelar
-              </button>
-              <button 
-                onClick={handleSaveSimulation}
-                disabled={isSaving}
-                className="flex-1 px-4 py-3 bg-primary hover:brightness-110 text-white rounded-xl transition-colors font-semibold disabled:opacity-70"
-              >
-                {isSaving ? 'A guardar...' : 'Guardar'}
-              </button>
+        <ModalPortal>
+          <div className="fixed inset-0 z-[150] w-screen h-screen flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md animate-in fade-in duration-200">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl p-6 w-full max-w-md animate-in zoom-in-95 duration-200">
+              <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-4">Guardar Simulação</h3>
+              <p className="text-slate-500 dark:text-slate-400 text-sm mb-4">Dá um nome para identificares esta simulação no futuro (ex: Cenário Pessimista Agosto).</p>
+              <input 
+                type="text" 
+                placeholder="Nome da simulação..." 
+                value={simulationName}
+                onChange={(e) => setSimulationName(e.target.value)}
+                className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800/50 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-medium mb-6"
+                autoFocus
+              />
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => setShowSaveModal(false)}
+                  className="flex-1 px-4 py-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors font-semibold"
+                >
+                  Cancelar
+                </button>
+                <button 
+                  onClick={handleSaveSimulation}
+                  disabled={isSaving}
+                  className="flex-1 px-4 py-3 bg-primary hover:brightness-110 text-white rounded-xl transition-colors font-semibold disabled:opacity-70"
+                >
+                  {isSaving ? 'A guardar...' : 'Guardar'}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        </ModalPortal>
       )}
 
       {/* Modal Ver Simulação */}
       {viewingSimulation && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-200">
+        <ModalPortal>
+          <div className="fixed inset-0 z-[150] w-screen h-screen flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-md animate-in fade-in duration-200">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="p-4 sm:p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/20">
               <div className="min-w-0 pr-2">
@@ -598,6 +602,7 @@ export default function SimulacaoPage() {
             </div>
           </div>
         </div>
+      </ModalPortal>
       )}
     </div>
   );
