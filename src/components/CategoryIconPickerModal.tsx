@@ -234,10 +234,22 @@ export function CategoryIconPickerModal({
 
   if (!isOpen) return null;
 
-  const handleSelect = (emojiChar: string | null) => {
+  const handleSelectEmoji = (emojiChar: string) => {
+    setSelectedEmoji(emojiChar);
+  };
+
+  const handleDoubleClickEmoji = (emojiChar: string) => {
     setSelectedEmoji(emojiChar);
     onSelectIcon(emojiChar);
-    onClose();
+  };
+
+  const handleSave = () => {
+    onSelectIcon(selectedEmoji);
+  };
+
+  const handleRemoveIcon = () => {
+    setSelectedEmoji(null);
+    onSelectIcon(null);
   };
 
   return (
@@ -257,7 +269,7 @@ export function CategoryIconPickerModal({
                 Ícone da Categoria
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Personaliza como <strong className="text-slate-800 dark:text-slate-200">"{categoryName}"</strong> é apresentada
+                Personaliza como <strong className="text-slate-800 dark:text-slate-200">&quot;{categoryName}&quot;</strong> é apresentada
               </p>
             </div>
           </div>
@@ -270,7 +282,7 @@ export function CategoryIconPickerModal({
         </div>
 
         {/* Live Preview Card */}
-        <div className="px-5 py-3.5 bg-slate-100/50 dark:bg-slate-800/30 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+        <div className="px-5 py-3.5 bg-slate-100/60 dark:bg-slate-800/40 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <CategoryIcon
               color={categoryColor}
@@ -290,7 +302,7 @@ export function CategoryIconPickerModal({
           {/* Quick Clear / Use Solid Dot Button */}
           <button
             type="button"
-            onClick={() => handleSelect(null)}
+            onClick={() => setSelectedEmoji(null)}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border ${
               !selectedEmoji
                 ? "bg-primary text-white border-primary shadow-xs"
@@ -350,7 +362,7 @@ export function CategoryIconPickerModal({
           {filteredEmojis ? (
             filteredEmojis.length === 0 ? (
               <div className="py-12 text-center text-slate-400 text-sm">
-                Nenhum ícone encontrado para "{searchTerm}".
+                Nenhum ícone encontrado para &quot;{searchTerm}&quot;.
               </div>
             ) : (
               <div className="grid grid-cols-6 sm:grid-cols-8 gap-2.5">
@@ -360,13 +372,14 @@ export function CategoryIconPickerModal({
                     <button
                       key={idx}
                       type="button"
-                      onClick={() => handleSelect(item.char)}
+                      onClick={() => handleSelectEmoji(item.char)}
+                      onDoubleClick={() => handleDoubleClickEmoji(item.char)}
                       className={`h-12 rounded-2xl flex items-center justify-center text-2xl transition-all duration-200 relative group active:scale-95 ${
                         isSelected
-                          ? "bg-primary/20 border-2 border-primary scale-105 shadow-md"
-                          : "bg-slate-50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-700/60 hover:bg-slate-100 dark:hover:bg-slate-800 hover:scale-110 hover:shadow-md"
+                          ? "bg-primary/20 border-2 border-primary scale-105 shadow-md ring-2 ring-primary/20"
+                          : "bg-slate-50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-700/60 hover:bg-slate-100 dark:hover:bg-slate-800 hover:scale-105 hover:shadow-md"
                       }`}
-                      title={item.name}
+                      title={`${item.name} (Clique para pré-visualizar, duplo clique para guardar)`}
                     >
                       <span className="select-none">{item.char}</span>
                       {isSelected && (
@@ -389,13 +402,14 @@ export function CategoryIconPickerModal({
                       <button
                         key={idx}
                         type="button"
-                        onClick={() => handleSelect(item.char)}
+                        onClick={() => handleSelectEmoji(item.char)}
+                        onDoubleClick={() => handleDoubleClickEmoji(item.char)}
                         className={`h-12 rounded-2xl flex items-center justify-center text-2xl transition-all duration-200 relative group active:scale-95 ${
                           isSelected
-                            ? "bg-primary/20 border-2 border-primary scale-105 shadow-md"
-                            : "bg-slate-50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-700/60 hover:bg-slate-100 dark:hover:bg-slate-800 hover:scale-110 hover:shadow-md"
+                            ? "bg-primary/20 border-2 border-primary scale-105 shadow-md ring-2 ring-primary/20"
+                            : "bg-slate-50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-700/60 hover:bg-slate-100 dark:hover:bg-slate-800 hover:scale-105 hover:shadow-md"
                         }`}
-                        title={item.name}
+                        title={`${item.name} (Clique para pré-visualizar, duplo clique para guardar)`}
                       >
                         <span className="select-none">{item.char}</span>
                         {isSelected && (
@@ -413,21 +427,32 @@ export function CategoryIconPickerModal({
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50">
+        <div className="p-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/70 dark:bg-slate-900/70 gap-2">
           <button
             type="button"
-            onClick={() => handleSelect(null)}
-            className="px-4 py-2 text-xs font-bold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 transition-colors"
+            onClick={handleRemoveIcon}
+            className="px-3.5 py-2 text-xs font-bold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 transition-colors"
           >
-            Remover Ícone (Manter Bolinha)
+            Remover Ícone
           </button>
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-5 py-2 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-bold hover:opacity-90 transition-opacity"
-          >
-            Fechar
-          </button>
+          
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 text-xs font-bold transition-all"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              className="px-5 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-white text-xs font-bold transition-all shadow-md shadow-primary/25 flex items-center gap-1.5 active:scale-95"
+            >
+              <Check className="w-4 h-4" />
+              <span>Guardar Ícone</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>

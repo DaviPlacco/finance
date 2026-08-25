@@ -10,6 +10,31 @@ export interface CategoryIconProps {
   showBackground?: boolean;
 }
 
+export function getStoredCategoryIcons(): Record<string, string> {
+  if (typeof window === "undefined") return {};
+  try {
+    const data = localStorage.getItem("davi_finance_cat_icons");
+    return data ? JSON.parse(data) : {};
+  } catch {
+    return {};
+  }
+}
+
+export function saveStoredCategoryIcon(catId: string | number, icon: string | null) {
+  if (typeof window === "undefined") return;
+  try {
+    const current = getStoredCategoryIcons();
+    if (icon && icon.trim() !== "" && icon !== "dot") {
+      current[String(catId)] = icon;
+    } else {
+      delete current[String(catId)];
+    }
+    localStorage.setItem("davi_finance_cat_icons", JSON.stringify(current));
+  } catch (err) {
+    console.error("Erro ao guardar ícone local:", err);
+  }
+}
+
 export function CategoryIcon({
   color = "#6366f1",
   icon,

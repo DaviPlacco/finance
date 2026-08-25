@@ -37,7 +37,7 @@ import {
 } from "recharts";
 import { CustomSelect } from "@/components/CustomSelect";
 import { useSettings } from "@/lib/SettingsContext";
-import { CategoryIcon } from "@/components/CategoryIcon";
+import { CategoryIcon, getStoredCategoryIcons } from "@/components/CategoryIcon";
 import Link from "next/link";
 
 export default function DashboardPage() {
@@ -90,13 +90,22 @@ export default function DashboardPage() {
       setSummary(sumRes.data);
       setTransactions(transRes.data || []);
       
-      let fetchedCats: any[] = Array.isArray(catRes.data) ? catRes.data : [];
+      const storedIcons = getStoredCategoryIcons();
+      let fetchedCats: any[] = (Array.isArray(catRes.data) ? catRes.data : []).map((c: any) => ({
+        ...c,
+        icon: c.icon || storedIcons[String(c.id)] || null
+      }));
       if (fetchedCats.length > 0) {
         try { localStorage.setItem("pl_categories_cache", JSON.stringify(fetchedCats)); } catch {}
       } else {
         try {
           const cached = localStorage.getItem("pl_categories_cache");
-          if (cached) fetchedCats = JSON.parse(cached);
+          if (cached) {
+            fetchedCats = JSON.parse(cached).map((c: any) => ({
+              ...c,
+              icon: c.icon || storedIcons[String(c.id)] || null
+            }));
+          }
         } catch {}
       }
 

@@ -6,7 +6,7 @@ import { api } from "@/lib/api";
 import { PieChart, TrendingDown, AlertTriangle, CheckCircle2, Trash2, X, PiggyBank, Pencil, Plus } from "lucide-react";
 import { CustomSelect } from "@/components/CustomSelect";
 import { ConfirmModal } from "@/components/ConfirmModal";
-import { CategoryIcon } from "@/components/CategoryIcon";
+import { CategoryIcon, getStoredCategoryIcons } from "@/components/CategoryIcon";
 import { toast } from "sonner";
 
 export default function OrcamentosPage() {
@@ -63,7 +63,11 @@ export default function OrcamentosPage() {
         api.get("/goals").catch(() => ({ data: [] }))
       ]);
 
-      let fetchedCats: any[] = Array.isArray(catRes.data) ? catRes.data : [];
+      const storedIcons = getStoredCategoryIcons();
+      let fetchedCats: any[] = (Array.isArray(catRes.data) ? catRes.data : []).map((c: any) => ({
+        ...c,
+        icon: c.icon || storedIcons[String(c.id)] || null
+      }));
       
       // Fallback cache local para categorias
       if (fetchedCats.length > 0) {
@@ -71,7 +75,12 @@ export default function OrcamentosPage() {
       } else {
         try {
           const cached = localStorage.getItem("pl_categories_cache");
-          if (cached) fetchedCats = JSON.parse(cached);
+          if (cached) {
+            fetchedCats = JSON.parse(cached).map((c: any) => ({
+              ...c,
+              icon: c.icon || storedIcons[String(c.id)] || null
+            }));
+          }
         } catch {}
       }
 

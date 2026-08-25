@@ -25,7 +25,7 @@ import {
 } from "lucide-react";
 import { CustomSelect } from "@/components/CustomSelect";
 import { ConfirmModal } from "@/components/ConfirmModal";
-import { CategoryIcon } from "@/components/CategoryIcon";
+import { CategoryIcon, getStoredCategoryIcons } from "@/components/CategoryIcon";
 import { toast } from "sonner";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useSettings } from "@/lib/SettingsContext";
@@ -106,9 +106,17 @@ export default function InvestimentosPage() {
   }, [filterYear, filterMonth, filterDay]);
 
   useEffect(() => {
-    setSelectedGoals([]);
     fetchGoalsData();
   }, [goalFilterYear, goalFilterMonth]);
+
+  useEffect(() => {
+    const handleCategoriesUpdate = () => {
+      fetchData();
+      fetchGoalsData();
+    };
+    window.addEventListener("categories-updated", handleCategoriesUpdate);
+    return () => window.removeEventListener("categories-updated", handleCategoriesUpdate);
+  }, []);
 
   async function fetchData() {
     try {
@@ -122,9 +130,13 @@ export default function InvestimentosPage() {
         api.get(`/investments/history?${query.toString()}`),
         api.get("/categories")
       ]);
-      setInvestments(invRes.data);
-      setChartData(histRes.data);
-      setCategories(catRes.data);
+      const storedIcons = getStoredCategoryIcons();
+      setInvestments(invRes.data || []);
+      setChartData(histRes.data || []);
+      setCategories((catRes.data || []).map((c: any) => ({
+        ...c,
+        icon: c.icon || storedIcons[String(c.id)] || null
+      })));
     } catch (err) {
       console.error(err);
     } finally {

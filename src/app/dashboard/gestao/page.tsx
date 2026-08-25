@@ -24,7 +24,7 @@ import {
 import { CustomSelect } from "@/components/CustomSelect";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { useSettings } from "@/lib/SettingsContext";
-import { CategoryIcon } from "@/components/CategoryIcon";
+import { CategoryIcon, getStoredCategoryIcons } from "@/components/CategoryIcon";
 import { toast } from "sonner";
 
 export default function GestaoPage() {
@@ -87,8 +87,12 @@ export default function GestaoPage() {
         api.get(`/transactions?${query.toString()}`),
         api.get("/categories")
       ]);
-      setTransactions(transRes.data);
-      setCategories(catRes.data);
+      const storedIcons = getStoredCategoryIcons();
+      setTransactions(transRes.data || []);
+      setCategories((catRes.data || []).map((c: any) => ({
+        ...c,
+        icon: c.icon || storedIcons[String(c.id)] || null
+      })));
     } catch (err) {
       console.error(err);
     } finally {

@@ -39,7 +39,7 @@ import {
   CARD_ACCENT_OPTIONS 
 } from "@/lib/SettingsContext";
 import { exportToCSV, exportToPDF } from "@/lib/exportUtils";
-import { CategoryIcon } from "@/components/CategoryIcon";
+import { CategoryIcon, getStoredCategoryIcons, saveStoredCategoryIcon } from "@/components/CategoryIcon";
 import { CategoryIconPickerModal } from "@/components/CategoryIconPickerModal";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
@@ -110,7 +110,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         api.get("/categories"),
         api.get("/category-groups")
       ]);
-      setCategoriesList(catsRes.data);
+      const storedIcons = getStoredCategoryIcons();
+      const mergedCats = (catsRes.data || []).map((c: any) => ({
+        ...c,
+        icon: c.icon || storedIcons[String(c.id)] || null
+      }));
+      setCategoriesList(mergedCats);
       setGroupsList(groupsRes.data);
     } catch (err) {
       console.error("Erro ao buscar categorias e grupos", err);
@@ -146,7 +151,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const handleCategoryIconChange = async (newIcon: string | null) => {
     if (!editingIconCategory) return;
     const cat = editingIconCategory;
+    saveStoredCategoryIcon(cat.id, newIcon);
     setCategoriesList(prev => prev.map(c => c.id === cat.id ? { ...c, icon: newIcon } : c));
+    toast.success(`Ícone da categoria "${cat.name}" guardado com sucesso!`);
+    window.dispatchEvent(new CustomEvent("categories-updated"));
+    setEditingIconCategory(null);
+
     try {
       await api.put(`/categories/${cat.id}`, {
         name: cat.name,
@@ -156,13 +166,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         budget_limit: cat.budget_limit,
         group_id: cat.group_id
       });
-      toast.success(`Ícone da categoria "${cat.name}" atualizado!`);
-      window.dispatchEvent(new CustomEvent("categories-updated"));
     } catch (err) {
-      console.error("Erro ao atualizar ícone da categoria", err);
-      toast.error("Erro ao guardar o ícone da categoria.");
-    } finally {
-      setEditingIconCategory(null);
+      console.warn("Backend sync notification:", err);
     }
   };
 
