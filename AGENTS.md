@@ -27,7 +27,19 @@ Este repositório segue os mais rigorosos padrões de UX/UI, engenharia de softw
 
 ---
 
-## 🛠️ 3. ARQUITETURA & QUALIDADE DO CÓDIGO
+## ✨ 3. TRANSIÇÕES FLUIDAS E ANIMAÇÕES DE ENTRADA/SAÍDA (ZERO DESAPARIÇÕES ABRUPTAS)
+
+- **Transições de Aparição e Desaparição**:
+  - Toda e qualquer barra flutuante (floating action bar de seleção em lote), toast, modal, pop-up ou elemento dinâmico **DEVE ter transições suaves tanto ao surgir como ao desaparecer**.
+  - **Proibição de Desmontagem Abrupta**: Nunca remover subitamente da tela elementos flutuantes com desmontagem instantânea sem transição de fade/slide.
+  - Utilizar classes de transição refinadas do Tailwind com curvas de física natural:
+    - Estado Visível: `translate-y-0 opacity-100 scale-100 pointer-events-auto transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]`
+    - Estado Oculto: `translate-y-8 opacity-0 scale-95 pointer-events-none transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]`
+  - Modais e overlays devem utilizar sempre `backdrop-blur` com transições coordenadas de escala (`zoom-in-95`) e opacidade (`fade-in` / `fade-out`).
+
+---
+
+## 🛠️ 4. ARQUITETURA & QUALIDADE DO CÓDIGO
 
 - **Zero Placeholders**: Nunca deixar comentários de omissão ou código incompleto.
 - **Sincronização de Estado**: Manter sincronização reativa através de eventos globais de dashboard (`categories-updated`, `groups-updated`, etc.) e mutações otimistas com feedback de Toast.
