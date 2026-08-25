@@ -5,6 +5,7 @@ import { useMonthFilter } from "@/hooks/useMonthFilter";
 import { api } from "@/lib/api";
 import { PieChart, TrendingDown, AlertTriangle, CheckCircle2, Trash2, X, PiggyBank, Pencil, Plus } from "lucide-react";
 import { CustomSelect } from "@/components/CustomSelect";
+import { ConfirmModal } from "@/components/ConfirmModal";
 import { toast } from "sonner";
 
 export default function OrcamentosPage() {
@@ -18,6 +19,10 @@ export default function OrcamentosPage() {
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>("");
   const [editBudgetAmount, setEditBudgetAmount] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+
+  // Confirmação de exclusão
+  const [budgetToDelete, setBudgetToDelete] = useState<{ id: number; name: string; category: any } | null>(null);
+  const [isDeletingBudget, setIsDeletingBudget] = useState(false);
 
   const currentYear = new Date().getFullYear().toString();
   const [filterYear, setFilterYear] = useState(currentYear);
@@ -59,22 +64,26 @@ export default function OrcamentosPage() {
     return new Intl.NumberFormat('pt-PT', { style: 'currency', currency: 'EUR' }).format(value);
   };
 
-  const handleDeleteBudget = async (categoryId: number, category: any) => {
-    if (!window.confirm(`Tens a certeza que queres eliminar o orçamento de ${category.name}?`)) return;
+  const confirmDeleteBudget = async () => {
+    if (!budgetToDelete) return;
+    setIsDeletingBudget(true);
     try {
-      await api.put(`/categories/${categoryId}`, {
-        name: category.name,
-        color: category.color,
-        type: category.type,
+      await api.put(`/categories/${budgetToDelete.id}`, {
+        name: budgetToDelete.category.name,
+        color: budgetToDelete.category.color,
+        type: budgetToDelete.category.type,
         budget_limit: null,
-        group_id: category.group_id
+        group_id: budgetToDelete.category.group_id
       });
       toast.success("Orçamento eliminado com sucesso!");
+      setBudgetToDelete(null);
       fetchData();
       window.dispatchEvent(new Event("categories-updated"));
     } catch (err) {
       console.error(err);
       toast.error("Erro ao eliminar a previsão.");
+    } finally {
+      setIsDeletingBudget(false);
     }
   };
 
@@ -312,7 +321,7 @@ export default function OrcamentosPage() {
                       <Pencil className="w-4 h-4" />
                     </button>
                     <button 
-                      onClick={() => handleDeleteBudget(cat.id, cat)}
+                      onClick={() => setBudgetToDelete({ id: cat.id, name: cat.name, category: cat })}
                       className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-lg transition-colors"
                       title="Eliminar orçamento"
                     >
@@ -438,6 +447,21 @@ export default function OrcamentosPage() {
           </div>
         </div>
       )}
+
+      {/* ========================================================================= */}
+      {/* CONFIRM MODAL: ELIMINAR ORÇAMENTO */}
+      {/* ========================================================================= */}
+      <ConfirmModal
+        isOpen={!!budgetToDelete}
+        title="Eliminar Orçamento"
+        description={`Tens a certeza que queres eliminar o limite de orçamento para "${budgetToDelete?.name}"?`}
+        confirmText="Eliminar Limite"
+        cancelText="Cancelar"
+        variant="danger"
+        isLoading={isDeletingBudget}
+        onConfirm={confirmDeleteBudget}
+        onCancel={() => setBudgetToDelete(null)}
+      />
 
     </div>
   );

@@ -41,6 +41,7 @@ import { exportToCSV, exportToPDF } from "@/lib/exportUtils";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
 import { SmartAdvisorToastManager } from "@/components/SmartAdvisorToast";
+import { ConfirmModal } from "@/components/ConfirmModal";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -96,6 +97,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [groupFormType, setGroupFormType] = useState<"expense" | "income">("expense");
   const [groupFormSelectedCatIds, setGroupFormSelectedCatIds] = useState<number[]>([]);
   const [savingGroup, setSavingGroup] = useState(false);
+  const [groupToDelete, setGroupToDelete] = useState<{ id: number; name: string } | null>(null);
+  const [isDeletingGroup, setIsDeletingGroup] = useState(false);
 
   const fetchCategoriesAndGroups = async () => {
     try {
@@ -183,15 +186,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   };
 
-  const handleDeleteGroup = async (groupId: number) => {
-    if (!confirm("Tens a certeza que desejas eliminar este grupo? As categorias associadas serão mantidas.")) return;
+  const confirmDeleteGroup = async () => {
+    if (!groupToDelete) return;
+    setIsDeletingGroup(true);
     try {
-      await api.delete(`/category-groups/${groupId}`);
+      await api.delete(`/category-groups/${groupToDelete.id}`);
       await fetchCategoriesAndGroups();
       window.dispatchEvent(new CustomEvent("categories-updated"));
       window.dispatchEvent(new CustomEvent("groups-updated"));
+      toast.success("Grupo eliminado com sucesso.");
+      setGroupToDelete(null);
     } catch (err) {
       console.error("Erro ao eliminar grupo", err);
+      toast.error("Erro ao eliminar grupo.");
+    } finally {
+      setIsDeletingGroup(false);
     }
   };
 
@@ -1314,7 +1323,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                 </button>
                                 <button
                                   type="button"
-                                  onClick={() => handleDeleteGroup(group.id)}
+                                  onClick={() => setGroupToDelete({ id: group.id, name: group.name })}
                                   className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg transition-colors"
                                   title="Eliminar grupo"
                                 >
@@ -1364,6 +1373,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* 💡 Gestor de Toasts Inteligentes (de 10 em 10 min com cruzamento de dados) */}
       <SmartAdvisorToastManager />
+
+      {/* Confirmação de Eliminar Grupo */}
+      <ConfirmModal
+        isOpen={!!groupToDelete}
+        title="Eliminar Grupo de Categorias"
+        description={`Tens a certeza que desejas eliminar o grupo "${groupToDelete?.name}"? As categorias associadas serão mantidas.`}
+        confirmText="Eliminar Grupo"
+        cancelText="Cancelar"
+        variant="danger"
+        isLoading={isDeletingGroup}
+        onConfirm={confirmDeleteGroup}
+        onCancel={() => setGroupToDelete(null)}
+      />
     </div>
   );
 }

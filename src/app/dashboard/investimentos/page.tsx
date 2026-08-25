@@ -24,6 +24,7 @@ import {
   Flame
 } from "lucide-react";
 import { CustomSelect } from "@/components/CustomSelect";
+import { ConfirmModal } from "@/components/ConfirmModal";
 import { toast } from "sonner";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useSettings } from "@/lib/SettingsContext";
@@ -87,6 +88,12 @@ export default function InvestimentosPage() {
   const [goalCategoryId, setGoalCategoryId] = useState<string>("");
   const [goalInvestmentId, setGoalInvestmentId] = useState<string>("");
   const [isSavingGoal, setIsSavingGoal] = useState(false);
+
+  // Delete Confirmation Modals
+  const [goalToDelete, setGoalToDelete] = useState<GoalItem | null>(null);
+  const [investmentToDelete, setInvestmentToDelete] = useState<any | null>(null);
+  const [isDeletingGoal, setIsDeletingGoal] = useState(false);
+  const [isDeletingInvestment, setIsDeletingInvestment] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -267,15 +274,19 @@ export default function InvestimentosPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleDelete = async (id: number) => {
-    if(window.confirm("Tens a certeza que queres eliminar este investimento?")) {
-      try {
-        await api.delete(`/investments/${id}`);
-        toast.error("Investimento eliminado com sucesso.");
-        fetchData();
-      } catch (err) {
-        toast.error("Erro ao eliminar investimento");
-      }
+  const confirmDeleteInvestment = async () => {
+    if (!investmentToDelete) return;
+    setIsDeletingInvestment(true);
+    try {
+      await api.delete(`/investments/${investmentToDelete.id}`);
+      toast.success("Investimento eliminado com sucesso.");
+      setInvestmentToDelete(null);
+      fetchData();
+      fetchGoalsData();
+    } catch (err) {
+      toast.error("Erro ao eliminar investimento");
+    } finally {
+      setIsDeletingInvestment(false);
     }
   };
 
@@ -350,8 +361,10 @@ export default function InvestimentosPage() {
     setGoalModalOpen(true);
   };
 
-  const handleDeleteGoal = async (goalId: number) => {
-    if (!window.confirm("Tens a certeza que queres eliminar esta meta mensal?")) return;
+  const confirmDeleteGoal = async () => {
+    if (!goalToDelete) return;
+    setIsDeletingGoal(true);
+    const goalId = goalToDelete.id;
     const localKey = `pl_goals_${goalFilterYear}_${goalFilterMonth}`;
     try {
       await api.delete(`/goals/${goalId}`);
@@ -368,6 +381,8 @@ export default function InvestimentosPage() {
       setGoals(updated);
     } catch {}
 
+    setGoalToDelete(null);
+    setIsDeletingGoal(false);
     fetchGoalsData();
   };
 
@@ -755,7 +770,7 @@ export default function InvestimentosPage() {
                             <button onClick={() => { setAdjustInv(inv); setAdjustType("add"); setAdjustModalOpen(true); }} className="p-2 text-slate-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:text-emerald-500 rounded-lg transition-colors" title="Adicionar Valor"><Plus className="w-4 h-4" /></button>
                             <button onClick={() => { setAdjustInv(inv); setAdjustType("remove"); setAdjustModalOpen(true); }} className="p-2 text-slate-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 hover:text-amber-500 rounded-lg transition-colors" title="Retirar Valor"><Minus className="w-4 h-4" /></button>
                             <button onClick={() => handleEdit(inv)} className="p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-primary rounded-lg transition-colors" title="Editar Ativo"><Pencil className="w-4 h-4" /></button>
-                            <button onClick={() => handleDelete(inv.id)} className="p-2 text-slate-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-500 rounded-lg transition-colors" title="Eliminar Ativo"><Trash2 className="w-4 h-4" /></button>
+                            <button onClick={() => setInvestmentToDelete(inv)} className="p-2 text-slate-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-500 rounded-lg transition-colors" title="Eliminar Ativo"><Trash2 className="w-4 h-4" /></button>
                           </div>
                         </div>
                         
@@ -944,7 +959,7 @@ export default function InvestimentosPage() {
                           <Pencil className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => handleDeleteGoal(g.id)}
+                          onClick={() => setGoalToDelete(g)}
                           className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-lg transition-colors"
                           title="Eliminar Meta"
                         >
@@ -1201,6 +1216,36 @@ export default function InvestimentosPage() {
           </div>
         </div>
       )}
+
+      {/* ========================================================================= */}
+      {/* CONFIRM MODAL: ELIMINAR META */}
+      {/* ========================================================================= */}
+      <ConfirmModal
+        isOpen={!!goalToDelete}
+        title="Eliminar Meta Mensal"
+        description={`Tens a certeza que queres eliminar a meta "${goalToDelete?.title}"? Esta ação removerá o acompanhamento inteligente deste objetivo.`}
+        confirmText="Eliminar Meta"
+        cancelText="Cancelar"
+        variant="danger"
+        isLoading={isDeletingGoal}
+        onConfirm={confirmDeleteGoal}
+        onCancel={() => setGoalToDelete(null)}
+      />
+
+      {/* ========================================================================= */}
+      {/* CONFIRM MODAL: ELIMINAR ATIVO DE INVESTIMENTO */}
+      {/* ========================================================================= */}
+      <ConfirmModal
+        isOpen={!!investmentToDelete}
+        title="Eliminar Investimento"
+        description={`Tens a certeza que queres eliminar o ativo "${investmentToDelete?.name}"? O histórico e o valor associado a este investimento serão removidos.`}
+        confirmText="Eliminar Ativo"
+        cancelText="Cancelar"
+        variant="danger"
+        isLoading={isDeletingInvestment}
+        onConfirm={confirmDeleteInvestment}
+        onCancel={() => setInvestmentToDelete(null)}
+      />
 
     </div>
   );
