@@ -163,21 +163,44 @@ export default function GestaoPage() {
   };
 
   const confirmAddCategory = async () => {
-    if (newCatName && newCatName.trim() !== "") {
-      try {
-        const res = await api.post("/categories", {
-          name: newCatName.trim(),
-          type: type,
-          color: "#" + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0')
-        });
-        setCategories([...categories, res.data]);
-        setCategoryId(res.data.id.toString());
-        setIsAddingCategory(false);
-        setNewCatName("");
-        toast.success("Categoria criada com sucesso!");
-      } catch (err) {
-        toast.error("Erro ao criar categoria");
-      }
+    const trimmed = newCatName.trim();
+    if (!trimmed) {
+      toast.error("Por favor, insere um nome para a categoria.");
+      return;
+    }
+
+    // Verificar se já existe categoria de mesmo nome e tipo
+    const existing = categories.find(
+      c => c.name.trim().toLowerCase() === trimmed.toLowerCase() && c.type === type
+    );
+    if (existing) {
+      setCategoryId(existing.id.toString());
+      setIsAddingCategory(false);
+      setNewCatName("");
+      toast.info(`A categoria "${existing.name}" já existe e foi selecionada.`);
+      return;
+    }
+
+    try {
+      const res = await api.post("/categories", {
+        name: trimmed,
+        type: type,
+        color: "#" + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0')
+      });
+      const storedIcons = getStoredCategoryIcons();
+      const newCat = {
+        ...res.data,
+        icon: res.data.icon || storedIcons[String(res.data.id)] || null
+      };
+      setCategories([...categories, newCat]);
+      setCategoryId(newCat.id.toString());
+      setIsAddingCategory(false);
+      setNewCatName("");
+      toast.success("Categoria criada com sucesso!");
+      window.dispatchEvent(new CustomEvent("categories-updated"));
+    } catch (err: any) {
+      const msg = err?.response?.data?.detail || "Erro ao criar categoria";
+      toast.error(msg);
     }
   };
 

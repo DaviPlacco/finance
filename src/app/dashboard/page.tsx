@@ -260,21 +260,34 @@ export default function DashboardPage() {
       }
     });
 
-    // Process standalone categories (not part of any group)
+    // Process standalone categories (not part of any group) com unificação resiliente por nome
+    const standaloneByName: Record<string, any> = {};
     categories.filter((c: any) => c.type === "expense" && !processedCatIds.has(c.id)).forEach((cat: any) => {
       const amt = catAmounts[cat.id] || 0;
       if (amt > 0) {
-        groupedItems.push({
-          id: `cat-${cat.id}`,
-          catId: cat.id,
-          name: cat.name,
-          color: cat.color || "#94a3b8",
-          icon: cat.icon || null,
-          amount: amt,
-          isGroup: false,
-          subcategories: []
-        });
+        const key = cat.name.trim().toLowerCase();
+        if (standaloneByName[key]) {
+          standaloneByName[key].amount += amt;
+          if (!standaloneByName[key].icon && cat.icon) {
+            standaloneByName[key].icon = cat.icon;
+          }
+        } else {
+          standaloneByName[key] = {
+            id: `cat-${cat.id}`,
+            catId: cat.id,
+            name: cat.name,
+            color: cat.color || "#94a3b8",
+            icon: cat.icon || null,
+            amount: amt,
+            isGroup: false,
+            subcategories: []
+          };
+        }
       }
+    });
+
+    Object.values(standaloneByName).forEach(item => {
+      groupedItems.push(item);
     });
 
     return groupedItems.sort((a, b) => b.amount - a.amount).slice(0, 12);

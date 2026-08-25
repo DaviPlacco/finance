@@ -172,6 +172,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   };
 
+  const handleMergeDuplicates = async () => {
+    try {
+      const res = await api.post("/categories/merge-duplicates");
+      const storedIcons = getStoredCategoryIcons();
+      const mergedCats = (res.data || []).map((c: any) => ({
+        ...c,
+        icon: c.icon || storedIcons[String(c.id)] || null
+      }));
+      setCategoriesList(mergedCats);
+      toast.success("Categorias duplicadas unificadas com sucesso!");
+      window.dispatchEvent(new CustomEvent("categories-updated"));
+    } catch (err) {
+      toast.error("Erro ao unificar categorias.");
+    }
+  };
+
   const handleOpenCreateGroup = () => {
     setEditingGroupId(null);
     setGroupFormName("");
@@ -1046,22 +1062,34 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         </div>
                       </div>
 
-                      {/* Filter tabs */}
-                      <div className="flex items-center gap-1 bg-slate-200/60 dark:bg-slate-900/60 p-1 rounded-lg">
-                        {(["all", "expense", "income"] as const).map((filterType) => (
-                          <button
-                            key={filterType}
-                            type="button"
-                            onClick={() => setCategoryFilter(filterType)}
-                            className={`px-2.5 py-1 text-[11px] font-bold rounded-md transition-all ${
-                              categoryFilter === filterType
-                                ? "bg-white dark:bg-slate-800 text-primary shadow-xs"
-                                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                            }`}
-                          >
-                            {filterType === "all" ? "Todas" : filterType === "expense" ? "Despesas" : "Receitas"}
-                          </button>
-                        ))}
+                      {/* Filter tabs and merge action */}
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={handleMergeDuplicates}
+                          className="px-2.5 py-1 text-[11px] font-bold rounded-lg border border-primary/30 text-primary bg-primary/5 hover:bg-primary/10 transition-colors flex items-center gap-1.5 shadow-xs"
+                          title="Unificar e mesclar automaticamente categorias que tenham o mesmo nome"
+                        >
+                          <Sparkles className="w-3 h-3" />
+                          <span>Unificar Duplicadas</span>
+                        </button>
+
+                        <div className="flex items-center gap-1 bg-slate-200/60 dark:bg-slate-900/60 p-1 rounded-lg">
+                          {(["all", "expense", "income"] as const).map((filterType) => (
+                            <button
+                              key={filterType}
+                              type="button"
+                              onClick={() => setCategoryFilter(filterType)}
+                              className={`px-2.5 py-1 text-[11px] font-bold rounded-md transition-all ${
+                                categoryFilter === filterType
+                                  ? "bg-white dark:bg-slate-800 text-primary shadow-xs"
+                                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                              }`}
+                            >
+                              {filterType === "all" ? "Todas" : filterType === "expense" ? "Despesas" : "Receitas"}
+                            </button>
+                          ))}
+                        </div>
                       </div>
                     </div>
 
