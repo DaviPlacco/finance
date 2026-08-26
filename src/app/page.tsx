@@ -22,24 +22,12 @@ export default function LoginPage() {
         await api.post("/register", { username, password });
       }
 
-      const formData = new URLSearchParams();
-      formData.append("username", username);
-      formData.append("password", password);
-
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: formData.toString()
-      });
-      
-      if (!res.ok) {
-        throw new Error("Credenciais inválidas");
-      }
+      await api.post("/token", { username, password });
 
       localStorage.setItem("isAuthenticated", "true");
-      localStorage.setItem("username", username);
+      localStorage.setItem("username", username || "Davi Placco");
       sessionStorage.setItem("showWelcome", "true");
-      toast.success(isRegistering ? "Conta criada com sucesso!" : `Bem-vindo de volta, ${username}!`);
+      toast.success(isRegistering ? "Conta criada com sucesso!" : `Bem-vindo de volta, ${username || 'Davi Placco'}!`);
       router.push("/dashboard");
     } catch (err: any) {
       toast.error(

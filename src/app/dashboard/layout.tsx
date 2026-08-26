@@ -332,7 +332,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         clearTimeout(timeoutId);
         timeoutId = setTimeout(async () => {
           try {
-            await fetch('/api/auth/logout', { method: 'POST' });
+            await api.post('/api/auth/logout').catch(() => {});
           } catch(e) {}
           localStorage.removeItem("isAuthenticated");
           localStorage.removeItem("username");
@@ -358,7 +358,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const handleLogout = async () => {
     try {
-      await fetch('/api/auth/logout', { method: 'POST' });
+      await api.post('/api/auth/logout').catch(() => {});
     } catch(e) {}
     localStorage.removeItem("isAuthenticated");
     localStorage.removeItem("username");
