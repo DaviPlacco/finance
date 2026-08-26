@@ -1,7 +1,415 @@
 import axios from 'axios';
+import MockAdapter from 'axios-mock-adapter';
 
-// All API requests now pass through the Next.js API route proxy
-// which automatically attaches the secure HttpOnly cookie.
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
 export const api = axios.create({
-  baseURL: '/api/proxy',
+  baseURL: API_URL,
 });
+
+api.interceptors.request.use((config) => {
+  if (typeof window !== 'undefined') {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+  }
+  return config;
+});
+
+// Setup Mock Adapter only on client side for GitHub Pages Static Demo
+if (typeof window !== 'undefined') {
+  const mock = new MockAdapter(api, { delayResponse: 150 });
+
+  const DB_KEY = 'davi_finance_standalone_db_v2';
+
+  const defaultData = {
+    timestamp: Date.now(),
+    user: {
+      id: 1,
+      username: "Davi Placco",
+      name: "Davi Placco",
+      profile_image: null,
+    },
+    categoryGroups: [
+      { id: 1, name: "Custos Fixos", color: "#6366f1", icon: "🏠", type: "expense", category_ids: [2, 5] },
+      { id: 2, name: "Alimentação & Dia a Dia", color: "#f59e0b", icon: "🍕", type: "expense", category_ids: [3] },
+      { id: 3, name: "Estilo de Vida & Lazer", color: "#ec4899", icon: "🎉", type: "expense", category_ids: [4] }
+    ],
+    categories: [
+      { id: 1, name: "Salário & Rendimentos", color: "#10b981", icon: "💰", type: "income", budget_limit: null, group_id: null },
+      { id: 2, name: "Habitação & Renda", color: "#ef4444", icon: "🏠", type: "expense", budget_limit: 850, group_id: 1 },
+      { id: 3, name: "Supermercado & Alimentação", color: "#f59e0b", icon: "🛒", type: "expense", budget_limit: 450, group_id: 2 },
+      { id: 4, name: "Lazer & Restaurantes", color: "#8b5cf6", icon: "🍔", type: "expense", budget_limit: 250, group_id: 3 },
+      { id: 5, name: "Transportes & Carro", color: "#06b6d4", icon: "🚗", type: "expense", budget_limit: 150, group_id: 1 },
+      { id: 6, name: "Investimentos & Poupança", color: "#3b82f6", icon: "📈", type: "expense", budget_limit: 500, group_id: null }
+    ],
+    transactions: [
+      { id: 1, amount: 3200, description: "Salário Empresa", type: "income", date: new Date().toISOString().split('T')[0], category_id: 1 },
+      { id: 2, amount: 800, description: "Renda Apartamento", type: "expense", date: new Date().toISOString().split('T')[0], category_id: 2 },
+      { id: 3, amount: 185.50, description: "Supermercado Continente", type: "expense", date: new Date().toISOString().split('T')[0], category_id: 3 },
+      { id: 4, amount: 110.00, description: "Ginásio Mensalidade", type: "expense", date: new Date().toISOString().split('T')[0], category_id: 4 },
+      { id: 5, amount: 75.00, description: "Combustível BP", type: "expense", date: new Date().toISOString().split('T')[0], category_id: 5 }
+    ],
+    investments: [
+      { id: 1, name: "S&P 500 ETF (VUAA)", asset_type: "Ações", balance: 8500, target: 15000 },
+      { id: 2, name: "Bitcoin (BTC)", asset_type: "Criptomoedas", balance: 3200, target: 5000 },
+      { id: 3, name: "Certificados de Aforro", asset_type: "Numerário", balance: 5000, target: 10000 }
+    ],
+    goals: [
+      { id: 1, title: "Aporte S&P 500", goal_type: "investment_deposit", target_amount: 500, month: new Date().getMonth() + 1, year: new Date().getFullYear(), investment_id: 1, category_id: null },
+      { id: 2, title: "Teto Supermercado", goal_type: "expense_ceiling", target_amount: 450, month: new Date().getMonth() + 1, year: new Date().getFullYear(), investment_id: null, category_id: 3 },
+      { id: 3, title: "Taxa de Poupança 30%", goal_type: "savings_rate", target_amount: 30, month: new Date().getMonth() + 1, year: new Date().getFullYear(), investment_id: null, category_id: null }
+    ],
+    simulations: []
+  };
+
+  const getDB = () => {
+    try {
+      const dataStr = localStorage.getItem(DB_KEY);
+      if (!dataStr) {
+        localStorage.setItem(DB_KEY, JSON.stringify(defaultData));
+        return defaultData;
+      }
+      return JSON.parse(dataStr);
+    } catch {
+      return defaultData;
+    }
+  };
+
+  const saveDB = (data: any) => {
+    try {
+      localStorage.setItem(DB_KEY, JSON.stringify(data));
+    } catch {}
+  };
+
+  let currentId = 500;
+
+  // Auth Mocks
+  mock.onPost('/register').reply(200, { message: "User registered" });
+  mock.onPost('/token').reply(200, { access_token: "demo-token-davi-finance", token_type: "bearer" });
+  mock.onPost('/api/auth/login').reply(200, { success: true });
+  mock.onPost('/api/auth/logout').reply(200, { success: true });
+
+  // User Profile Mocks
+  mock.onGet('/users/me').reply(() => {
+    const db = getDB();
+    const storedName = localStorage.getItem("username") || db.user.name;
+    const storedImage = localStorage.getItem("profileImage") || db.user.profile_image;
+    return [200, { ...db.user, name: storedName, profile_image: storedImage }];
+  });
+
+  mock.onPut('/users/me/profile').reply((config) => {
+    const data = JSON.parse(config.data || '{}');
+    const db = getDB();
+    if (data.name) {
+      db.user.name = data.name;
+      localStorage.setItem("username", data.name);
+    }
+    if (data.profile_image) {
+      db.user.profile_image = data.profile_image;
+      localStorage.setItem("profileImage", data.profile_image);
+    }
+    saveDB(db);
+    return [200, db.user];
+  });
+
+  mock.onPut('/users/me/profile-image').reply((config) => {
+    const data = JSON.parse(config.data || '{}');
+    const db = getDB();
+    if (data.profile_image) {
+      db.user.profile_image = data.profile_image;
+      localStorage.setItem("profileImage", data.profile_image);
+    }
+    saveDB(db);
+    return [200, db.user];
+  });
+
+  // Summary Mock
+  mock.onGet(/\/summary.*/).reply(() => {
+    const db = getDB();
+    let income = 0;
+    let expenses = 0;
+    (db.transactions || []).forEach((t: any) => {
+      const type = String(t.type || '').toLowerCase();
+      if (type === 'income' || type === 'receita') income += Number(t.amount) || 0;
+      else expenses += Number(t.amount) || 0;
+    });
+    return [200, { total_income: income, total_expenses: expenses, balance: income - expenses }];
+  });
+
+  // Categories Mocks
+  mock.onGet('/categories').reply(() => {
+    const db = getDB();
+    return [200, db.categories || []];
+  });
+
+  mock.onPost('/categories/merge-duplicates').reply(() => {
+    const db = getDB();
+    const cats: any[] = db.categories || [];
+    const groupsMap: Record<string, any[]> = {};
+    cats.forEach(c => {
+      const key = `${(c.name || '').trim().toLowerCase()}_${(c.type || '').toLowerCase()}`;
+      if (!groupsMap[key]) groupsMap[key] = [];
+      groupsMap[key].push(c);
+    });
+
+    const finalCats: any[] = [];
+    Object.values(groupsMap).forEach(list => {
+      if (list.length === 1) {
+        finalCats.push(list[0]);
+      } else {
+        const canonical = list.sort((a, b) => (a.icon ? 0 : 1) - (b.icon ? 0 : 1) || a.id - b.id)[0];
+        const duplicateIds = list.filter(c => c.id !== canonical.id).map(c => c.id);
+        
+        // Reatribuir transações
+        (db.transactions || []).forEach((t: any) => {
+          if (duplicateIds.includes(t.category_id)) t.category_id = canonical.id;
+        });
+
+        // Reatribuir metas
+        (db.goals || []).forEach((g: any) => {
+          if (duplicateIds.includes(g.category_id)) g.category_id = canonical.id;
+        });
+
+        finalCats.push(canonical);
+      }
+    });
+
+    db.categories = finalCats;
+    saveDB(db);
+    return [200, finalCats];
+  });
+
+  mock.onPost('/categories').reply((config) => {
+    const data = JSON.parse(config.data || '{}');
+    const db = getDB();
+    const trimmed = (data.name || '').trim();
+    const existing = (db.categories || []).find((c: any) => 
+      c.name.trim().toLowerCase() === trimmed.toLowerCase() && c.type === data.type
+    );
+    if (existing) {
+      return [400, { detail: `Já existe uma categoria de ${data.type} com o nome '${trimmed}'.` }];
+    }
+    const newCat = { ...data, name: trimmed, id: ++currentId };
+    if (!db.categories) db.categories = [];
+    db.categories.push(newCat);
+    saveDB(db);
+    return [200, newCat];
+  });
+
+  mock.onDelete(/\/categories\/\d+/).reply((config) => {
+    const id = parseInt(config.url!.split('/').pop()!);
+    const db = getDB();
+    db.categories = (db.categories || []).filter((c: any) => c.id !== id);
+    saveDB(db);
+    return [200, { message: "Deleted" }];
+  });
+
+  mock.onPut(/\/categories\/\d+/).reply((config) => {
+    const id = parseInt(config.url!.split('/').pop()!);
+    const data = JSON.parse(config.data || '{}');
+    const db = getDB();
+    const idx = (db.categories || []).findIndex((c: any) => c.id === id);
+    if (idx >= 0) {
+      db.categories[idx] = { ...db.categories[idx], ...data };
+      saveDB(db);
+      return [200, db.categories[idx]];
+    }
+    return [404, { message: "Category not found" }];
+  });
+
+  // Category Groups Mocks
+  mock.onGet('/category-groups').reply(() => [200, getDB().categoryGroups || []]);
+
+  mock.onPost('/category-groups').reply((config) => {
+    const data = JSON.parse(config.data || '{}');
+    const db = getDB();
+    const newGroup = { ...data, id: ++currentId, created_at: new Date().toISOString() };
+    if (!db.categoryGroups) db.categoryGroups = [];
+    db.categoryGroups.push(newGroup);
+    saveDB(db);
+    return [200, newGroup];
+  });
+
+  mock.onPut(/\/category-groups\/\d+/).reply((config) => {
+    const id = parseInt(config.url!.split('/').pop()!);
+    const data = JSON.parse(config.data || '{}');
+    const db = getDB();
+    const idx = (db.categoryGroups || []).findIndex((g: any) => g.id === id);
+    if (idx >= 0) {
+      db.categoryGroups[idx] = { ...db.categoryGroups[idx], ...data };
+      saveDB(db);
+      return [200, db.categoryGroups[idx]];
+    }
+    return [404, { message: "Group not found" }];
+  });
+
+  mock.onDelete(/\/category-groups\/\d+/).reply((config) => {
+    const id = parseInt(config.url!.split('/').pop()!);
+    const db = getDB();
+    db.categoryGroups = (db.categoryGroups || []).filter((g: any) => g.id !== id);
+    saveDB(db);
+    return [200, { message: "Group deleted" }];
+  });
+
+  // Transactions Mocks
+  mock.onGet(/\/transactions.*/).reply((config) => {
+    const db = getDB();
+    const url = new URL(config.url!, 'http://localhost');
+    const year = url.searchParams.get('year');
+    const month = url.searchParams.get('month');
+    const type = url.searchParams.get('type');
+    const category_id = url.searchParams.get('category_id');
+    
+    let txs = db.transactions || [];
+    
+    if (year && year !== "Todos") {
+      txs = txs.filter((t: any) => new Date(t.date).getFullYear().toString() === year);
+    }
+    if (month && month !== "Todos") {
+      txs = txs.filter((t: any) => (new Date(t.date).getMonth() + 1).toString() === month);
+    }
+    if (type && type !== "Ambos") {
+      const typeStr = type === "Receitas" || type === "income" ? "income" : "expense";
+      txs = txs.filter((t: any) => t.type?.toLowerCase() === typeStr);
+    }
+    if (category_id && category_id !== "Todas") {
+      txs = txs.filter((t: any) => t.category_id?.toString() === category_id);
+    }
+
+    return [200, txs];
+  });
+
+  mock.onPost('/transactions').reply((config) => {
+    const data = JSON.parse(config.data || '{}');
+    const db = getDB();
+    const newTx = { ...data, id: ++currentId, date: data.date || new Date().toISOString() };
+    if (!db.transactions) db.transactions = [];
+    db.transactions.unshift(newTx);
+    saveDB(db);
+    return [200, newTx];
+  });
+
+  mock.onPut(/\/transactions\/\d+/).reply((config) => {
+    const id = parseInt(config.url!.split('/').pop()!);
+    const data = JSON.parse(config.data || '{}');
+    const db = getDB();
+    const idx = (db.transactions || []).findIndex((t: any) => t.id === id);
+    if (idx >= 0) {
+      db.transactions[idx] = { ...db.transactions[idx], ...data };
+      saveDB(db);
+      return [200, db.transactions[idx]];
+    }
+    return [404, { message: "Not found" }];
+  });
+
+  mock.onDelete(/\/transactions\/\d+/).reply((config) => {
+    const id = parseInt(config.url!.split('/').pop()!);
+    const db = getDB();
+    db.transactions = (db.transactions || []).filter((t: any) => t.id !== id);
+    saveDB(db);
+    return [200, { message: "Deleted" }];
+  });
+
+  // Investments History Mock
+  mock.onGet(/\/investments\/history.*/).reply(() => {
+    const db = getDB();
+    const totalPatrimony = (db.investments || []).reduce((acc: number, i: any) => acc + (i.balance || 0), 0);
+    const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+    const chartData = months.map((m, idx) => ({
+      name: m,
+      valor: Math.round(totalPatrimony * (0.75 + (idx * 0.025)))
+    }));
+    return [200, chartData];
+  });
+
+  // Investments Mocks
+  mock.onGet('/investments').reply(() => [200, getDB().investments || []]);
+
+  mock.onPost('/investments').reply((config) => {
+    const data = JSON.parse(config.data || '{}');
+    const db = getDB();
+    const newInv = { ...data, id: ++currentId };
+    if (!db.investments) db.investments = [];
+    db.investments.push(newInv);
+    saveDB(db);
+    return [200, newInv];
+  });
+
+  mock.onPut(/\/investments\/\d+/).reply((config) => {
+    const id = parseInt(config.url!.split('/').pop()!);
+    const data = JSON.parse(config.data || '{}');
+    const db = getDB();
+    const idx = (db.investments || []).findIndex((i: any) => i.id === id);
+    if (idx >= 0) {
+      db.investments[idx] = { ...db.investments[idx], ...data };
+      saveDB(db);
+      return [200, db.investments[idx]];
+    }
+    return [404, { message: "Not found" }];
+  });
+
+  mock.onDelete(/\/investments\/\d+/).reply((config) => {
+    const id = parseInt(config.url!.split('/').pop()!);
+    const db = getDB();
+    db.investments = (db.investments || []).filter((i: any) => i.id !== id);
+    saveDB(db);
+    return [200, { message: "Deleted" }];
+  });
+
+  // Goals Mocks
+  mock.onGet(/\/goals.*/).reply(() => [200, getDB().goals || []]);
+
+  mock.onPost('/goals').reply((config) => {
+    const data = JSON.parse(config.data || '{}');
+    const db = getDB();
+    const newGoal = { ...data, id: ++currentId, created_at: new Date().toISOString() };
+    if (!db.goals) db.goals = [];
+    db.goals.push(newGoal);
+    saveDB(db);
+    return [200, newGoal];
+  });
+
+  mock.onPut(/\/goals\/\d+/).reply((config) => {
+    const id = parseInt(config.url!.split('/').pop()!);
+    const data = JSON.parse(config.data || '{}');
+    const db = getDB();
+    const idx = (db.goals || []).findIndex((g: any) => g.id === id);
+    if (idx >= 0) {
+      db.goals[idx] = { ...db.goals[idx], ...data };
+      saveDB(db);
+      return [200, db.goals[idx]];
+    }
+    return [404, { message: "Goal not found" }];
+  });
+
+  mock.onDelete(/\/goals\/\d+/).reply((config) => {
+    const id = parseInt(config.url!.split('/').pop()!);
+    const db = getDB();
+    db.goals = (db.goals || []).filter((g: any) => g.id !== id);
+    saveDB(db);
+    return [200, { message: "Deleted" }];
+  });
+
+  // Simulations Mocks
+  mock.onGet('/simulations').reply(() => [200, getDB().simulations || []]);
+
+  mock.onPost('/simulations').reply((config) => {
+    const data = JSON.parse(config.data || '{}');
+    const db = getDB();
+    if (!db.simulations) db.simulations = [];
+    const newSim = { ...data, id: ++currentId, created_at: new Date().toISOString() };
+    db.simulations.unshift(newSim);
+    saveDB(db);
+    return [200, newSim];
+  });
+
+  mock.onDelete(/\/simulations\/\d+/).reply((config) => {
+    const id = parseInt(config.url!.split('/').pop()!);
+    const db = getDB();
+    db.simulations = (db.simulations || []).filter((s: any) => s.id !== id);
+    saveDB(db);
+    return [200, { message: "Deleted" }];
+  });
+}
