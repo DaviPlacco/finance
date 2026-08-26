@@ -19,9 +19,13 @@ api.interceptors.request.use((config) => {
 
 // Setup Mock Adapter only on client side for GitHub Pages Static Demo
 if (typeof window !== 'undefined') {
-  const mock = new MockAdapter(api, { delayResponse: 150 });
+  const mock = new MockAdapter(api, { delayResponse: 100 });
 
-  const DB_KEY = 'davi_finance_standalone_db_v2';
+  const DB_KEY = 'davi_finance_standalone_db_v4';
+
+  const now = new Date();
+  const curY = now.getFullYear();
+  const curM = String(now.getMonth() + 1).padStart(2, '0');
 
   const defaultData = {
     timestamp: Date.now(),
@@ -45,11 +49,12 @@ if (typeof window !== 'undefined') {
       { id: 6, name: "Investimentos & Poupança", color: "#3b82f6", icon: "📈", type: "expense", budget_limit: 500, group_id: null }
     ],
     transactions: [
-      { id: 1, amount: 3200, description: "Salário Empresa", type: "income", date: new Date().toISOString().split('T')[0], category_id: 1 },
-      { id: 2, amount: 800, description: "Renda Apartamento", type: "expense", date: new Date().toISOString().split('T')[0], category_id: 2 },
-      { id: 3, amount: 185.50, description: "Supermercado Continente", type: "expense", date: new Date().toISOString().split('T')[0], category_id: 3 },
-      { id: 4, amount: 110.00, description: "Ginásio Mensalidade", type: "expense", date: new Date().toISOString().split('T')[0], category_id: 4 },
-      { id: 5, amount: 75.00, description: "Combustível BP", type: "expense", date: new Date().toISOString().split('T')[0], category_id: 5 }
+      { id: 1, amount: 3200, description: "Salário Empresa", type: "income", date: `${curY}-${curM}-02`, category_id: 1 },
+      { id: 2, amount: 800, description: "Renda Apartamento", type: "expense", date: `${curY}-${curM}-04`, category_id: 2 },
+      { id: 3, amount: 185.50, description: "Supermercado Continente", type: "expense", date: `${curY}-${curM}-08`, category_id: 3 },
+      { id: 4, amount: 110.00, description: "Ginásio Mensalidade", type: "expense", date: `${curY}-${curM}-15`, category_id: 4 },
+      { id: 5, amount: 75.00, description: "Combustível BP", type: "expense", date: `${curY}-${curM}-22`, category_id: 5 },
+      { id: 6, amount: 65.00, description: "Jantar Fora", type: "expense", date: `${curY}-${curM}-25`, category_id: 4 }
     ],
     investments: [
       { id: 1, name: "S&P 500 ETF (VUAA)", asset_type: "Ações", balance: 8500, target: 15000 },
@@ -57,9 +62,9 @@ if (typeof window !== 'undefined') {
       { id: 3, name: "Certificados de Aforro", asset_type: "Numerário", balance: 5000, target: 10000 }
     ],
     goals: [
-      { id: 1, title: "Aporte S&P 500", goal_type: "investment_deposit", target_amount: 500, month: new Date().getMonth() + 1, year: new Date().getFullYear(), investment_id: 1, category_id: null },
-      { id: 2, title: "Teto Supermercado", goal_type: "expense_ceiling", target_amount: 450, month: new Date().getMonth() + 1, year: new Date().getFullYear(), investment_id: null, category_id: 3 },
-      { id: 3, title: "Taxa de Poupança 30%", goal_type: "savings_rate", target_amount: 30, month: new Date().getMonth() + 1, year: new Date().getFullYear(), investment_id: null, category_id: null }
+      { id: 1, title: "Aporte S&P 500", goal_type: "investment_deposit", target_amount: 500, month: now.getMonth() + 1, year: curY, investment_id: 1, category_id: null },
+      { id: 2, title: "Teto Supermercado", goal_type: "expense_ceiling", target_amount: 450, month: now.getMonth() + 1, year: curY, investment_id: null, category_id: 3 },
+      { id: 3, title: "Taxa de Poupança 30%", goal_type: "savings_rate", target_amount: 30, month: now.getMonth() + 1, year: curY, investment_id: null, category_id: null }
     ],
     simulations: []
   };
@@ -125,17 +130,115 @@ if (typeof window !== 'undefined') {
     return [200, db.user];
   });
 
-  // Summary Mock
-  mock.onGet(/\/summary.*/).reply(() => {
+  // Summary Mock — Identical response schema to backend/main.py
+  mock.onGet(/\/summary.*/).reply((config) => {
     const db = getDB();
-    let income = 0;
-    let expenses = 0;
-    (db.transactions || []).forEach((t: any) => {
-      const type = String(t.type || '').toLowerCase();
-      if (type === 'income' || type === 'receita') income += Number(t.amount) || 0;
-      else expenses += Number(t.amount) || 0;
+    const url = new URL(config.url!, 'http://localhost');
+    const filterYear = url.searchParams.get('year') || String(curY);
+    const filterMonth = url.searchParams.get('month') || String(Number(curM));
+
+    const transactions: any[] = db.transactions || [];
+    const investments: any[] = db.investments || [];
+
+    // Filter transactions for current period
+    const selectedTransactions = transactions.filter((t: any) => {
+      const d = new Date(t.date);
+      const y = String(d.getFullYear());
+      const m = String(d.getMonth() + 1);
+      if (filterYear && filterYear !== "Todos" && filterYear !== "" && y !== filterYear) return false;
+      if (filterMonth && filterMonth !== "Todos" && filterMonth !== "" && m !== filterMonth) return false;
+      return true;
     });
-    return [200, { total_income: income, total_expenses: expenses, balance: income - expenses }];
+
+    let totalIncome = 0;
+    let totalExpense = 0;
+    selectedTransactions.forEach((t: any) => {
+      const type = String(t.type || '').toLowerCase();
+      if (type === 'income' || type === 'receita') {
+        if (!t.is_transfer) totalIncome += Number(t.amount) || 0;
+      } else {
+        totalExpense += Number(t.amount) || 0;
+      }
+    });
+
+    const totalInvested = investments.reduce((acc: number, i: any) => acc + (Number(i.balance) || 0), 0);
+
+    // Cumulative balance of all transactions
+    let cumulativeIncome = 0;
+    let cumulativeExpense = 0;
+    transactions.forEach((t: any) => {
+      const type = String(t.type || '').toLowerCase();
+      if (type === 'income' || type === 'receita') {
+        if (!t.is_transfer) cumulativeIncome += Number(t.amount) || 0;
+      } else {
+        cumulativeExpense += Number(t.amount) || 0;
+      }
+    });
+    const cumulativeBalance = cumulativeIncome - cumulativeExpense;
+
+    const chartData: any[] = [];
+    if (filterMonth && filterMonth !== "Todos" && filterMonth !== "") {
+      const numDays = 31;
+      let runningPatrimony = Math.max(1200, cumulativeBalance - totalIncome + totalExpense);
+      for (let day = 1; day <= numDays; day++) {
+        let dailyIncome = 0;
+        let dailyExpense = 0;
+        selectedTransactions.forEach((t: any) => {
+          const d = new Date(t.date);
+          if (d.getDate() === day) {
+            const type = String(t.type || '').toLowerCase();
+            if (type === 'income' || type === 'receita') {
+              if (!t.is_transfer) dailyIncome += Number(t.amount) || 0;
+            } else {
+              dailyExpense += Number(t.amount) || 0;
+            }
+          }
+        });
+        runningPatrimony += (dailyIncome - dailyExpense);
+        chartData.push({
+          name: String(day),
+          receitas: dailyIncome,
+          despesas: dailyExpense,
+          saldo: Math.round(runningPatrimony * 100) / 100,
+          poupanca: Math.round(Math.max(0, dailyIncome - dailyExpense) * 100) / 100
+        });
+      }
+    } else {
+      const monthsAbbr = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+      let runningPatrimony = 1000;
+      for (let m = 1; m <= 12; m++) {
+        let monthlyIncome = 0;
+        let monthlyExpense = 0;
+        transactions.forEach((t: any) => {
+          const d = new Date(t.date);
+          const y = String(d.getFullYear());
+          if ((!filterYear || filterYear === "Todos" || y === filterYear) && (d.getMonth() + 1) === m) {
+            const type = String(t.type || '').toLowerCase();
+            if (type === 'income' || type === 'receita') {
+              if (!t.is_transfer) monthlyIncome += Number(t.amount) || 0;
+            } else {
+              monthlyExpense += Number(t.amount) || 0;
+            }
+          }
+        });
+        runningPatrimony += (monthlyIncome - monthlyExpense);
+        chartData.push({
+          name: monthsAbbr[m - 1],
+          receitas: monthlyIncome,
+          despesas: monthlyExpense,
+          saldo: Math.round(runningPatrimony * 100) / 100,
+          poupanca: Math.round(Math.max(0, monthlyIncome - monthlyExpense) * 100) / 100
+        });
+      }
+    }
+
+    return [200, {
+      balance: cumulativeBalance,
+      income: totalIncome,
+      expense: totalExpense,
+      investments: totalInvested,
+      chartData: chartData
+    }];
   });
 
   // Categories Mocks
@@ -262,12 +365,12 @@ if (typeof window !== 'undefined') {
     const type = url.searchParams.get('type');
     const category_id = url.searchParams.get('category_id');
     
-    let txs = db.transactions || [];
+    let txs: any[] = db.transactions || [];
     
-    if (year && year !== "Todos") {
+    if (year && year !== "Todos" && year !== "") {
       txs = txs.filter((t: any) => new Date(t.date).getFullYear().toString() === year);
     }
-    if (month && month !== "Todos") {
+    if (month && month !== "Todos" && month !== "") {
       txs = txs.filter((t: any) => (new Date(t.date).getMonth() + 1).toString() === month);
     }
     if (type && type !== "Ambos") {
@@ -284,7 +387,7 @@ if (typeof window !== 'undefined') {
   mock.onPost('/transactions').reply((config) => {
     const data = JSON.parse(config.data || '{}');
     const db = getDB();
-    const newTx = { ...data, id: ++currentId, date: data.date || new Date().toISOString() };
+    const newTx = { ...data, id: ++currentId, date: data.date || new Date().toISOString().split('T')[0] };
     if (!db.transactions) db.transactions = [];
     db.transactions.unshift(newTx);
     saveDB(db);
@@ -315,7 +418,7 @@ if (typeof window !== 'undefined') {
   // Investments History Mock
   mock.onGet(/\/investments\/history.*/).reply(() => {
     const db = getDB();
-    const totalPatrimony = (db.investments || []).reduce((acc: number, i: any) => acc + (i.balance || 0), 0);
+    const totalPatrimony = (db.investments || []).reduce((acc: number, i: any) => acc + (Number(i.balance) || 0), 0);
     const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
     const chartData = months.map((m, idx) => ({
       name: m,
@@ -356,6 +459,33 @@ if (typeof window !== 'undefined') {
     db.investments = (db.investments || []).filter((i: any) => i.id !== id);
     saveDB(db);
     return [200, { message: "Deleted" }];
+  });
+
+  // Withdraw Investment Mock
+  mock.onPost(/\/investments\/\d+\/withdraw.*/).reply((config) => {
+    const id = parseInt(config.url!.split('/')[2]);
+    const data = JSON.parse(config.data || '{}');
+    const db = getDB();
+    const inv = (db.investments || []).find((i: any) => i.id === id);
+    if (!inv) return [404, { detail: "Investment not found" }];
+    const amount = Number(data.amount) || 0;
+    if (amount <= 0) return [400, { detail: "Montante inválido" }];
+    if (amount > inv.balance) return [400, { detail: "Saldo insuficiente" }];
+    
+    inv.balance -= amount;
+    if (data.transfer_to_balance) {
+      db.transactions.unshift({
+        id: ++currentId,
+        amount: amount,
+        description: `Investimento - Saída (${inv.name})`,
+        type: "income",
+        date: new Date().toISOString().split('T')[0],
+        category_id: 1,
+        is_transfer: true
+      });
+    }
+    saveDB(db);
+    return [200, { message: "Retirada efetuada com sucesso", balance: inv.balance }];
   });
 
   // Goals Mocks
