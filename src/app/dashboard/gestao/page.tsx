@@ -803,10 +803,10 @@ export default function GestaoPage() {
                       />
                     </th>
                     <th className="p-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Data</th>
-                    <th className="p-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Descrição</th>
+                    <th className="p-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-right">Valor</th>
                     <th className="p-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Categoria</th>
                     <th className="p-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Método</th>
-                    <th className="p-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-right">Valor</th>
+                    <th className="p-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Descrição</th>
                     <th className="p-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-center">Talão</th>
                     <th className="p-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-center sticky right-0 bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur-sm z-10">Ações</th>
                   </tr>
@@ -853,8 +853,8 @@ export default function GestaoPage() {
                               )}
                             </div>
                           </td>
-                          <td className="p-4 text-slate-900 dark:text-slate-100 font-semibold text-sm max-w-[200px] truncate" title={t.description || '-'}>
-                            {t.description || '-'}
+                          <td className={`p-4 text-right font-extrabold text-sm whitespace-nowrap ${isIncome ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-900 dark:text-slate-100'}`}>
+                            {isIncome ? '+' : '-'}{formatCurrency(t.amount)}
                           </td>
                           <td className="p-4 whitespace-nowrap">
                             <span 
@@ -879,8 +879,8 @@ export default function GestaoPage() {
                               <span className="text-slate-400 dark:text-slate-600 text-xs italic">Não definido</span>
                             )}
                           </td>
-                          <td className={`p-4 text-right font-extrabold text-sm whitespace-nowrap ${isIncome ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-900 dark:text-slate-100'}`}>
-                            {isIncome ? '+' : '-'}{formatCurrency(t.amount)}
+                          <td className="p-4 text-slate-900 dark:text-slate-100 font-semibold text-sm max-w-[200px] truncate" title={t.description || '-'}>
+                            {t.description || '-'}
                           </td>
                           <td className="p-4 text-center whitespace-nowrap">
                             {t.receipt_image ? (
