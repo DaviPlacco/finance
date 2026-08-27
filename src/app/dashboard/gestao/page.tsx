@@ -21,7 +21,8 @@ import {
   Download,
   Eye,
   Pencil,
-  CreditCard
+  CreditCard,
+  FileText
 } from "lucide-react";
 import { CustomSelect } from "@/components/CustomSelect";
 import { ConfirmModal } from "@/components/ConfirmModal";
@@ -29,6 +30,11 @@ import { useSettings } from "@/lib/SettingsContext";
 import { CategoryIcon, getStoredCategoryIcons } from "@/components/CategoryIcon";
 import { ModalPortal } from "@/components/ModalPortal";
 import { toast } from "sonner";
+
+export const isPdfDocument = (dataOrUrl?: string | null) => {
+  if (!dataOrUrl) return false;
+  return dataOrUrl.startsWith("data:application/pdf") || dataOrUrl.toLowerCase().includes(".pdf");
+};
 
 export const PAYMENT_METHODS = [
   { id: "Cartão de Crédito", label: "Cartão de Crédito", icon: "💳", color: "#8b5cf6" },
@@ -129,6 +135,20 @@ export default function GestaoPage() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    if (file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) {
+      if (file.size > 15 * 1024 * 1024) {
+        toast.error("O ficheiro PDF não pode ter mais de 15 MB.");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setReceiptImage(event.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = (event) => {
       const img = new Image();
@@ -189,6 +209,20 @@ export default function GestaoPage() {
   const handleEditFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    if (file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) {
+      if (file.size > 15 * 1024 * 1024) {
+        toast.error("O ficheiro PDF não pode ter mais de 15 MB.");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setEditReceiptImage(event.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = (event) => {
       const img = new Image();
@@ -576,16 +610,25 @@ export default function GestaoPage() {
                 />
               </div>
 
-              {/* 📸 Anexar Foto de Talão / Comprovativo */}
+              {/* 📸 Anexar Foto de Talão / Fatura ou Documento PDF */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 uppercase tracking-wider">
-                  Comprovativo / Talão (Opcional)
+                  Comprovativo / Fatura (Imagem ou PDF)
                 </label>
                 {receiptImage ? (
                   <div className="relative group rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 p-2 flex items-center gap-3">
-                    <img src={receiptImage} alt="Comprovativo" className="w-14 h-14 object-cover rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm" />
+                    {isPdfDocument(receiptImage) ? (
+                      <div className="w-14 h-14 rounded-lg bg-rose-500/10 border border-rose-500/20 flex flex-col items-center justify-center text-rose-500 shrink-0">
+                        <FileText className="w-6 h-6" />
+                        <span className="text-[9px] font-extrabold uppercase mt-0.5">PDF</span>
+                      </div>
+                    ) : (
+                      <img src={receiptImage} alt="Comprovativo" className="w-14 h-14 object-cover rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm" />
+                    )}
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">Comprovativo anexado</p>
+                      <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
+                        {isPdfDocument(receiptImage) ? "Documento PDF Anexado" : "Comprovativo anexado"}
+                      </p>
                       <p className="text-[11px] text-emerald-500 font-semibold">Pronto para guardar</p>
                     </div>
                     <button
@@ -599,11 +642,11 @@ export default function GestaoPage() {
                   </div>
                 ) : (
                   <label className="cursor-pointer flex items-center justify-center gap-2 w-full py-2.5 px-4 border border-dashed border-slate-300 dark:border-slate-700 hover:border-primary/60 rounded-xl bg-slate-50/50 dark:bg-slate-800/30 hover:bg-primary/5 transition-all text-xs font-bold text-slate-600 dark:text-slate-400 hover:text-primary">
-                    <Camera className="w-4 h-4 text-primary" />
-                    <span>Anexar Foto de Talão / Fatura</span>
+                    <FileText className="w-4 h-4 text-primary" />
+                    <span>Anexar Talão, Fatura ou PDF</span>
                     <input 
                       type="file" 
-                      accept="image/*" 
+                      accept="image/*,application/pdf" 
                       className="hidden" 
                       onChange={handleFileChange} 
                     />
@@ -887,11 +930,15 @@ export default function GestaoPage() {
                               <button
                                 type="button"
                                 onClick={(e) => { e.stopPropagation(); setViewingReceipt(t); }}
-                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-primary/10 text-primary text-xs font-bold hover:bg-primary hover:text-white transition-all shadow-xs"
-                                title="Ver Comprovativo"
+                                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold transition-all shadow-xs ${
+                                  isPdfDocument(t.receipt_image)
+                                    ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500 hover:text-white border border-rose-500/20'
+                                    : 'bg-primary/10 text-primary hover:bg-primary hover:text-white'
+                                }`}
+                                title={isPdfDocument(t.receipt_image) ? "Ver Documento PDF" : "Ver Comprovativo"}
                               >
-                                <Receipt className="w-3.5 h-3.5" />
-                                <span>Ver</span>
+                                {isPdfDocument(t.receipt_image) ? <FileText className="w-3.5 h-3.5" /> : <Receipt className="w-3.5 h-3.5" />}
+                                <span>{isPdfDocument(t.receipt_image) ? "PDF" : "Ver"}</span>
                               </button>
                             ) : (
                               <span className="text-slate-300 dark:text-slate-700 text-xs">-</span>
@@ -984,9 +1031,14 @@ export default function GestaoPage() {
                             <button
                               type="button"
                               onClick={(e) => { e.stopPropagation(); setViewingReceipt(t); }}
-                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary/10 text-primary"
+                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                isPdfDocument(t.receipt_image)
+                                  ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20'
+                                  : 'bg-primary/10 text-primary'
+                              }`}
                             >
-                              <Receipt className="w-2.5 h-2.5" /> Talão
+                              {isPdfDocument(t.receipt_image) ? <FileText className="w-2.5 h-2.5" /> : <Receipt className="w-2.5 h-2.5" />}
+                              <span>{isPdfDocument(t.receipt_image) ? "PDF" : "Talão"}</span>
                             </button>
                           )}
                         </div>
@@ -1120,20 +1172,20 @@ export default function GestaoPage() {
           </ModalPortal>
         )}
 
-        {/* 🖼️ Modal Lightbox do Comprovativo / Talão */}
+        {/* 🖼️ Modal Lightbox do Comprovativo / Talão / PDF */}
         {viewingReceipt && (
           <ModalPortal>
             <div className="fixed inset-0 z-[150] w-screen h-screen flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200">
-              <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200">
+              <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-xl w-full overflow-hidden shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200">
               {/* Header */}
               <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50">
                 <div className="flex items-center gap-2.5">
-                  <div className="p-2 bg-primary/10 rounded-xl text-primary">
-                    <Receipt className="w-4 h-4" />
+                  <div className={`p-2 rounded-xl ${isPdfDocument(viewingReceipt.receipt_image) ? 'bg-rose-500/10 text-rose-500' : 'bg-primary/10 text-primary'}`}>
+                    {isPdfDocument(viewingReceipt.receipt_image) ? <FileText className="w-4 h-4" /> : <Receipt className="w-4 h-4" />}
                   </div>
                   <div>
                     <h3 className="font-bold text-slate-900 dark:text-white text-sm sm:text-base">
-                      {viewingReceipt.description || "Comprovativo da Transação"}
+                      {viewingReceipt.description || (isPdfDocument(viewingReceipt.receipt_image) ? "Documento PDF da Transação" : "Comprovativo da Transação")}
                     </h3>
                     <p className="text-xs text-slate-500">
                       {formatDate(viewingReceipt.date)} • {formatCurrency(viewingReceipt.amount)}
@@ -1148,24 +1200,48 @@ export default function GestaoPage() {
                 </button>
               </div>
 
-              {/* Image Preview Container */}
-              <div className="p-4 overflow-y-auto flex items-center justify-center bg-slate-950/20 max-h-[60vh]">
-                <img 
-                  src={viewingReceipt.receipt_image} 
-                  alt="Talão da Transação" 
-                  className="max-h-[55vh] w-auto max-w-full rounded-xl object-contain shadow-md border border-slate-200/20"
-                />
+              {/* Preview Container */}
+              <div className="p-4 overflow-y-auto flex items-center justify-center bg-slate-950/20 max-h-[60vh] min-h-[220px]">
+                {isPdfDocument(viewingReceipt.receipt_image) ? (
+                  <div className="w-full flex flex-col items-center justify-center py-6 px-4 text-center space-y-4">
+                    <div className="w-20 h-20 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex flex-col items-center justify-center text-rose-500 shadow-lg shadow-rose-500/5">
+                      <FileText className="w-10 h-10" />
+                      <span className="text-[10px] font-black uppercase mt-1">PDF</span>
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-900 dark:text-white text-base">Documento PDF Anexado</h4>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-xs">
+                        Podes abrir o documento PDF numa nova aba ou descarregar diretamente para o teu dispositivo.
+                      </p>
+                    </div>
+                    <a
+                      href={viewingReceipt.receipt_image}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-white text-xs font-bold rounded-xl shadow-md hover:brightness-110 active:scale-95 transition-all"
+                    >
+                      <Eye className="w-4 h-4" />
+                      <span>Abrir PDF em Nova Aba</span>
+                    </a>
+                  </div>
+                ) : (
+                  <img 
+                    src={viewingReceipt.receipt_image} 
+                    alt="Talão da Transação" 
+                    className="max-h-[55vh] w-auto max-w-full rounded-xl object-contain shadow-md border border-slate-200/20"
+                  />
+                )}
               </div>
 
               {/* Actions Footer */}
               <div className="p-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50">
                 <a 
                   href={viewingReceipt.receipt_image} 
-                  download={`comprovativo-${viewingReceipt.id}.jpg`}
+                  download={isPdfDocument(viewingReceipt.receipt_image) ? `documento-${viewingReceipt.id}.pdf` : `comprovativo-${viewingReceipt.id}.jpg`}
                   className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 shadow-sm transition-all"
                 >
                   <Download className="w-3.5 h-3.5 text-primary" />
-                  <span>Descarregar Imagem</span>
+                  <span>{isPdfDocument(viewingReceipt.receipt_image) ? "Descarregar PDF" : "Descarregar Imagem"}</span>
                 </a>
                 <button 
                   onClick={() => setViewingReceipt(null)}
@@ -1413,13 +1489,22 @@ export default function GestaoPage() {
                 {/* Comprovativo */}
                 <div>
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 uppercase tracking-wider">
-                    Comprovativo / Talão (Opcional)
+                    Comprovativo / Fatura (Imagem ou PDF)
                   </label>
                   {editReceiptImage ? (
                     <div className="relative group rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 p-2 flex items-center gap-3">
-                      <img src={editReceiptImage} alt="Comprovativo" className="w-14 h-14 object-cover rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm" />
+                      {isPdfDocument(editReceiptImage) ? (
+                        <div className="w-14 h-14 rounded-lg bg-rose-500/10 border border-rose-500/20 flex flex-col items-center justify-center text-rose-500 shrink-0">
+                          <FileText className="w-6 h-6" />
+                          <span className="text-[9px] font-extrabold uppercase mt-0.5">PDF</span>
+                        </div>
+                      ) : (
+                        <img src={editReceiptImage} alt="Comprovativo" className="w-14 h-14 object-cover rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm" />
+                      )}
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">Comprovativo anexado</p>
+                        <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
+                          {isPdfDocument(editReceiptImage) ? "Documento PDF Anexado" : "Comprovativo anexado"}
+                        </p>
                         <p className="text-[11px] text-emerald-500 font-semibold">Guardado</p>
                       </div>
                       <button
@@ -1433,11 +1518,11 @@ export default function GestaoPage() {
                     </div>
                   ) : (
                     <label className="cursor-pointer flex items-center justify-center gap-2 w-full py-2.5 px-4 border border-dashed border-slate-300 dark:border-slate-700 hover:border-primary/60 rounded-xl bg-slate-50/50 dark:bg-slate-800/30 hover:bg-primary/5 transition-all text-xs font-bold text-slate-600 dark:text-slate-400 hover:text-primary">
-                      <Camera className="w-4 h-4 text-primary" />
-                      <span>Anexar Foto de Talão / Fatura</span>
+                      <FileText className="w-4 h-4 text-primary" />
+                      <span>Anexar Talão, Fatura ou PDF</span>
                       <input 
                         type="file" 
-                        accept="image/*" 
+                        accept="image/*,application/pdf" 
                         className="hidden" 
                         onChange={handleEditFileChange} 
                       />
