@@ -49,12 +49,12 @@ if (typeof window !== 'undefined') {
       { id: 6, name: "Investimentos & Poupança", color: "#3b82f6", icon: "📈", type: "expense", budget_limit: 500, group_id: null }
     ],
     transactions: [
-      { id: 1, amount: 3200, description: "Salário Empresa", type: "income", date: `${curY}-${curM}-02`, category_id: 1 },
-      { id: 2, amount: 800, description: "Renda Apartamento", type: "expense", date: `${curY}-${curM}-04`, category_id: 2 },
-      { id: 3, amount: 185.50, description: "Supermercado Continente", type: "expense", date: `${curY}-${curM}-08`, category_id: 3 },
-      { id: 4, amount: 110.00, description: "Ginásio Mensalidade", type: "expense", date: `${curY}-${curM}-15`, category_id: 4 },
-      { id: 5, amount: 75.00, description: "Combustível BP", type: "expense", date: `${curY}-${curM}-22`, category_id: 5 },
-      { id: 6, amount: 65.00, description: "Jantar Fora", type: "expense", date: `${curY}-${curM}-25`, category_id: 4 }
+      { id: 1, amount: 3200, description: "Salário Empresa", type: "income", date: `${curY}-${curM}-02`, category_id: 1, payment_method: "Transferência / MB WAY" },
+      { id: 2, amount: 800, description: "Renda Apartamento", type: "expense", date: `${curY}-${curM}-04`, category_id: 2, payment_method: "Débito Direto" },
+      { id: 3, amount: 185.50, description: "Supermercado Continente", type: "expense", date: `${curY}-${curM}-08`, category_id: 3, payment_method: "Cartão de Débito" },
+      { id: 4, amount: 110.00, description: "Ginásio Mensalidade", type: "expense", date: `${curY}-${curM}-15`, category_id: 4, payment_method: "Cartão de Crédito" },
+      { id: 5, amount: 75.00, description: "Combustível BP", type: "expense", date: `${curY}-${curM}-22`, category_id: 5, payment_method: "Cartão de Débito" },
+      { id: 6, amount: 65.00, description: "Jantar Fora", type: "expense", date: `${curY}-${curM}-25`, category_id: 4, payment_method: "Cartão de Crédito" }
     ],
     investments: [
       { id: 1, name: "S&P 500 ETF (VUAA)", asset_type: "Ações", balance: 8500, target: 15000 },
@@ -364,6 +364,7 @@ if (typeof window !== 'undefined') {
     const month = url.searchParams.get('month');
     const type = url.searchParams.get('type');
     const category_id = url.searchParams.get('category_id');
+    const payment_method = url.searchParams.get('payment_method');
     
     let txs: any[] = db.transactions || [];
     
@@ -379,6 +380,9 @@ if (typeof window !== 'undefined') {
     }
     if (category_id && category_id !== "Todas") {
       txs = txs.filter((t: any) => t.category_id?.toString() === category_id);
+    }
+    if (payment_method && payment_method !== "Todos" && payment_method !== "") {
+      txs = txs.filter((t: any) => t.payment_method === payment_method);
     }
 
     return [200, txs];

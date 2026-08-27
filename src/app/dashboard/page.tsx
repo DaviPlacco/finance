@@ -18,7 +18,8 @@ import {
   Sparkles,
   Target,
   ChevronRight,
-  PieChart
+  PieChart,
+  CreditCard
 } from "lucide-react";
 import { ModalPortal } from "@/components/ModalPortal";
 import { 
@@ -341,6 +342,62 @@ export default function DashboardPage() {
       totalBudgetPercent: totalPct
     };
   }, [categories, transactions, primaryColor]);
+
+  // Métodos de Pagamento: Métricas e Distribuição
+  const { paymentMethodsData, totalMethodExpenses, totalMethodTransactions } = useMemo(() => {
+    const isExpense = (type: any) => {
+      const t = String(type || '').toLowerCase();
+      return t === 'expense' || t === 'expenses' || t === 'despesa' || t === 'despesas';
+    };
+
+    const expenseTrans = transactions.filter((t: any) => isExpense(t.type));
+    const totalExp = expenseTrans.reduce((acc: number, t: any) => acc + (Number(t.amount) || 0), 0);
+
+    const methodsConfig: Record<string, { name: string; icon: string; color: string }> = {
+      "Cartão de Crédito": { name: "Cartão de Crédito", icon: "💳", color: "#8b5cf6" },
+      "Cartão de Débito": { name: "Cartão de Débito", icon: "💳", color: "#3b82f6" },
+      "Transferência / MB WAY": { name: "Transferência / MB WAY", icon: "📱", color: "#10b981" },
+      "Dinheiro / Numerário": { name: "Dinheiro / Numerário", icon: "💶", color: "#f59e0b" },
+      "Débito Direto": { name: "Débito Direto", icon: "📄", color: "#06b6d4" },
+      "Outro": { name: "Outro / Não Definido", icon: "🔄", color: "#64748b" }
+    };
+
+    const aggregated: Record<string, { name: string; amount: number; count: number; icon: string; color: string }> = {};
+
+    expenseTrans.forEach((t: any) => {
+      const key = t.payment_method && String(t.payment_method).trim() !== "" ? t.payment_method : "Outro";
+      const config = methodsConfig[key] || { name: key, icon: "💳", color: "#64748b" };
+      
+      if (!aggregated[key]) {
+        aggregated[key] = {
+          name: config.name,
+          amount: 0,
+          count: 0,
+          icon: config.icon,
+          color: config.color
+        };
+      }
+      aggregated[key].amount += (Number(t.amount) || 0);
+      aggregated[key].count += 1;
+    });
+
+    const data = Object.entries(aggregated).map(([key, item]) => {
+      const percent = totalExp > 0 ? Math.round((item.amount / totalExp) * 100) : 0;
+      const avgTicket = item.count > 0 ? item.amount / item.count : 0;
+      return {
+        id: key,
+        ...item,
+        percent,
+        avgTicket
+      };
+    }).sort((a, b) => b.amount - a.amount);
+
+    return {
+      paymentMethodsData: data,
+      totalMethodExpenses: totalExp,
+      totalMethodTransactions: expenseTrans.length
+    };
+  }, [transactions]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-PT', { style: 'currency', currency: 'EUR' }).format(value);
@@ -1168,6 +1225,159 @@ export default function DashboardPage() {
                   </div>
                 );
               })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 💳 Métodos de Pagamento Mais Utilizados */}
+      {paymentMethodsData.length > 0 && (
+        <div className="mt-8 space-y-4 animate-in slide-in-from-bottom-5 fade-in duration-500 delay-250">
+          <div className="glass-card p-5 sm:p-6 border border-slate-200/80 dark:border-slate-800 relative overflow-hidden">
+            {/* Ambient Background Glow */}
+            <div 
+              className="absolute -top-24 -left-24 w-60 h-60 blur-[80px] pointer-events-none rounded-full opacity-25 dark:opacity-20"
+              style={{ backgroundColor: '#8b5cf6' }}
+            />
+
+            {/* Header */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 relative z-10">
+              <div className="flex items-center gap-3">
+                <span className="p-2.5 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 shrink-0">
+                  <CreditCard className="w-5 h-5" />
+                </span>
+                <div>
+                  <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    Métodos de Pagamento Mais Utilizados
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Análise de gastos e volume de transações por método de pagamento no período selecionado
+                  </p>
+                </div>
+              </div>
+
+              {/* KPI Badge */}
+              <div className="flex items-center gap-2 bg-slate-100/80 dark:bg-slate-800/60 px-3.5 py-1.5 rounded-xl border border-slate-200/50 dark:border-slate-700/50 text-xs">
+                <span className="text-slate-500 dark:text-slate-400 font-medium">Total em Despesas:</span>
+                <strong className="text-slate-900 dark:text-white font-extrabold">{formatCurrency(totalMethodExpenses)}</strong>
+                <span className="text-slate-300 dark:text-slate-600">|</span>
+                <span className="text-slate-500 dark:text-slate-400 font-semibold">{totalMethodTransactions} {totalMethodTransactions === 1 ? 'movimento' : 'movimentos'}</span>
+              </div>
+            </div>
+
+            {/* Cards Analíticos em Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-6 relative z-10">
+              {paymentMethodsData.map((pm) => (
+                <div 
+                  key={pm.id}
+                  className="glass-card p-4 rounded-2xl border border-slate-200/70 dark:border-slate-800 relative overflow-hidden group hover:-translate-y-1 hover:shadow-xl transition-all duration-300"
+                >
+                  {/* Ambient Orb */}
+                  <div 
+                    className="absolute -bottom-10 left-1/2 -translate-x-1/2 w-32 h-20 blur-[36px] pointer-events-none rounded-full transition-opacity duration-500 opacity-0 group-hover:opacity-40" 
+                    style={{ backgroundColor: pm.color }}
+                  />
+
+                  <div className="flex items-center justify-between gap-2 relative z-10 mb-3">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span className="text-lg p-2 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200/50 dark:border-slate-700/50 shrink-0">
+                        {pm.icon}
+                      </span>
+                      <div className="min-w-0">
+                        <h4 className="font-bold text-sm text-slate-900 dark:text-white truncate" title={pm.name}>
+                          {pm.name}
+                        </h4>
+                        <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                          {pm.count} {pm.count === 1 ? 'transação' : 'transações'}
+                        </span>
+                      </div>
+                    </div>
+                    <span 
+                      className="text-xs font-extrabold px-2 py-0.5 rounded-lg shrink-0"
+                      style={{ 
+                        backgroundColor: `${pm.color}15`, 
+                        color: pm.color,
+                        border: `1px solid ${pm.color}30` 
+                      }}
+                    >
+                      {pm.percent}%
+                    </span>
+                  </div>
+
+                  <div className="space-y-1 relative z-10">
+                    <p className="text-xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+                      {formatCurrency(pm.amount)}
+                    </p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      Gastou <strong className="text-slate-700 dark:text-slate-300 font-semibold">{formatCurrency(pm.amount)}</strong> {filterMonth !== 'all' ? 'este mês' : 'no período'}.
+                    </p>
+                  </div>
+
+                  {/* Progress Bar */}
+                  <div className="w-full bg-slate-100 dark:bg-slate-800/60 h-2 rounded-full overflow-hidden relative z-10 mt-3">
+                    <div 
+                      className="h-full rounded-full transition-all duration-1000 ease-out"
+                      style={{ 
+                        width: `${Math.min(pm.percent, 100)}%`,
+                        backgroundColor: pm.color 
+                      }} 
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Gráfico de Barras / Distribuição Comparativa */}
+            <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
+              <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">
+                Distribuição Comparativa de Despesas por Método
+              </h4>
+              <div className="h-[220px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={paymentMethodsData} margin={{ top: 10, right: 10, left: -10, bottom: 20 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" className="dark:stroke-slate-800" />
+                    <XAxis 
+                      dataKey="name" 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tick={{ fill: '#64748b', fontSize: 11, fontWeight: 600 }} 
+                      dy={8} 
+                    />
+                    <YAxis 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tick={{ fill: '#64748b', fontSize: 12 }} 
+                      tickFormatter={(val) => `€${val >= 1000 ? `${(val/1000).toFixed(1)}k` : val}`} 
+                      width={48} 
+                    />
+                    <Tooltip 
+                      formatter={(value: any) => [
+                        formatCurrency(Number(value) || 0), 
+                        'Total Gasto'
+                      ]}
+                      contentStyle={{ 
+                        backgroundColor: 'rgba(15, 23, 42, 0.9)', 
+                        backdropFilter: 'blur(12px)', 
+                        border: '1px solid rgba(255, 255, 255, 0.1)', 
+                        borderRadius: '12px', 
+                        color: '#f8fafc',
+                        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)'
+                      }} 
+                      itemStyle={{ color: '#e2e8f0', fontWeight: 600 }}
+                    />
+                    <Bar 
+                      dataKey="amount" 
+                      name="amount" 
+                      radius={[8, 8, 0, 0]} 
+                      barSize={32}
+                    >
+                      {paymentMethodsData.map((entry, index) => (
+                        <Cell key={`cell-pm-${index}`} fill={entry.color} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             </div>
           </div>
         </div>

@@ -19,7 +19,9 @@ import {
   Image as ImageIcon,
   X,
   Download,
-  Eye
+  Eye,
+  Pencil,
+  CreditCard
 } from "lucide-react";
 import { CustomSelect } from "@/components/CustomSelect";
 import { ConfirmModal } from "@/components/ConfirmModal";
@@ -27,6 +29,15 @@ import { useSettings } from "@/lib/SettingsContext";
 import { CategoryIcon, getStoredCategoryIcons } from "@/components/CategoryIcon";
 import { ModalPortal } from "@/components/ModalPortal";
 import { toast } from "sonner";
+
+export const PAYMENT_METHODS = [
+  { id: "Cartão de Crédito", label: "Cartão de Crédito", icon: "💳", color: "#8b5cf6" },
+  { id: "Cartão de Débito", label: "Cartão de Débito", icon: "💳", color: "#3b82f6" },
+  { id: "Transferência / MB WAY", label: "Transferência / MB WAY", icon: "📱", color: "#10b981" },
+  { id: "Dinheiro / Numerário", label: "Dinheiro / Numerário", icon: "💶", color: "#f59e0b" },
+  { id: "Débito Direto", label: "Débito Direto", icon: "📄", color: "#06b6d4" },
+  { id: "Outro", label: "Outro", icon: "🔄", color: "#64748b" },
+];
 
 export default function GestaoPage() {
   const [transactions, setTransactions] = useState<any[]>([]);
@@ -38,11 +49,23 @@ export default function GestaoPage() {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [description, setDescription] = useState("");
   const [categoryId, setCategoryId] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("");
   const [type, setType] = useState("expense");
   const [receiptImage, setReceiptImage] = useState<string | null>(null);
 
   const [isAddingCategory, setIsAddingCategory] = useState(false);
   const [newCatName, setNewCatName] = useState("");
+
+  // Edit Transaction State
+  const [editingTransaction, setEditingTransaction] = useState<any | null>(null);
+  const [editAmount, setEditAmount] = useState("");
+  const [editDate, setEditDate] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editCategoryId, setEditCategoryId] = useState("");
+  const [editType, setEditType] = useState("expense");
+  const [editPaymentMethod, setEditPaymentMethod] = useState("");
+  const [editReceiptImage, setEditReceiptImage] = useState<string | null>(null);
+  const [savingEdit, setSavingEdit] = useState(false);
 
   // Budget state
   const [budgetCategoryId, setBudgetCategoryId] = useState("");
@@ -59,6 +82,7 @@ export default function GestaoPage() {
   const [filterMonth, setFilterMonth] = useMonthFilter('all');
   const [filterType, setFilterType] = useState("");
   const [filterCategoryId, setFilterCategoryId] = useState("");
+  const [filterPaymentMethod, setFilterPaymentMethod] = useState("");
 
   const [selectedTransactions, setSelectedTransactions] = useState<number[]>([]);
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
@@ -66,7 +90,7 @@ export default function GestaoPage() {
   useEffect(() => {
     setCurrentPage(1);
     fetchData();
-  }, [filterYear, filterMonth, filterType, filterCategoryId]);
+  }, [filterYear, filterMonth, filterType, filterCategoryId, filterPaymentMethod]);
 
   useEffect(() => {
     const handleCategoriesUpdate = () => {
@@ -83,6 +107,7 @@ export default function GestaoPage() {
       if (filterMonth) query.append("month", filterMonth);
       if (filterType) query.append("type", filterType);
       if (filterCategoryId) query.append("category_id", filterCategoryId);
+      if (filterPaymentMethod) query.append("payment_method", filterPaymentMethod);
 
       const [transRes, catRes] = await Promise.all([
         api.get(`/transactions?${query.toString()}`),
@@ -143,18 +168,103 @@ export default function GestaoPage() {
         amount: parseFloat(amount),
         type,
         category_id: parseInt(categoryId),
+        payment_method: paymentMethod || null,
         description,
         date,
         receipt_image: receiptImage
       });
       setAmount("");
       setDescription("");
+      setPaymentMethod("");
       setReceiptImage(null);
       fetchData();
       toast.success("Registo adicionado com sucesso!");
+      window.dispatchEvent(new CustomEvent("transactions-updated"));
     } catch (err) {
       console.error("Failed to add transaction", err);
       toast.error("Erro ao adicionar registo");
+    }
+  };
+
+  const handleEditFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const MAX_WIDTH = 1200;
+        const MAX_HEIGHT = 1200;
+        let width = img.width;
+        let height = img.height;
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx?.drawImage(img, 0, 0, width, height);
+        const compressedBase64 = canvas.toDataURL("image/jpeg", 0.75);
+        setEditReceiptImage(compressedBase64);
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleOpenEdit = (t: any) => {
+    setEditingTransaction(t);
+    setEditAmount(t.amount ? String(t.amount) : "");
+    setEditDate(t.date ? String(t.date).split("T")[0] : new Date().toISOString().split("T")[0]);
+    setEditDescription(t.description || "");
+    setEditCategoryId(t.category_id ? String(t.category_id) : "");
+    setEditType(t.type || "expense");
+    setEditPaymentMethod(t.payment_method || "");
+    setEditReceiptImage(t.receipt_image || null);
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingTransaction) return;
+    if (!editAmount || parseFloat(editAmount) <= 0) {
+      toast.error("Por favor, insere um valor válido.");
+      return;
+    }
+    if (!editCategoryId) {
+      toast.error("Por favor, seleciona uma categoria.");
+      return;
+    }
+
+    setSavingEdit(true);
+    try {
+      await api.put(`/transactions/${editingTransaction.id}`, {
+        amount: parseFloat(editAmount),
+        type: editType,
+        category_id: parseInt(editCategoryId),
+        description: editDescription,
+        date: editDate,
+        payment_method: editPaymentMethod || null,
+        receipt_image: editReceiptImage
+      });
+
+      toast.success("Transação atualizada com sucesso!");
+      setEditingTransaction(null);
+      fetchData();
+      window.dispatchEvent(new CustomEvent("transactions-updated"));
+    } catch (err: any) {
+      console.error("Erro ao atualizar transação:", err);
+      toast.error(err?.response?.data?.detail || "Erro ao atualizar transação");
+    } finally {
+      setSavingEdit(false);
     }
   };
 
@@ -437,6 +547,24 @@ export default function GestaoPage() {
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 uppercase tracking-wider">
+                  Método de Pagamento
+                </label>
+                <CustomSelect 
+                  value={paymentMethod} 
+                  onChange={val => setPaymentMethod(val as string)} 
+                  options={[
+                    { value: "", label: "Selecione o método..." },
+                    ...PAYMENT_METHODS.map(pm => ({
+                      value: pm.id,
+                      label: `${pm.icon} ${pm.label}`
+                    }))
+                  ]}
+                  placeholder="Selecione o método de pagamento"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 uppercase tracking-wider">
                   Descrição (Opcional)
                 </label>
                 <input 
@@ -554,7 +682,7 @@ export default function GestaoPage() {
         <div className="lg:col-span-2 space-y-6">
           {/* Filters Bar */}
           <div className="glass-card p-4 border border-slate-200/80 dark:border-slate-800 shadow-md">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
               <div>
                 <label className="block text-[11px] font-bold text-slate-500 mb-1 uppercase tracking-wider">Ano</label>
                 <CustomSelect 
@@ -604,6 +732,20 @@ export default function GestaoPage() {
                   options={[
                     { value: "", label: "Todas" },
                     ...categories.map((c: any) => ({ value: c.id, label: c.name, color: c.color, icon: c.icon }))
+                  ]}
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold text-slate-500 mb-1 uppercase tracking-wider">Método</label>
+                <CustomSelect 
+                  value={filterPaymentMethod} 
+                  onChange={val => setFilterPaymentMethod(val as string)} 
+                  options={[
+                    { value: "", label: "Todos" },
+                    ...PAYMENT_METHODS.map(pm => ({
+                      value: pm.id,
+                      label: `${pm.icon} ${pm.label}`
+                    }))
                   ]}
                 />
               </div>
@@ -663,6 +805,7 @@ export default function GestaoPage() {
                     <th className="p-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Data</th>
                     <th className="p-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Descrição</th>
                     <th className="p-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Categoria</th>
+                    <th className="p-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Método</th>
                     <th className="p-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-right">Valor</th>
                     <th className="p-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-center">Talão</th>
                     <th className="p-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-center sticky right-0 bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur-sm z-10">Ações</th>
@@ -671,11 +814,11 @@ export default function GestaoPage() {
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
                   {paginatedTransactions.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="py-16 text-center text-slate-500 dark:text-slate-400">
+                      <td colSpan={8} className="py-16 text-center text-slate-500 dark:text-slate-400">
                         <div className="flex flex-col items-center justify-center gap-2">
                           <Receipt className="w-10 h-10 text-slate-300 dark:text-slate-700" />
                           <p className="font-semibold text-sm">Não existem transações para os filtros selecionados.</p>
-                          <p className="text-xs text-slate-400">Tenta alterar o ano, mês ou tipo de transação.</p>
+                          <p className="text-xs text-slate-400">Tenta alterar o ano, mês, tipo ou método de pagamento.</p>
                         </div>
                       </td>
                     </tr>
@@ -684,6 +827,7 @@ export default function GestaoPage() {
                       const isIncome = t.type === 'income';
                       const isFuture = new Date(t.date) > new Date();
                       const category = categories.find((c: any) => c.id === t.category_id);
+                      const pm = PAYMENT_METHODS.find(p => p.id === t.payment_method);
                       return (
                         <tr 
                           key={t.id} 
@@ -725,6 +869,16 @@ export default function GestaoPage() {
                               <span className="truncate max-w-[120px]">{category?.name || 'Sem Categoria'}</span>
                             </span>
                           </td>
+                          <td className="p-4 whitespace-nowrap">
+                            {t.payment_method ? (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200/80 dark:border-slate-700/80">
+                                <span>{pm?.icon || '💳'}</span>
+                                <span className="truncate max-w-[130px]">{t.payment_method}</span>
+                              </span>
+                            ) : (
+                              <span className="text-slate-400 dark:text-slate-600 text-xs italic">Não definido</span>
+                            )}
+                          </td>
                           <td className={`p-4 text-right font-extrabold text-sm whitespace-nowrap ${isIncome ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-900 dark:text-slate-100'}`}>
                             {isIncome ? '+' : '-'}{formatCurrency(t.amount)}
                           </td>
@@ -732,7 +886,7 @@ export default function GestaoPage() {
                             {t.receipt_image ? (
                               <button
                                 type="button"
-                                onClick={() => setViewingReceipt(t)}
+                                onClick={(e) => { e.stopPropagation(); setViewingReceipt(t); }}
                                 className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-primary/10 text-primary text-xs font-bold hover:bg-primary hover:text-white transition-all shadow-xs"
                                 title="Ver Comprovativo"
                               >
@@ -743,14 +897,25 @@ export default function GestaoPage() {
                               <span className="text-slate-300 dark:text-slate-700 text-xs">-</span>
                             )}
                           </td>
-                          <td className="p-4 text-center sticky right-0 bg-white/90 dark:bg-[#0b1120]/90 backdrop-blur-sm z-10">
-                            <button 
-                              onClick={() => handleDelete(t.id)} 
-                              className="text-slate-400 hover:text-rose-500 dark:hover:text-rose-400 p-2 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
-                              title="Eliminar Transação"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                          <td className="p-4 text-center sticky right-0 bg-white/90 dark:bg-[#0b1120]/90 backdrop-blur-sm z-10 whitespace-nowrap">
+                            <div className="flex items-center justify-center gap-1">
+                              <button 
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); handleOpenEdit(t); }} 
+                                className="text-slate-400 hover:text-primary dark:hover:text-primary p-2 rounded-xl hover:bg-primary/10 transition-colors"
+                                title="Editar Transação"
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </button>
+                              <button 
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); handleDelete(t.id); }} 
+                                className="text-slate-400 hover:text-rose-500 dark:hover:text-rose-400 p-2 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                                title="Eliminar Transação"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -809,10 +974,16 @@ export default function GestaoPage() {
                               <Clock className="w-2.5 h-2.5" /> Em Espera
                             </span>
                           )}
+                          {t.payment_method && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                              <span>{PAYMENT_METHODS.find(p => p.id === t.payment_method)?.icon || '💳'}</span>
+                              <span>{t.payment_method}</span>
+                            </span>
+                          )}
                           {t.receipt_image && (
                             <button
                               type="button"
-                              onClick={() => setViewingReceipt(t)}
+                              onClick={(e) => { e.stopPropagation(); setViewingReceipt(t); }}
                               className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary/10 text-primary"
                             >
                               <Receipt className="w-2.5 h-2.5" /> Talão
@@ -836,15 +1007,25 @@ export default function GestaoPage() {
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-3 shrink-0">
+                      <div className="flex items-center gap-2 shrink-0">
                         <div className="text-right">
                           <span className={`text-base font-black ${isIncome ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-900 dark:text-white'}`}>
                             {isIncome ? '+' : '-'}{formatCurrency(t.amount)}
                           </span>
                         </div>
                         <button 
-                          onClick={() => handleDelete(t.id)} 
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); handleOpenEdit(t); }} 
+                          className="text-slate-400 hover:text-primary p-2 rounded-lg hover:bg-primary/10 transition-colors"
+                          title="Editar Transação"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button 
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); handleDelete(t.id); }} 
                           className="text-slate-400 hover:text-rose-500 p-2 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                          title="Eliminar Transação"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -1092,6 +1273,200 @@ export default function GestaoPage() {
           </div>
         </div>
       </div>
+
+      {/* ✏️ Modal de Edição de Transação */}
+      {editingTransaction && (
+        <ModalPortal>
+          <div className="fixed inset-0 z-[150] w-screen h-screen flex items-center justify-center bg-black/75 backdrop-blur-md p-4 animate-in fade-in duration-200">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col max-h-[92vh] animate-in zoom-in-95 duration-200">
+              {/* Header */}
+              <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/60 dark:bg-slate-900/60">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 bg-primary/10 rounded-xl text-primary">
+                    <Pencil className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-slate-900 dark:text-white text-base sm:text-lg">
+                      Editar Transação
+                    </h3>
+                    <p className="text-xs text-slate-500">
+                      Atualiza os detalhes, categoria ou método de pagamento.
+                    </p>
+                  </div>
+                </div>
+                <button 
+                  type="button"
+                  onClick={() => setEditingTransaction(null)}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Form Body */}
+              <form onSubmit={handleSaveEdit} className="p-5 overflow-y-auto space-y-4 max-h-[70vh]">
+                {/* Tipo Switcher */}
+                <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl">
+                  <button
+                    type="button"
+                    onClick={() => setEditType("income")}
+                    className={`py-2 px-3 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-1.5 ${
+                      editType === 'income' 
+                        ? 'bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-400 shadow-sm' 
+                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                  >
+                    <ArrowUpRight className="w-4 h-4" /> Receita
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditType("expense")}
+                    className={`py-2 px-3 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-1.5 ${
+                      editType === 'expense' 
+                        ? 'bg-white dark:bg-slate-700 text-rose-600 dark:text-rose-400 shadow-sm' 
+                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                  >
+                    <ArrowDownRight className="w-4 h-4" /> Despesa
+                  </button>
+                </div>
+
+                {/* Valor e Data */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 uppercase tracking-wider">
+                      Valor (€)
+                    </label>
+                    <input 
+                      type="number" 
+                      step="0.01" 
+                      required 
+                      value={editAmount} 
+                      onChange={e => setEditAmount(e.target.value)} 
+                      className="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-700/80 rounded-xl bg-white/70 dark:bg-slate-800/60 text-slate-900 dark:text-white text-base font-semibold focus:ring-2 focus:ring-primary outline-none" 
+                      placeholder="0.00" 
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 uppercase tracking-wider">
+                      Data de Execução
+                    </label>
+                    <input 
+                      type="date" 
+                      required 
+                      value={editDate} 
+                      onChange={e => setEditDate(e.target.value)} 
+                      className="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-700/80 rounded-xl bg-white/70 dark:bg-slate-800/60 text-slate-900 dark:text-white text-sm font-medium focus:ring-2 focus:ring-primary outline-none" 
+                    />
+                  </div>
+                </div>
+
+                {/* Categoria */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 uppercase tracking-wider">
+                    Categoria
+                  </label>
+                  <CustomSelect 
+                    required
+                    value={editCategoryId} 
+                    onChange={val => setEditCategoryId(val as string)} 
+                    options={categories.filter((c: any) => c.type === editType).map((cat: any) => ({ value: cat.id, label: cat.name, color: cat.color, icon: cat.icon }))}
+                    placeholder="Selecione uma categoria"
+                    onAddNew={handleAddNewCategory}
+                    addNewLabel="Nova Categoria"
+                  />
+                </div>
+
+                {/* Método de Pagamento */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 uppercase tracking-wider">
+                    Método de Pagamento
+                  </label>
+                  <CustomSelect 
+                    value={editPaymentMethod} 
+                    onChange={val => setEditPaymentMethod(val as string)} 
+                    options={[
+                      { value: "", label: "Selecione o método..." },
+                      ...PAYMENT_METHODS.map(pm => ({
+                        value: pm.id,
+                        label: `${pm.icon} ${pm.label}`
+                      }))
+                    ]}
+                    placeholder="Selecione o método de pagamento"
+                  />
+                </div>
+
+                {/* Descrição */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 uppercase tracking-wider">
+                    Descrição (Opcional)
+                  </label>
+                  <input 
+                    type="text" 
+                    value={editDescription} 
+                    onChange={e => setEditDescription(e.target.value)} 
+                    className="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-700/80 rounded-xl bg-white/70 dark:bg-slate-800/60 text-slate-900 dark:text-white text-sm font-medium focus:ring-2 focus:ring-primary outline-none" 
+                    placeholder="Ex: Supermercado, Salário, etc." 
+                  />
+                </div>
+
+                {/* Comprovativo */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 uppercase tracking-wider">
+                    Comprovativo / Talão (Opcional)
+                  </label>
+                  {editReceiptImage ? (
+                    <div className="relative group rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 p-2 flex items-center gap-3">
+                      <img src={editReceiptImage} alt="Comprovativo" className="w-14 h-14 object-cover rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">Comprovativo anexado</p>
+                        <p className="text-[11px] text-emerald-500 font-semibold">Guardado</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setEditReceiptImage(null)}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors"
+                        title="Remover anexo"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="cursor-pointer flex items-center justify-center gap-2 w-full py-2.5 px-4 border border-dashed border-slate-300 dark:border-slate-700 hover:border-primary/60 rounded-xl bg-slate-50/50 dark:bg-slate-800/30 hover:bg-primary/5 transition-all text-xs font-bold text-slate-600 dark:text-slate-400 hover:text-primary">
+                      <Camera className="w-4 h-4 text-primary" />
+                      <span>Anexar Foto de Talão / Fatura</span>
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        className="hidden" 
+                        onChange={handleEditFileChange} 
+                      />
+                    </label>
+                  )}
+                </div>
+
+                {/* Actions */}
+                <div className="pt-3 flex items-center justify-end gap-3 border-t border-slate-100 dark:border-slate-800">
+                  <button 
+                    type="button"
+                    onClick={() => setEditingTransaction(null)}
+                    className="px-4 py-2.5 font-semibold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors text-sm"
+                  >
+                    Cancelar
+                  </button>
+                  <button 
+                    type="submit" 
+                    disabled={savingEdit}
+                    className="px-5 py-2.5 bg-gradient-to-r from-primary to-primary/90 text-white font-bold rounded-xl shadow-md hover:opacity-95 transition-all disabled:opacity-50 text-sm flex items-center gap-2"
+                  >
+                    {savingEdit ? "A guardar..." : "Guardar Alterações"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </ModalPortal>
+      )}
 
       {/* MODAL DE EXCLUSÃO EM MASSA */}
       <ConfirmModal
