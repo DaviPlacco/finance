@@ -646,7 +646,7 @@ export default function DashboardPage() {
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                   <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} dy={10} />
                   <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} tickFormatter={yAxisTickFormatter} width={45} />
-                  <Tooltip formatter={tooltipFormatter} contentStyle={{ backgroundColor: 'rgba(15, 23, 42, 0.85)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '12px', color: '#f8fafc' }} itemStyle={{ color: '#e2e8f0', fontWeight: 500 }} />
+                  <Tooltip formatter={tooltipFormatter} cursor={{ stroke: 'rgba(255, 255, 255, 0.15)', strokeDasharray: '3 3' }} contentStyle={{ backgroundColor: 'rgba(15, 23, 42, 0.85)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '12px', color: '#f8fafc' }} itemStyle={{ color: '#e2e8f0', fontWeight: 500 }} />
                   <Line type="monotone" dataKey="receitas" name="Receitas" stroke="#10b981" strokeWidth={3} dot={{ r: 4, fill: '#10b981' }} activeDot={{ r: 6 }} />
                   <Line type="monotone" dataKey="despesas" name="Despesas" stroke="#f43f5e" strokeWidth={3} dot={{ r: 4, fill: '#f43f5e' }} activeDot={{ r: 6 }} />
                 </LineChart>
@@ -665,7 +665,7 @@ export default function DashboardPage() {
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                   <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} dy={10} />
                   <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} tickFormatter={yAxisTickFormatter} width={45} />
-                  <Tooltip formatter={tooltipFormatter} contentStyle={{ backgroundColor: 'rgba(15, 23, 42, 0.85)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '12px', color: '#f8fafc' }} itemStyle={{ color: '#e2e8f0', fontWeight: 500 }} />
+                  <Tooltip formatter={tooltipFormatter} cursor={{ stroke: 'rgba(255, 255, 255, 0.15)', strokeDasharray: '3 3' }} contentStyle={{ backgroundColor: 'rgba(15, 23, 42, 0.85)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '12px', color: '#f8fafc' }} itemStyle={{ color: '#e2e8f0', fontWeight: 500 }} />
                   <Area type="monotone" dataKey="receitas" name="Receitas" stroke="#10b981" fillOpacity={1} fill="url(#colorReceitasArea)" strokeWidth={2.5} />
                   <Area type="monotone" dataKey="despesas" name="Despesas" stroke="#f43f5e" fillOpacity={1} fill="url(#colorDespesasArea)" strokeWidth={2.5} />
                 </AreaChart>
@@ -761,7 +761,7 @@ export default function DashboardPage() {
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                   <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} dy={10} />
                   <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} tickFormatter={yAxisTickFormatter} width={45} />
-                  <Tooltip formatter={tooltipFormatter} contentStyle={{ backgroundColor: 'rgba(15, 23, 42, 0.85)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '12px', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)', color: '#f8fafc' }} itemStyle={{ color: '#e2e8f0', fontWeight: 500 }} />
+                  <Tooltip formatter={tooltipFormatter} cursor={{ stroke: 'rgba(255, 255, 255, 0.15)', strokeDasharray: '3 3' }} contentStyle={{ backgroundColor: 'rgba(15, 23, 42, 0.85)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '12px', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)', color: '#f8fafc' }} itemStyle={{ color: '#e2e8f0', fontWeight: 500 }} />
                   <Line 
                     type="monotone" 
                     dataKey="saldo" 
@@ -783,7 +783,7 @@ export default function DashboardPage() {
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                   <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} dy={10} />
                   <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} tickFormatter={yAxisTickFormatter} width={45} />
-                  <Tooltip formatter={tooltipFormatter} contentStyle={{ backgroundColor: 'rgba(15, 23, 42, 0.85)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '12px', color: '#f8fafc' }} itemStyle={{ color: '#e2e8f0', fontWeight: 500 }} />
+                  <Tooltip formatter={tooltipFormatter} cursor={{ stroke: 'rgba(255, 255, 255, 0.15)', strokeDasharray: '3 3' }} contentStyle={{ backgroundColor: 'rgba(15, 23, 42, 0.85)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '12px', color: '#f8fafc' }} itemStyle={{ color: '#e2e8f0', fontWeight: 500 }} />
                   <Area 
                     type="monotone" 
                     dataKey="saldo" 
@@ -799,7 +799,7 @@ export default function DashboardPage() {
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                   <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} dy={10} />
                   <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} tickFormatter={yAxisTickFormatter} width={45} />
-                  <Tooltip formatter={tooltipFormatter} contentStyle={{ backgroundColor: 'rgba(15, 23, 42, 0.85)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '12px', color: '#f8fafc' }} itemStyle={{ color: '#e2e8f0', fontWeight: 500 }} />
+                  <Tooltip formatter={tooltipFormatter} cursor={{ fill: 'rgba(255, 255, 255, 0.04)', radius: 6 }} contentStyle={{ backgroundColor: 'rgba(15, 23, 42, 0.85)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '12px', color: '#f8fafc' }} itemStyle={{ color: '#e2e8f0', fontWeight: 500 }} />
                   <Bar 
                     dataKey="saldo" 
                     name="Património"
@@ -1090,6 +1090,7 @@ export default function DashboardPage() {
                         formatCurrency(Number(value) || 0), 
                         name === 'limite' ? 'Teto Estipulado' : 'Valor Gasto'
                       ]}
+                      cursor={{ fill: 'rgba(255, 255, 255, 0.04)', radius: 8 }}
                       contentStyle={{ 
                         backgroundColor: 'rgba(15, 23, 42, 0.9)', 
                         backdropFilter: 'blur(12px)', 
@@ -1140,6 +1141,7 @@ export default function DashboardPage() {
                         formatCurrency(Number(value) || 0), 
                         name === 'limite' ? 'Teto Estipulado' : 'Valor Gasto'
                       ]}
+                      cursor={{ fill: 'rgba(255, 255, 255, 0.04)', radius: 8 }}
                       contentStyle={{ backgroundColor: 'rgba(15, 23, 42, 0.9)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '12px', color: '#f8fafc' }} 
                       itemStyle={{ color: '#e2e8f0', fontWeight: 600 }}
                     />
@@ -1160,6 +1162,7 @@ export default function DashboardPage() {
                         formatCurrency(Number(value) || 0), 
                         name === 'limite' ? 'Teto Estipulado' : 'Valor Gasto'
                       ]}
+                      cursor={{ stroke: 'rgba(255, 255, 255, 0.15)', strokeDasharray: '3 3' }}
                       contentStyle={{ backgroundColor: 'rgba(15, 23, 42, 0.9)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '12px', color: '#f8fafc' }} 
                       itemStyle={{ color: '#e2e8f0', fontWeight: 600 }}
                     />
@@ -1355,6 +1358,7 @@ export default function DashboardPage() {
                         formatCurrency(Number(value) || 0), 
                         'Total Gasto'
                       ]}
+                      cursor={{ fill: 'rgba(255, 255, 255, 0.04)', radius: 8 }}
                       contentStyle={{ 
                         backgroundColor: 'rgba(15, 23, 42, 0.9)', 
                         backdropFilter: 'blur(12px)', 
