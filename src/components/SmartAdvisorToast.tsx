@@ -9,9 +9,24 @@ export function SmartAdvisorToastManager() {
   const insightsCacheRef = useRef<SmartInsight[]>([]);
 
   const showNextInsight = async () => {
+    // 1. Verificação rigorosa de autenticação e rota ativa
+    if (typeof window === "undefined") return;
+    const isAuth = localStorage.getItem("isAuthenticated") === "true";
+    const isDashboard = window.location.pathname.startsWith("/dashboard");
+    if (!isAuth || !isDashboard) {
+      toast.dismiss();
+      insightsCacheRef.current = [];
+      return;
+    }
+
     // Atualizar lista de insights caso o cache esteja vazio
     if (insightsCacheRef.current.length === 0) {
       const list = await generateSmartInsights();
+      // Re-verificar autenticação após a resolução da promessa assíncrona
+      if (localStorage.getItem("isAuthenticated") !== "true" || !window.location.pathname.startsWith("/dashboard")) {
+        toast.dismiss();
+        return;
+      }
       insightsCacheRef.current = list;
     }
 
@@ -33,6 +48,12 @@ export function SmartAdvisorToastManager() {
     }
 
     const insight = list[currentIndex];
+
+    // Re-checar autenticação antes de disparar o toast na UI
+    if (localStorage.getItem("isAuthenticated") !== "true" || !window.location.pathname.startsWith("/dashboard")) {
+      toast.dismiss();
+      return;
+    }
 
     // Renderizar o Toast Inteligente adaptável a Temas Light/Dark e Paleta de Cores
     toast.custom(
@@ -121,9 +142,19 @@ export function SmartAdvisorToastManager() {
       showNextInsight();
     }, TEN_MINUTES_MS);
 
+    // 3. Listener para logout global e purga de toasts
+    const handleLogoutEvent = () => {
+      toast.dismiss();
+      insightsCacheRef.current = [];
+    };
+    window.addEventListener("auth-logout", handleLogoutEvent);
+
     return () => {
       clearTimeout(initialTimer);
       clearInterval(intervalTimer);
+      window.removeEventListener("auth-logout", handleLogoutEvent);
+      toast.dismiss();
+      insightsCacheRef.current = [];
     };
   }, []);
 

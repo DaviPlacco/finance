@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { Lock, User, ArrowRight, Loader2 } from "lucide-react";
@@ -12,6 +12,12 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
+
+  useEffect(() => {
+    // Purga imediata de quaisquer toasts ou dados sensíveis residuais ao entrar na tela de Login
+    toast.dismiss();
+    localStorage.removeItem("pl_advisor_last_index");
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -334,8 +334,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           try {
             await api.post('/api/auth/logout').catch(() => {});
           } catch(e) {}
+          toast.dismiss();
           localStorage.removeItem("isAuthenticated");
           localStorage.removeItem("username");
+          localStorage.removeItem("pl_advisor_last_index");
+          window.dispatchEvent(new Event("auth-logout"));
           router.push("/");
         }, 900 * 1000); // 15 minutes
       };
@@ -360,8 +363,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     try {
       await api.post('/api/auth/logout').catch(() => {});
     } catch(e) {}
+    toast.dismiss();
     localStorage.removeItem("isAuthenticated");
     localStorage.removeItem("username");
+    localStorage.removeItem("pl_advisor_last_index");
+    window.dispatchEvent(new Event("auth-logout"));
     router.push("/");
   };
 
