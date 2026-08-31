@@ -1,19 +1,53 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useMonthFilter } from "@/hooks/useMonthFilter";
 import { api } from "@/lib/api";
-import { PieChart, TrendingDown, AlertTriangle, CheckCircle2, Trash2, X, PiggyBank, Pencil, Plus } from "lucide-react";
+import { 
+  PieChart, 
+  TrendingDown, 
+  AlertTriangle, 
+  CheckCircle2, 
+  Trash2, 
+  X, 
+  PiggyBank, 
+  Pencil, 
+  Plus, 
+  Receipt, 
+  Clock, 
+  ArrowDownRight, 
+  ChevronRight 
+} from "lucide-react";
 import { CustomSelect } from "@/components/CustomSelect";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { CategoryIcon, getStoredCategoryIcons } from "@/components/CategoryIcon";
 import { ModalPortal } from "@/components/ModalPortal";
 import { toast } from "sonner";
 
+const MONTH_NAMES: Record<string, string> = {
+  "1": "Janeiro",
+  "2": "Fevereiro",
+  "3": "Março",
+  "4": "Abril",
+  "5": "Maio",
+  "6": "Junho",
+  "7": "Julho",
+  "8": "Agosto",
+  "9": "Setembro",
+  "10": "Outubro",
+  "11": "Novembro",
+  "12": "Dezembro",
+};
+
 export default function OrcamentosPage() {
+  const router = useRouter();
   const [categories, setCategories] = useState<any[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Modal de detalhe de gastos da categoria
+  const [selectedCategoryForDetails, setSelectedCategoryForDetails] = useState<any | null>(null);
 
   // Modal de edição / criação de orçamento
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -34,6 +68,18 @@ export default function OrcamentosPage() {
     const t = String(type || '').toLowerCase();
     return t === 'expense' || t === 'expenses' || t === 'despesa' || t === 'despesas';
   };
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (selectedCategoryForDetails) setSelectedCategoryForDetails(null);
+        if (editModalOpen) setEditModalOpen(false);
+        if (budgetToDelete) setBudgetToDelete(null);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [selectedCategoryForDetails, editModalOpen, budgetToDelete]);
 
   useEffect(() => {
     fetchData();
@@ -289,6 +335,35 @@ export default function OrcamentosPage() {
     }
   }
 
+  // Transações e métricas para a categoria selecionada no modal de detalhes
+  const categoryDetailsTransactions = selectedCategoryForDetails
+    ? transactions
+        .filter((t: any) => String(t.category_id) === String(selectedCategoryForDetails.id))
+        .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    : [];
+
+  const detailsSpent = selectedCategoryForDetails ? (categorySpending[selectedCategoryForDetails.id] || 0) : 0;
+  const detailsLimit = selectedCategoryForDetails ? selectedCategoryForDetails.budget_limit : 0;
+  const detailsPercentage = detailsLimit > 0 ? (detailsSpent / detailsLimit) * 100 : 0;
+
+  let detailsStatusColor = "bg-emerald-500";
+  let detailsTextColor = "text-emerald-500";
+  if (detailsPercentage >= 100) {
+    detailsStatusColor = "bg-rose-500";
+    detailsTextColor = "text-rose-500";
+  } else if (detailsPercentage >= 70) {
+    detailsStatusColor = "bg-amber-500";
+    detailsTextColor = "text-amber-500";
+  }
+
+  const getPeriodLabel = () => {
+    if (filterMonth && filterMonth !== "Todos" && filterMonth !== "") {
+      const mName = MONTH_NAMES[String(filterMonth)] || `Mês ${filterMonth}`;
+      return filterYear && filterYear !== "Todos" ? `${mName} de ${filterYear}` : mName;
+    }
+    return filterYear && filterYear !== "Todos" ? `Ano de ${filterYear}` : "Todos os Períodos";
+  };
+
   const currentSelectedCategory = categories.find((c: any) => String(c.id) === String(selectedCategoryId));
 
   return (
@@ -392,6 +467,7 @@ export default function OrcamentosPage() {
             const spent = categorySpending[cat.id] || 0;
             const limit = cat.budget_limit;
             const percentage = Math.min((spent / limit) * 100, 100);
+            const catTransactionsCount = transactions.filter((t: any) => String(t.category_id) === String(cat.id)).length;
             
             let statusColor = "bg-emerald-500";
             let textColor = "text-emerald-500";
@@ -408,26 +484,37 @@ export default function OrcamentosPage() {
             }
 
             return (
-              <div key={cat.id} className="glass-card p-6 flex flex-col hover:-translate-y-1 active:scale-[0.98] transition-transform duration-300">
+              <div 
+                key={cat.id} 
+                onClick={() => setSelectedCategoryForDetails(cat)}
+                className="glass-card p-6 flex flex-col hover:-translate-y-1 hover:border-primary/40 hover:shadow-xl hover:shadow-primary/5 active:scale-[0.98] transition-all duration-300 cursor-pointer group relative"
+                title="Clica para ver o detalhe dos gastos desta categoria"
+              >
                 <div className="flex justify-between items-start mb-6">
                   <div>
-                    <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2.5">
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2.5 group-hover:text-primary transition-colors">
                       <CategoryIcon color={cat.color} icon={cat.icon} size="sm" />
                       <span>{cat.name}</span>
                     </h3>
                     <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Limite: {formatCurrency(limit)}</p>
                   </div>
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
                     {statusIcon}
                     <button 
-                      onClick={() => handleOpenEditModal(cat)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleOpenEditModal(cat);
+                      }}
                       className="p-1.5 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
                       title="Editar orçamento"
                     >
                       <Pencil className="w-4 h-4" />
                     </button>
                     <button 
-                      onClick={() => setBudgetToDelete({ id: cat.id, name: cat.name, category: cat })}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setBudgetToDelete({ id: cat.id, name: cat.name, category: cat });
+                      }}
                       className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-lg transition-colors"
                       title="Eliminar orçamento"
                     >
@@ -460,6 +547,14 @@ export default function OrcamentosPage() {
                       Atingiste o teu limite máximo!
                     </p>
                   )}
+
+                  {/* Interactive Footer Cue */}
+                  <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs font-semibold text-slate-400 group-hover:text-primary transition-colors">
+                    <span>{catTransactionsCount} {catTransactionsCount === 1 ? 'gasto registado' : 'gastos registados'}</span>
+                    <span className="flex items-center gap-1 group-hover:translate-x-0.5 transition-transform font-bold">
+                      Ver detalhes <ChevronRight className="w-3.5 h-3.5" />
+                    </span>
+                  </div>
                 </div>
               </div>
             );
@@ -467,7 +562,229 @@ export default function OrcamentosPage() {
         </div>
       )}
 
+      {/* ========================================================================= */}
+      {/* MODAL DE DETALHES DE GASTOS DA CATEGORIA */}
+      {/* ========================================================================= */}
+      {selectedCategoryForDetails && (
+        <ModalPortal>
+          <div 
+            className="fixed inset-0 z-[150] w-screen h-screen flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md animate-in fade-in duration-200"
+            onClick={() => setSelectedCategoryForDetails(null)}
+          >
+            <div 
+              className="bg-white dark:bg-slate-900 w-full max-w-2xl max-h-[90vh] rounded-3xl shadow-2xl p-6 sm:p-7 relative border border-slate-200 dark:border-slate-800 flex flex-col animate-in zoom-in-95 duration-200"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="flex items-start justify-between gap-4 pb-5 border-b border-slate-100 dark:border-slate-800">
+                <div className="flex items-center gap-3.5">
+                  <CategoryIcon color={selectedCategoryForDetails.color} icon={selectedCategoryForDetails.icon} size="md" />
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+                        {selectedCategoryForDetails.name}
+                      </h2>
+                      <span className="px-2.5 py-0.5 text-xs font-bold rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                        {getPeriodLabel()}
+                      </span>
+                    </div>
+                    <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+                      Histórico discriminado de todas as despesas associadas a este orçamento
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => {
+                      const cat = selectedCategoryForDetails;
+                      setSelectedCategoryForDetails(null);
+                      handleOpenEditModal(cat);
+                    }}
+                    className="p-2 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-xl transition-colors"
+                    title="Editar limite do orçamento"
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </button>
+                  <button 
+                    onClick={() => setSelectedCategoryForDetails(null)}
+                    className="p-2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                    title="Fechar"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Overview KPI Cards */}
+              <div className="grid grid-cols-3 gap-3 my-5">
+                <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/60 flex flex-col">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Total Gasto</span>
+                  <span className={`text-lg sm:text-xl font-black mt-1 ${detailsTextColor}`}>
+                    {formatCurrency(detailsSpent)}
+                  </span>
+                  <span className="text-[11px] font-medium text-slate-500 mt-0.5">
+                    {detailsPercentage.toFixed(0)}% do limite
+                  </span>
+                </div>
+
+                <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/60 flex flex-col">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Teto Estipulado</span>
+                  <span className="text-lg sm:text-xl font-black mt-1 text-slate-900 dark:text-white">
+                    {formatCurrency(detailsLimit)}
+                  </span>
+                  <span className="text-[11px] font-medium text-slate-500 mt-0.5">
+                    Limite mensal
+                  </span>
+                </div>
+
+                <div className={`p-3.5 rounded-2xl border flex flex-col ${
+                  detailsSpent >= detailsLimit 
+                    ? 'bg-rose-50/60 dark:bg-rose-950/20 border-rose-200 dark:border-rose-900/40 text-rose-600 dark:text-rose-400' 
+                    : 'bg-emerald-50/60 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/40 text-emerald-600 dark:text-emerald-400'
+                }`}>
+                  <span className="text-[11px] font-bold uppercase tracking-wider opacity-80">
+                    {detailsSpent >= detailsLimit ? 'Ultrapassado' : 'Saldo Restante'}
+                  </span>
+                  <span className="text-lg sm:text-xl font-black mt-1">
+                    {formatCurrency(Math.abs(detailsLimit - detailsSpent))}
+                  </span>
+                  <span className="text-[11px] font-medium opacity-80 mt-0.5">
+                    {detailsSpent >= detailsLimit ? 'Excesso acumulado' : 'Disponível para gastar'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Progress bar */}
+              <div className="mb-5 space-y-1.5">
+                <div className="flex justify-between text-xs font-semibold text-slate-500">
+                  <span>Consumo do limite</span>
+                  <span className={`font-bold ${detailsTextColor}`}>{detailsPercentage.toFixed(1)}%</span>
+                </div>
+                <div className="h-2.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                  <div 
+                    className={`h-full rounded-full ${detailsStatusColor} transition-all duration-700`}
+                    style={{ width: `${Math.min(detailsPercentage, 100)}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Transactions list header & count */}
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <Receipt className="w-4 h-4 text-primary" />
+                  Gastos Registados ({categoryDetailsTransactions.length})
+                </h4>
+                {categoryDetailsTransactions.length > 0 && (
+                  <span className="text-xs text-slate-400">
+                    Média: {formatCurrency(detailsSpent / categoryDetailsTransactions.length)} / despesa
+                  </span>
+                )}
+              </div>
+
+              {/* Scrollable list */}
+              <div className="overflow-y-auto flex-1 max-h-[38vh] pr-1 space-y-2 custom-scrollbar">
+                {categoryDetailsTransactions.length === 0 ? (
+                  <div className="py-10 text-center flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700/60">
+                    <Receipt className="w-10 h-10 text-slate-300 dark:text-slate-600 mb-2" />
+                    <p className="font-bold text-slate-700 dark:text-slate-300 text-sm">Sem gastos registados</p>
+                    <p className="text-xs text-slate-400 mt-0.5">Não foi encontrada nenhuma despesa nesta categoria no período selecionado.</p>
+                  </div>
+                ) : (
+                  categoryDetailsTransactions.map((tx: any) => {
+                    const txPct = detailsSpent > 0 ? (tx.amount / detailsSpent) * 100 : 0;
+                    const formattedDate = new Date(tx.date).toLocaleDateString('pt-PT', {
+                      day: '2-digit',
+                      month: 'short',
+                      year: 'numeric'
+                    });
+
+                    return (
+                      <div 
+                        key={tx.id}
+                        className="p-3.5 rounded-xl bg-slate-50 hover:bg-slate-100/80 dark:bg-slate-800/60 dark:hover:bg-slate-800 border border-slate-200/60 dark:border-slate-700/50 flex items-center justify-between gap-3 transition-colors"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="p-2 rounded-lg bg-rose-500/10 text-rose-500 shrink-0">
+                            <ArrowDownRight className="w-4 h-4" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-bold text-sm text-slate-900 dark:text-white truncate">
+                              {tx.description || "Sem descrição"}
+                            </p>
+                            <div className="flex items-center gap-2 mt-0.5 text-xs text-slate-400 flex-wrap">
+                              <span className="flex items-center gap-1">
+                                <Clock className="w-3 h-3" />
+                                {formattedDate}
+                              </span>
+                              {tx.payment_method && (
+                                <>
+                                  <span>•</span>
+                                  <span className="px-1.5 py-0.5 rounded bg-slate-200/60 dark:bg-slate-700/60 text-[11px] font-medium text-slate-600 dark:text-slate-300">
+                                    {tx.payment_method}
+                                  </span>
+                                </>
+                              )}
+                              {tx.receipt_image && (
+                                <>
+                                  <span>•</span>
+                                  <span className="flex items-center gap-0.5 text-primary text-[11px] font-semibold">
+                                    <Receipt className="w-3 h-3" /> Comprovativo
+                                  </span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-col items-end shrink-0">
+                          <span className="font-black text-sm sm:text-base text-rose-600 dark:text-rose-400">
+                            - {formatCurrency(tx.amount)}
+                          </span>
+                          <span className="text-[10px] font-semibold text-slate-400">
+                            {txPct.toFixed(0)}% do gasto
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* Modal Footer */}
+              <div className="mt-5 pt-4 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3">
+                <div className="text-xs text-slate-500 text-center sm:text-left">
+                  {categoryDetailsTransactions.length > 0 && (
+                    <span>Total de <strong>{categoryDetailsTransactions.length}</strong> {categoryDetailsTransactions.length === 1 ? 'gasto' : 'gastos'} somando <strong>{formatCurrency(detailsSpent)}</strong></span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                  <button
+                    onClick={() => setSelectedCategoryForDetails(null)}
+                    className="px-4 py-2 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all"
+                  >
+                    Fechar
+                  </button>
+                  <button
+                    onClick={() => {
+                      const catId = selectedCategoryForDetails.id;
+                      setSelectedCategoryForDetails(null);
+                      router.push(`/dashboard/gestao?category=${catId}`);
+                    }}
+                    className="flex items-center gap-1.5 px-4 py-2 text-sm font-bold bg-primary hover:bg-primary/90 text-white rounded-xl shadow-md shadow-primary/25 transition-all active:scale-95"
+                  >
+                    <span>Gestão de Gastos</span>
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </ModalPortal>
+      )}
+
+      {/* ========================================================================= */}
       {/* MODAL DE EDIÇÃO / CRIAÇÃO DE ORÇAMENTO */}
+      {/* ========================================================================= */}
       {editModalOpen && (
         <ModalPortal>
           <div className="fixed inset-0 z-[150] w-screen h-screen flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md animate-in fade-in duration-200">
@@ -525,7 +842,7 @@ export default function OrcamentosPage() {
                   <input 
                     type="number" 
                     step="0.01" 
-                    min="0.01"
+                    min="0.01" 
                     required 
                     autoFocus
                     value={editBudgetAmount} 
