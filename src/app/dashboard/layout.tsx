@@ -78,6 +78,32 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
+  // Saldo Atual sincronizado para exibição na sidebar
+  const [currentBalance, setCurrentBalance] = useState<number | null>(() => {
+    try {
+      const cached = localStorage.getItem("pl_cached_balance");
+      return cached !== null ? Number(cached) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const fetchBalance = async () => {
+    try {
+      const res = await api.get("/summary").catch(() => null);
+      if (res && res.data && typeof res.data.balance === "number") {
+        setCurrentBalance(res.data.balance);
+        try { localStorage.setItem("pl_cached_balance", String(res.data.balance)); } catch {}
+      }
+    } catch (err) {
+      console.warn("Erro ao buscar saldo para sidebar:", err);
+    }
+  };
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('pt-PT', { style: 'currency', currency: 'EUR' }).format(value);
+  };
+
   const getInitials = (nameStr: string) => {
     if (!nameStr) return "U";
     const parts = nameStr.trim().split(/\s+/);
@@ -332,7 +358,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         clearTimeout(timeoutId);
         timeoutId = setTimeout(async () => {
           try {
-            await api.post('/api/auth/logout').catch(() => {});
+            await fetch('/api/auth/logout', { method: 'POST' });
           } catch(e) {}
           toast.dismiss();
           localStorage.removeItem("isAuthenticated");
@@ -359,9 +385,33 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   }, [router]);
 
+  useEffect(() => {
+    fetchBalance();
+
+    const handleDataUpdate = () => {
+      fetchBalance();
+    };
+
+    window.addEventListener("transactions-updated", handleDataUpdate);
+    window.addEventListener("dashboard-updated", handleDataUpdate);
+    window.addEventListener("categories-updated", handleDataUpdate);
+    window.addEventListener("investments-updated", handleDataUpdate);
+
+    return () => {
+      window.removeEventListener("transactions-updated", handleDataUpdate);
+      window.removeEventListener("dashboard-updated", handleDataUpdate);
+      window.removeEventListener("categories-updated", handleDataUpdate);
+      window.removeEventListener("investments-updated", handleDataUpdate);
+    };
+  }, []);
+
+  useEffect(() => {
+    fetchBalance();
+  }, [pathname]);
+
   const handleLogout = async () => {
     try {
-      await api.post('/api/auth/logout').catch(() => {});
+      await fetch('/api/auth/logout', { method: 'POST' });
     } catch(e) {}
     toast.dismiss();
     localStorage.removeItem("isAuthenticated");
@@ -374,6 +424,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (loading) {
     return <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center text-slate-600 dark:text-slate-400 font-medium">A carregar...</div>;
   }
+
+  const normalizedPath = pathname.endsWith('/') && pathname !== '/' ? pathname.slice(0, -1) : pathname;
+  const isDashboardHome = normalizedPath === "/dashboard";
 
   const navItems = [
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard, mobileLabel: "Início" },
@@ -450,6 +503,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
           {/* Quick Actions in Mobile Top Bar */}
           <div className="flex items-center gap-2 md:hidden">
+            {!isDashboardHome && currentBalance !== null && (
+              <div 
+                onClick={() => router.push("/dashboard")}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200/70 dark:border-slate-700/70 text-xs font-black text-slate-900 dark:text-white cursor-pointer active:scale-95 transition-all shadow-sm"
+                title="Saldo Atual (Ir para o Dashboard)"
+              >
+                <Wallet className="w-3.5 h-3.5 text-primary shrink-0" />
+                <span className={currentBalance < 0 ? 'text-rose-500' : ''}>
+                  {formatCurrency(currentBalance)}
+                </span>
+              </div>
+            )}
             <button 
               onClick={() => setIsSettingsOpen(true)} 
               className="p-2 text-slate-500 dark:text-slate-400 hover:text-primary dark:hover:text-primary rounded-xl bg-slate-100 dark:bg-slate-800 transition-colors" 
@@ -466,9 +531,52 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </button>
           </div>
         </div>
+
+        {/* Modern Saldo Atual Card (Appears on non-dashboard tabs above navigation) */}
+        {!isDashboardHome && (
+          <div className="hidden md:block px-3 md:px-4 pb-2.5 transition-all duration-300 animate-in fade-in slide-in-from-top-2">
+            {!isCollapsed ? (
+              <div 
+                onClick={() => router.push("/dashboard")}
+                className="p-3.5 rounded-2xl bg-slate-50/80 hover:bg-slate-100/90 dark:bg-slate-800/60 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-700/60 shadow-sm hover:shadow-md hover:border-primary/40 transition-all duration-300 cursor-pointer group relative overflow-hidden"
+                title="Clica para voltar ao Dashboard"
+              >
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span className="text-[10px] font-bold tracking-wider text-slate-400 dark:text-slate-400 uppercase">
+                      Saldo Atual
+                    </span>
+                  </div>
+                  <div className="p-1 rounded-lg bg-primary/10 text-primary group-hover:scale-110 transition-transform">
+                    <Wallet className="w-3.5 h-3.5" />
+                  </div>
+                </div>
+                <div className="flex items-baseline justify-between">
+                  <span className={`text-lg font-black tracking-tight ${
+                    currentBalance !== null && currentBalance < 0 
+                      ? 'text-rose-600 dark:text-rose-400' 
+                      : 'text-slate-900 dark:text-white group-hover:text-primary transition-colors'
+                  }`}>
+                    {currentBalance !== null ? formatCurrency(currentBalance) : "..."}
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div 
+                onClick={() => router.push("/dashboard")}
+                className="w-12 h-12 mx-auto rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/60 flex flex-col items-center justify-center cursor-pointer hover:border-primary/40 hover:text-primary transition-all group"
+                title={`Saldo Atual: ${currentBalance !== null ? formatCurrency(currentBalance) : '...'}`}
+              >
+                <Wallet className="w-4 h-4 text-slate-400 group-hover:text-primary transition-colors" />
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1"></span>
+              </div>
+            )}
+          </div>
+        )}
         
         {/* Desktop Navigation list (Hidden on mobile) */}
-        <div className="hidden md:flex flex-1 px-3 pb-3 md:px-4 md:pb-4 md:pt-2 flex-col gap-1.5 overflow-y-auto min-h-0 [scrollbar-width:none]">
+        <div className="hidden md:flex flex-1 px-3 pb-3 md:px-4 md:pb-4 md:pt-1 flex-col gap-1.5 overflow-y-auto min-h-0 [scrollbar-width:none]">
           {navItems.map((item) => {
             const normalizedPathname = pathname.endsWith('/') && pathname !== '/' ? pathname.slice(0, -1) : pathname;
             const isActive = normalizedPathname === item.href;
