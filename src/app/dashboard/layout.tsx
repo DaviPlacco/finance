@@ -428,15 +428,27 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const normalizedPath = pathname.endsWith('/') && pathname !== '/' ? pathname.slice(0, -1) : pathname;
   const isDashboardHome = normalizedPath === "/dashboard";
 
-  const navItems = [
-    { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard, mobileLabel: "Início" },
-    { name: "Gestão", href: "/dashboard/gestao", icon: Wallet, mobileLabel: "Gestão" },
-    { name: "Investir", href: "/dashboard/investimentos", icon: TrendingUp, mobileLabel: "Investir" },
-    { name: "Previsão", href: "/dashboard/previsao", icon: LineChart, mobileLabel: "Previsão" },
-    { name: "Simular", href: "/dashboard/simulacao", icon: Lightbulb, mobileLabel: "Simular" },
-    { name: "Orçamentos", href: "/dashboard/orcamentos", icon: PieChart, mobileLabel: "Orçamentos" },
-    { name: "Relatórios", href: "/dashboard/relatorios", icon: FileText, mobileLabel: "Relatórios" },
+  const navSections = [
+    {
+      title: "Principal",
+      items: [
+        { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard, mobileLabel: "Início" },
+        { name: "Gestão", href: "/dashboard/gestao", icon: Wallet, mobileLabel: "Gestão" },
+        { name: "Orçamentos", href: "/dashboard/orcamentos", icon: PieChart, mobileLabel: "Orçamentos" },
+      ]
+    },
+    {
+      title: "Planeamento & Análise",
+      items: [
+        { name: "Investir", href: "/dashboard/investimentos", icon: TrendingUp, mobileLabel: "Investir" },
+        { name: "Previsão", href: "/dashboard/previsao", icon: LineChart, mobileLabel: "Previsão" },
+        { name: "Simular", href: "/dashboard/simulacao", icon: Lightbulb, mobileLabel: "Simular" },
+        { name: "Relatórios", href: "/dashboard/relatorios", icon: FileText, mobileLabel: "Relatórios" },
+      ]
+    }
   ];
+
+  const allNavItems = navSections.flatMap(s => s.items);
 
   return (
     <div className="h-screen bg-slate-50 dark:bg-slate-950 flex flex-col md:flex-row relative overflow-hidden transition-colors duration-300">
@@ -576,51 +588,85 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         )}
         
         {/* Desktop Navigation list (Hidden on mobile) */}
-        <div className="hidden md:flex flex-1 px-3 pb-3 md:px-4 md:pb-4 md:pt-1 flex-col gap-1.5 overflow-y-auto min-h-0 [scrollbar-width:none]">
-          {navItems.map((item) => {
-            const normalizedPathname = pathname.endsWith('/') && pathname !== '/' ? pathname.slice(0, -1) : pathname;
-            const isActive = normalizedPathname === item.href;
-            const Icon = item.icon;
-            return (
-              <Link
-                key={item.name}
-                href={item.href}
-                className={`flex items-center gap-3 transition-all shrink-0 ${
-                  isCollapsed ? 'justify-center w-12 h-12 mx-auto rounded-2xl' : 'py-2.5 px-3.5 sm:py-3 sm:px-4 rounded-xl'
-                } font-medium ${
-                  isActive 
-                  ? "bg-primary text-white border border-white/10 dark:border-white/5 font-semibold" 
-                  : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 border border-transparent"
-                }`}
-                style={{
-                  boxShadow: isActive ? '0 0 22px var(--primary-glow)' : undefined
-                }}
-                title={isCollapsed ? item.name : undefined}
-              >
-                <Icon className={`w-5 h-5 flex-shrink-0 ${isActive ? "text-white" : "text-slate-400 dark:text-slate-500"}`} />
-                {!isCollapsed && <span className="whitespace-nowrap transition-all duration-300 text-sm sm:text-base">{item.name}</span>}
-              </Link>
-            );
-          })}
+        <div className="hidden md:flex flex-1 px-3 pb-3 md:px-4 md:pb-4 md:pt-1 flex-col gap-3 overflow-y-auto min-h-0 [scrollbar-width:none]">
+          {navSections.map((section, idx) => (
+            <div key={section.title} className="flex flex-col gap-1">
+              {/* Separador / Dash entre seções */}
+              {idx > 0 && (
+                <div className="my-1.5 px-2">
+                  <div className="h-px bg-slate-200/70 dark:bg-slate-800/80 w-full" />
+                </div>
+              )}
+
+              {/* Legenda / Título da Secção */}
+              {!isCollapsed ? (
+                <div className="px-3 pt-1 pb-1 flex items-center justify-between">
+                  <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                    {section.title}
+                  </span>
+                </div>
+              ) : (
+                idx > 0 && (
+                  <div className="w-8 h-px bg-slate-200/70 dark:bg-slate-800/80 my-1.5 mx-auto" />
+                )
+              )}
+
+              {/* Items do Grupo */}
+              <div className="flex flex-col gap-1">
+                {section.items.map((item) => {
+                  const normalizedPathname = pathname.endsWith('/') && pathname !== '/' ? pathname.slice(0, -1) : pathname;
+                  const isActive = normalizedPathname === item.href;
+                  const Icon = item.icon;
+                  return (
+                    <Link
+                      key={item.name}
+                      href={item.href}
+                      className={`flex items-center gap-3 transition-all shrink-0 ${
+                        isCollapsed ? 'justify-center w-12 h-12 mx-auto rounded-2xl' : 'py-2.5 px-3.5 sm:py-2.5 sm:px-3.5 rounded-xl'
+                      } font-medium ${
+                        isActive 
+                        ? "bg-primary text-white border border-white/10 dark:border-white/5 font-semibold shadow-sm" 
+                        : "text-slate-600 dark:text-slate-400 hover:bg-slate-100/80 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white border border-transparent"
+                      }`}
+                      style={{
+                        boxShadow: isActive ? '0 0 20px var(--primary-glow)' : undefined
+                      }}
+                      title={isCollapsed ? item.name : undefined}
+                    >
+                      <Icon className={`w-5 h-5 flex-shrink-0 ${isActive ? "text-white" : "text-slate-400 dark:text-slate-500"}`} />
+                      {!isCollapsed && <span className="whitespace-nowrap transition-all duration-300 text-sm sm:text-[14.5px]">{item.name}</span>}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </div>
         
         {/* Desktop Sidebar Footer */}
-        <div className="hidden md:flex flex-col p-4 space-y-2 relative border-t border-slate-100 dark:border-slate-800/50">
+        <div className="hidden md:flex flex-col p-4 pt-3 space-y-1.5 relative border-t border-slate-100 dark:border-slate-800/50">
+          {!isCollapsed && (
+            <div className="px-3 pb-0.5">
+              <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                Definições
+              </span>
+            </div>
+          )}
           <button 
             onClick={() => setIsSettingsOpen(true)} 
-            className={`w-full flex items-center gap-3 py-3 text-slate-700 dark:text-slate-300 hover:text-primary dark:hover:text-primary-foreground hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all font-medium ${isCollapsed ? 'justify-center px-0' : 'px-4'}`}
+            className={`w-full flex items-center gap-3 py-2.5 text-slate-700 dark:text-slate-300 hover:text-primary dark:hover:text-primary-foreground hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all font-medium ${isCollapsed ? 'justify-center px-0' : 'px-3.5'}`}
             title={isCollapsed ? "Configurações" : undefined}
           >
             <Settings className="w-5 h-5 flex-shrink-0" />
-            {!isCollapsed && <span>Configurações</span>}
+            {!isCollapsed && <span className="text-sm sm:text-[14.5px]">Configurações</span>}
           </button>
           <button 
             onClick={handleLogout} 
-            className={`w-full flex items-center gap-3 py-3 text-slate-700 dark:text-slate-300 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-xl transition-all font-medium ${isCollapsed ? 'justify-center px-0' : 'px-4'}`}
+            className={`w-full flex items-center gap-3 py-2.5 text-slate-700 dark:text-slate-300 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-xl transition-all font-medium ${isCollapsed ? 'justify-center px-0' : 'px-3.5'}`}
             title={isCollapsed ? "Terminar Sessão" : undefined}
           >
             <LogOut className="w-5 h-5 flex-shrink-0" />
-            {!isCollapsed && <span>Terminar Sessão</span>}
+            {!isCollapsed && <span className="text-sm sm:text-[14.5px]">Terminar Sessão</span>}
           </button>
           
           <button 
@@ -641,7 +687,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* 📱 Mobile Fixed Bottom Navigation Bar */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-t border-slate-200/80 dark:border-slate-800/80 px-2 py-1.5 shadow-[0_-4px_25px_rgba(0,0,0,0.08)] flex items-center justify-around">
-        {navItems.map((item) => {
+        {allNavItems.map((item) => {
           const normalizedPathname = pathname.endsWith('/') && pathname !== '/' ? pathname.slice(0, -1) : pathname;
           const isActive = normalizedPathname === item.href;
           const Icon = item.icon;
@@ -658,16 +704,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <div className={`p-1.5 rounded-xl transition-all ${
                 isActive 
                   ? "bg-primary text-white shadow-sm ring-2 ring-primary/20 scale-105" 
-                  : "bg-transparent"
+                  : "hover:bg-slate-100 dark:hover:bg-slate-800"
               }`}>
                 <Icon className="w-4 h-4" />
               </div>
-              <span className={`text-[10px] mt-0.5 tracking-tight ${isActive ? "font-bold text-primary dark:text-primary" : "font-medium text-slate-500 dark:text-slate-400"}`}>
+              <span className="text-[10px] mt-0.5 tracking-tight font-medium">
                 {item.mobileLabel}
               </span>
-              {isActive && (
-                <span className="absolute -top-1 w-1 h-1 rounded-full bg-primary animate-pulse" />
-              )}
             </Link>
           );
         })}
