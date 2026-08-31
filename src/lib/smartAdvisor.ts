@@ -6,6 +6,7 @@ export interface SmartInsight {
   message: string;
   type: "goal" | "budget" | "compound" | "runway" | "savings_rate" | "milestone";
   iconType: "sparkles" | "trending_up" | "alert" | "piggy" | "target";
+  relatedNotifId?: string;
 }
 
 const formatCurrency = (value: number) => {
@@ -87,7 +88,8 @@ export async function generateSmartInsights(): Promise<SmartInsight[]> {
         title: "Aceleração de Meta Financeira",
         message: `Se poupares ${formatCurrency(suggestedSaving)} no próximo mês em ${topExpense.name}, poderás atingir a tua meta de ${formatCurrency(targetInv.target)} no investimento "${targetInv.name}" ${monthsSaved} ${monthsSaved === 1 ? "mês" : "meses"} mais cedo (em aprox. ${acceleratedMonths} meses)!`,
         type: "goal",
-        iconType: "target"
+        iconType: "target",
+        relatedNotifId: "notif_006"
       });
     }
 
@@ -108,7 +110,8 @@ export async function generateSmartInsights(): Promise<SmartInsight[]> {
         title: "Otimização de Gastos Secundários",
         message: `Ao reduzires apenas 15% (${formatCurrency(suggestedSaving)}) em ${secondExpense.name}, aceleras a tua meta no ativo "${targetInv.name}" em cerca de ${monthsSaved} ${monthsSaved === 1 ? "mês" : "meses"}!`,
         type: "goal",
-        iconType: "target"
+        iconType: "target",
+        relatedNotifId: "notif_001"
       });
     }
 
@@ -128,7 +131,8 @@ export async function generateSmartInsights(): Promise<SmartInsight[]> {
         title: "Otimização de Orçamento",
         message: `A categoria ${budgetExceeded.name} já consumiu ${pct}% do teto mensal estipulado. Mantendo os gastos controlados, proteges ${formatCurrency(remainingLimit > 0 ? remainingLimit : 30)} para os teus investimentos!`,
         type: "budget",
-        iconType: "alert"
+        iconType: "alert",
+        relatedNotifId: "notif_002"
       });
     }
 
@@ -146,7 +150,8 @@ export async function generateSmartInsights(): Promise<SmartInsight[]> {
       title: "Poder dos Juros Compostos (3 Anos)",
       message: `Ao poupares ${formatCurrency(potentialMonthlyExtra)}/mês e reinvestires a 7% ao ano, acumularás ${formatCurrency(futureValue3Years)} adicionais em apenas 3 anos!`,
       type: "compound",
-      iconType: "trending_up"
+      iconType: "trending_up",
+      relatedNotifId: "notif_004"
     });
 
     // =========================================================================
@@ -162,7 +167,8 @@ export async function generateSmartInsights(): Promise<SmartInsight[]> {
       title: "Horizonte a 5 Anos",
       message: `Mantendo um aporte extra constante de ${formatCurrency(potentialMonthlyExtra)}/mês a 8% ao ano, terás ${formatCurrency(futureValue5Years)} de capital acumulado em 5 anos!`,
       type: "compound",
-      iconType: "trending_up"
+      iconType: "trending_up",
+      relatedNotifId: "notif_012"
     });
 
     // =========================================================================
@@ -175,7 +181,8 @@ export async function generateSmartInsights(): Promise<SmartInsight[]> {
         title: "Segurança e Liberdade Financeira",
         message: `O teu património investido total (${formatCurrency(totalInvested)}) cobre aproximadamente ${runwayMonths} meses do teu custo de vida mensal atual!`,
         type: "runway",
-        iconType: "piggy"
+        iconType: "piggy",
+        relatedNotifId: "notif_005"
       });
     }
 
@@ -192,7 +199,8 @@ export async function generateSmartInsights(): Promise<SmartInsight[]> {
           title: "Taxa de Poupança Ativa",
           message: `A tua taxa de poupança este mês está em ${savingsRate}%. Aumentando apenas 5% (cerca de ${formatCurrency(boostAmount)}), atinges a tua independência financeira muito mais rapidamente.`,
           type: "savings_rate",
-          iconType: "sparkles"
+          iconType: "sparkles",
+          relatedNotifId: "notif_003"
         });
       }
     }
@@ -204,7 +212,8 @@ export async function generateSmartInsights(): Promise<SmartInsight[]> {
         title: "Dica de Gestão Financeira",
         message: "Regista regularmente as tuas despesas e estipula metas nos teus Investimentos para receberes projeções inteligentes e personalizadas!",
         type: "goal",
-        iconType: "sparkles"
+        iconType: "sparkles",
+        relatedNotifId: "notif_001"
       });
     }
 

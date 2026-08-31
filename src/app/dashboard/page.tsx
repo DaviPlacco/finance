@@ -427,16 +427,16 @@ export default function DashboardPage() {
   if (loading) return <div className="animate-pulse flex space-x-4"><div className="flex-1 space-y-4 py-1"><div className="h-4 bg-slate-200 rounded w-3/4"></div></div></div>;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8">
       {/* Header with mobile-optimized filters */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 sm:gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">{greeting}, {username}</h1>
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">{greeting}, {username}</h1>
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1 capitalize">{currentDate}</p>
         </div>
-        <div className="grid grid-cols-2 sm:flex sm:flex-row gap-3">
+        <div className="grid grid-cols-2 sm:flex sm:flex-row gap-2.5 sm:gap-3 w-full sm:w-auto">
           <div className="w-full sm:w-32">
-            <label className="block text-[11px] font-bold text-slate-500 mb-1 uppercase tracking-wider">Ano</label>
+            <label className="block text-[10px] sm:text-[11px] font-bold text-slate-500 mb-1 uppercase tracking-wider">Ano</label>
             <CustomSelect 
               value={filterYear}
               onChange={val => setFilterYear(val as string)}
@@ -449,7 +449,7 @@ export default function DashboardPage() {
             />
           </div>
           <div className="w-full sm:w-40">
-            <label className="block text-[11px] font-bold text-slate-500 mb-1 uppercase tracking-wider">Mês</label>
+            <label className="block text-[10px] sm:text-[11px] font-bold text-slate-500 mb-1 uppercase tracking-wider">Mês</label>
             <CustomSelect 
               value={filterMonth}
               onChange={val => setFilterMonth(val as string)}
@@ -468,9 +468,9 @@ export default function DashboardPage() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-6">
         <div 
-          className="glass-card p-6 relative overflow-hidden group transition-all duration-500 hover:shadow-2xl hover:-translate-y-1 active:scale-[0.98] cursor-default border border-slate-200/80 dark:border-slate-800 shadow-[0_0_30px_rgba(139,92,246,0.12)] dark:shadow-[0_0_50px_rgba(139,92,246,0.15)]"
+          className="glass-card p-4 sm:p-6 relative overflow-hidden group transition-all duration-500 hover:shadow-2xl hover:-translate-y-1 active:scale-[0.98] cursor-default border border-slate-200/80 dark:border-slate-800 shadow-[0_0_30px_rgba(139,92,246,0.12)] dark:shadow-[0_0_50px_rgba(139,92,246,0.15)]"
         >
           <div 
             className="absolute inset-0 opacity-100 group-hover:opacity-0 transition-opacity duration-500 pointer-events-none" 
@@ -485,43 +485,43 @@ export default function DashboardPage() {
             }}
           />
           <div className="relative z-10">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-3 sm:mb-4">
               <h3 className="text-xs sm:text-sm font-bold text-violet-100 group-hover:text-slate-500 dark:group-hover:text-slate-400 uppercase tracking-wider transition-colors duration-500">Saldo Atual</h3>
               <div className="p-2 bg-white/20 group-hover:bg-indigo-50 dark:group-hover:bg-indigo-500/10 rounded-lg transition-colors duration-500">
-                <Wallet className="w-5 h-5 text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors duration-500" />
+                <Wallet className="w-4 h-4 sm:w-5 sm:h-5 text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors duration-500" />
               </div>
             </div>
-            <p className="text-2xl sm:text-3xl font-extrabold text-white group-hover:text-slate-900 dark:group-hover:text-white transition-colors duration-500">{formatCurrency(summary.balance)}</p>
+            <p className="text-xl sm:text-2xl md:text-3xl font-extrabold text-white group-hover:text-slate-900 dark:group-hover:text-white transition-colors duration-500 truncate" title={formatCurrency(summary.balance)}>{formatCurrency(summary.balance)}</p>
           </div>
         </div>
 
-        <div className="glass-card p-6 relative overflow-hidden group transition-all duration-500 hover:shadow-2xl hover:-translate-y-1 active:scale-[0.98] cursor-default border border-slate-200/80 dark:border-slate-800">
+        <div className="glass-card p-4 sm:p-6 relative overflow-hidden group transition-all duration-500 hover:shadow-2xl hover:-translate-y-1 active:scale-[0.98] cursor-default border border-slate-200/80 dark:border-slate-800">
           <div className="absolute inset-0 bg-gradient-to-br from-emerald-600 to-teal-800 opacity-0 group-hover:opacity-100 active:opacity-100 transition-opacity duration-500 pointer-events-none" />
           <div className="relative z-10">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-3 sm:mb-4">
               <h3 className="text-xs sm:text-sm font-bold text-slate-500 group-hover:text-emerald-100 uppercase tracking-wider transition-colors duration-500">Receitas (Mês)</h3>
               <div className="p-2 bg-emerald-50 dark:bg-emerald-950/40 group-hover:bg-white/20 rounded-lg transition-colors duration-500">
-                <ArrowUpRight className="w-5 h-5 text-emerald-600 group-hover:text-white transition-colors duration-500" />
+                <ArrowUpRight className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-600 group-hover:text-white transition-colors duration-500" />
               </div>
             </div>
-            <p className="text-2xl sm:text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 group-hover:text-white transition-colors duration-500">{formatCurrency(summary.income)}</p>
+            <p className="text-xl sm:text-2xl md:text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 group-hover:text-white transition-colors duration-500 truncate" title={formatCurrency(summary.income)}>{formatCurrency(summary.income)}</p>
           </div>
         </div>
 
-        <div className="glass-card p-6 relative overflow-hidden group transition-all duration-500 hover:shadow-2xl hover:-translate-y-1 active:scale-[0.98] cursor-default border border-slate-200/80 dark:border-slate-800">
+        <div className="glass-card p-4 sm:p-6 relative overflow-hidden group transition-all duration-500 hover:shadow-2xl hover:-translate-y-1 active:scale-[0.98] cursor-default border border-slate-200/80 dark:border-slate-800">
           <div className="absolute inset-0 bg-gradient-to-br from-rose-600 to-red-800 opacity-0 group-hover:opacity-100 active:opacity-100 transition-opacity duration-500 pointer-events-none" />
           <div className="relative z-10">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-3 sm:mb-4">
               <h3 className="text-xs sm:text-sm font-bold text-slate-500 group-hover:text-rose-100 uppercase tracking-wider transition-colors duration-500">Despesas (Mês)</h3>
               <div className="p-2 bg-rose-50 dark:bg-rose-950/40 group-hover:bg-white/20 rounded-lg transition-colors duration-500">
-                <ArrowDownRight className="w-5 h-5 text-rose-600 group-hover:text-white transition-colors duration-500" />
+                <ArrowDownRight className="w-4 h-4 sm:w-5 sm:h-5 text-rose-600 group-hover:text-white transition-colors duration-500" />
               </div>
             </div>
-            <p className="text-2xl sm:text-3xl font-extrabold text-rose-600 dark:text-rose-400 group-hover:text-white transition-colors duration-500">{formatCurrency(summary.expense)}</p>
+            <p className="text-xl sm:text-2xl md:text-3xl font-extrabold text-rose-600 dark:text-rose-400 group-hover:text-white transition-colors duration-500 truncate" title={formatCurrency(summary.expense)}>{formatCurrency(summary.expense)}</p>
           </div>
         </div>
 
-        <div className="glass-card p-6 relative overflow-hidden group transition-all duration-500 hover:shadow-2xl hover:-translate-y-1 active:scale-[0.98] cursor-default border border-slate-200/80 dark:border-slate-800">
+        <div className="glass-card p-4 sm:p-6 relative overflow-hidden group transition-all duration-500 hover:shadow-2xl hover:-translate-y-1 active:scale-[0.98] cursor-default border border-slate-200/80 dark:border-slate-800">
           <div 
             className="absolute inset-0 opacity-0 group-hover:opacity-100 active:opacity-100 transition-opacity duration-500 pointer-events-none" 
             style={{
@@ -529,13 +529,13 @@ export default function DashboardPage() {
             }}
           />
           <div className="relative z-10">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-3 sm:mb-4">
               <h3 className="text-xs sm:text-sm font-bold text-slate-500 group-hover:text-white/90 uppercase tracking-wider transition-colors duration-500">Investido</h3>
               <div className="p-2 bg-primary/10 group-hover:bg-white/20 rounded-lg transition-colors duration-500">
-                <TrendingUp className="w-5 h-5 text-primary group-hover:text-white transition-colors duration-500" />
+                <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-primary group-hover:text-white transition-colors duration-500" />
               </div>
             </div>
-            <p className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white group-hover:text-white transition-colors duration-500">{formatCurrency(summary.investments || 0)}</p>
+            <p className="text-xl sm:text-2xl md:text-3xl font-extrabold text-slate-900 dark:text-white group-hover:text-white transition-colors duration-500 truncate" title={formatCurrency(summary.investments || 0)}>{formatCurrency(summary.investments || 0)}</p>
           </div>
         </div>
       </div>

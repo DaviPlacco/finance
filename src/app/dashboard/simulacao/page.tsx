@@ -200,54 +200,54 @@ export default function SimulacaoPage() {
 
   return (
     <div className="animate-in fade-in zoom-in-95 duration-500 pb-10 max-w-6xl mx-auto">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 sm:mb-8 gap-3 sm:gap-4">
         <div>
-          <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-3">
-            <Lightbulb className="w-8 h-8 text-primary" />
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
+            <Lightbulb className="w-6 h-6 sm:w-8 sm:h-8 text-primary shrink-0" />
             Simulação Mensal
           </h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-1">
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
             Planeia e prevê as tuas receitas e despesas para o próximo mês.
           </p>
         </div>
-        <div className="flex items-center gap-2 sm:gap-3 w-full md:w-auto">
-          <button onClick={() => setShowSaveModal(true)} className="flex-1 md:flex-none flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 bg-primary hover:brightness-110 text-white rounded-xl transition-all font-semibold text-xs sm:text-sm shadow-sm shadow-primary/20">
-            <Save className="w-4 h-4" /> <span>Guardar</span>
+        <div className="flex items-center gap-2 sm:gap-2.5 w-full sm:w-auto">
+          <button onClick={() => setShowSaveModal(true)} className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2 sm:py-2.5 bg-primary hover:brightness-110 text-white rounded-xl transition-all font-semibold text-xs sm:text-sm shadow-sm shadow-primary/20">
+            <Save className="w-4 h-4 shrink-0" /> <span>Guardar</span>
           </button>
-          <button onClick={() => exportSimulacaoToCSV(incomes, expenses)} className="flex-1 md:flex-none flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-700 dark:text-slate-300 hover:text-emerald-600 hover:border-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-all font-semibold text-xs sm:text-sm shadow-sm">
-            <FileText className="w-4 h-4 text-emerald-500" /> <span className="hidden sm:inline">Exportar </span><span>CSV</span>
+          <button onClick={() => exportSimulacaoToCSV(incomes, expenses)} className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2 sm:py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-700 dark:text-slate-300 hover:text-emerald-600 hover:border-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-all font-semibold text-xs sm:text-sm shadow-sm">
+            <FileText className="w-4 h-4 text-emerald-500 shrink-0" /> <span>CSV</span>
           </button>
-          <button onClick={() => exportSimulacaoToPDF(incomes, expenses)} className="flex-1 md:flex-none flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-700 dark:text-slate-300 hover:text-rose-600 hover:border-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-all font-semibold text-xs sm:text-sm shadow-sm">
-            <Download className="w-4 h-4 text-rose-500" /> <span className="hidden sm:inline">Exportar </span><span>PDF</span>
+          <button onClick={() => exportSimulacaoToPDF(incomes, expenses)} className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2 sm:py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-700 dark:text-slate-300 hover:text-rose-600 hover:border-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-all font-semibold text-xs sm:text-sm shadow-sm">
+            <Download className="w-4 h-4 text-rose-500 shrink-0" /> <span>PDF</span>
           </button>
         </div>
       </div>
 
       {/* Painel de Resultados */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="glass-card p-6 border-l-4 border-l-emerald-500 hover:-translate-y-1 active:scale-[0.98] transition-transform duration-300">
-          <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-6 mb-6 sm:mb-8">
+        <div className="glass-card p-4 sm:p-6 border-l-4 border-l-emerald-500 hover:-translate-y-1 active:scale-[0.98] transition-transform duration-300">
+          <h3 className="text-xs sm:text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5 sm:mb-2 flex items-center gap-1.5 sm:gap-2">
             <TrendingUp className="w-4 h-4 text-emerald-500" /> Total Receitas
           </h3>
-          <p className="text-3xl font-bold text-slate-900 dark:text-white">{formatCurrency(totalIncome)}</p>
+          <p className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white truncate">{formatCurrency(totalIncome)}</p>
         </div>
 
-        <div className="glass-card p-6 border-l-4 border-l-rose-500 hover:-translate-y-1 active:scale-[0.98] transition-transform duration-300">
-          <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-2">
+        <div className="glass-card p-4 sm:p-6 border-l-4 border-l-rose-500 hover:-translate-y-1 active:scale-[0.98] transition-transform duration-300">
+          <h3 className="text-xs sm:text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5 sm:mb-2 flex items-center gap-1.5 sm:gap-2">
             <TrendingDown className="w-4 h-4 text-rose-500" /> Total Despesas
           </h3>
-          <p className="text-3xl font-bold text-slate-900 dark:text-white">{formatCurrency(totalExpense)}</p>
+          <p className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white truncate">{formatCurrency(totalExpense)}</p>
         </div>
 
-        <div className={`glass-card p-6 border-l-4 hover:-translate-y-1 active:scale-[0.98] transition-transform duration-300 ${balance >= 0 ? 'border-l-primary' : 'border-l-rose-600'}`}>
-          <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-2">
-            <Wallet className={`w-4 h-4 ${balance >= 0 ? 'text-primary' : 'text-rose-600'}`} /> Saldo Previsto (Sobra)
+        <div className={`glass-card p-4 sm:p-6 border-l-4 hover:-translate-y-1 active:scale-[0.98] transition-transform duration-300 ${balance >= 0 ? 'border-l-primary' : 'border-l-rose-600'}`}>
+          <h3 className="text-xs sm:text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5 sm:mb-2 flex items-center gap-1.5 sm:gap-2">
+            <Wallet className={`w-4 h-4 ${balance >= 0 ? 'text-primary' : 'text-rose-600'}`} /> Saldo Previsto
           </h3>
-          <p className={`text-3xl font-extrabold ${balance >= 0 ? 'text-primary' : 'text-rose-600'}`}>
+          <p className={`text-2xl sm:text-3xl font-extrabold truncate ${balance >= 0 ? 'text-primary' : 'text-rose-600'}`}>
             {formatCurrency(balance)}
           </p>
-          <div className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-            {balance >= 0 ? 'Excelente! Estás com saldo positivo.' : 'Atenção! As despesas superam as receitas.'}
+          <div className="mt-1.5 sm:mt-2 text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+            {balance >= 0 ? 'Excelente! Estás com saldo positivo.' : 'Atenção! Despesas superam receitas.'}
           </div>
         </div>
       </div>

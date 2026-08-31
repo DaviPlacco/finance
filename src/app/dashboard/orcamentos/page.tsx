@@ -367,25 +367,25 @@ export default function OrcamentosPage() {
   const currentSelectedCategory = categories.find((c: any) => String(c.id) === String(selectedCategoryId));
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+    <div className="space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-3 sm:gap-4">
         <div>
-          <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-3">
-            <PieChart className="w-8 h-8 text-primary" /> Previsões e Orçamentos
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
+            <PieChart className="w-6 h-6 sm:w-8 sm:h-8 text-primary shrink-0" /> Previsões e Orçamentos
           </h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-1">
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
             Acompanha o histórico dos teus gastos e não deixes que ultrapassem o teu limite estipulado.
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full sm:w-auto">
           <button
             onClick={handleOpenNewModal}
-            className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 text-white font-bold rounded-xl shadow-md shadow-primary/25 transition-all active:scale-95 text-sm"
+            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-primary hover:bg-primary/90 text-white font-bold rounded-xl shadow-md shadow-primary/25 transition-all active:scale-95 text-xs sm:text-sm whitespace-nowrap order-last sm:order-first"
           >
-            <Plus className="w-4 h-4" /> Definir Orçamento
+            <Plus className="w-4 h-4 shrink-0" /> Definir Orçamento
           </button>
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="w-28 sm:w-32">
+          <div className="grid grid-cols-2 sm:flex items-center gap-2 w-full sm:w-auto">
+            <div className="w-full sm:w-32">
               <CustomSelect 
                 value={filterYear} 
                 onChange={setFilterYear as any} 
@@ -396,7 +396,7 @@ export default function OrcamentosPage() {
                 ]} 
               />
             </div>
-            <div className="w-28 sm:w-32">
+            <div className="w-full sm:w-32">
               <CustomSelect 
                 value={filterMonth || "Todos"} 
                 onChange={(val) => setFilterMonth(val === "Todos" ? "" : String(val))} 
@@ -422,25 +422,27 @@ export default function OrcamentosPage() {
       </div>
 
       {totalBudget > 0 && (
-        <div className={`glass-card p-6 flex items-center gap-6 ${bannerBg}`}>
-          <div className={`p-4 rounded-xl shrink-0 ${iconBg}`}>
-            {bannerIcon}
+        <div className={`glass-card p-4 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center gap-3.5 sm:gap-5 ${bannerBg}`}>
+          <div className={`p-2.5 sm:p-3.5 rounded-2xl shrink-0 ${iconBg}`}>
+            <span className="[&>svg]:w-6 [&>svg]:h-6 sm:[&>svg]:w-8 sm:[&>svg]:h-8 flex items-center justify-center">
+              {bannerIcon}
+            </span>
           </div>
-          <div>
-            <h3 className={`text-xl font-bold ${titleColor}`}>
+          <div className="min-w-0 flex-1">
+            <h3 className={`text-base sm:text-xl font-black tracking-tight ${titleColor}`}>
               {bannerTitle}
             </h3>
-            <p className={`mt-1 font-medium text-lg ${textSubColor}`}>
+            <p className={`mt-1 font-medium text-xs sm:text-sm md:text-base leading-relaxed ${textSubColor}`}>
               {bannerState === 'danger' ? (
                 isGlobalOverBudget ? (
-                  <>Ultrapassaste o teu teto global em <strong className="text-2xl font-black ml-1 text-rose-700 dark:text-rose-300">{formatCurrency(Math.abs(budgetDiff))}</strong></>
+                  <>Ultrapassaste o teu teto global em <strong className="text-base sm:text-xl font-black ml-1 text-rose-700 dark:text-rose-300 inline-block">{formatCurrency(Math.abs(budgetDiff))}</strong></>
                 ) : (
-                  <>Ainda assim, no total poupaste <strong className="text-2xl font-black ml-1 text-slate-900 dark:text-white">{formatCurrency(budgetDiff)}</strong> em relação ao teto global</>
+                  <>Ainda assim, no total poupaste <strong className="text-base sm:text-xl font-black ml-1 text-slate-900 dark:text-white inline-block">{formatCurrency(budgetDiff)}</strong> em relação ao teto global</>
                 )
               ) : bannerState === 'warning' ? (
-                <>Poupaste <strong className="text-2xl font-black ml-1 text-slate-900 dark:text-white">{formatCurrency(budgetDiff)}</strong> em relação ao limite global (tem atenção aos gastos)</>
+                <>Poupaste <strong className="text-base sm:text-xl font-black ml-1 text-slate-900 dark:text-white inline-block">{formatCurrency(budgetDiff)}</strong> em relação ao limite global (tem atenção aos gastos)</>
               ) : (
-                <>Poupaste <strong className="text-2xl font-black ml-1">{formatCurrency(budgetDiff)}</strong> em relação ao teu limite</>
+                <>Poupaste <strong className="text-base sm:text-xl font-black ml-1 inline-block">{formatCurrency(budgetDiff)}</strong> em relação ao teu limite</>
               )}
             </p>
           </div>
@@ -448,21 +450,21 @@ export default function OrcamentosPage() {
       )}
 
       {budgetCategories.length === 0 ? (
-        <div className="glass-card p-10 text-center flex flex-col items-center justify-center">
-          <TrendingDown className="w-16 h-16 text-slate-300 dark:text-slate-600 mb-4" />
-          <h3 className="text-xl font-bold text-slate-700 dark:text-slate-300 mb-2">Sem previsões definidas</h3>
-          <p className="text-slate-500 dark:text-slate-400 max-w-md mx-auto mb-6">
+        <div className="glass-card p-8 sm:p-10 text-center flex flex-col items-center justify-center">
+          <TrendingDown className="w-12 h-12 sm:w-16 sm:h-16 text-slate-300 dark:text-slate-600 mb-3 sm:mb-4" />
+          <h3 className="text-lg sm:text-xl font-bold text-slate-700 dark:text-slate-300 mb-2">Sem previsões definidas</h3>
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-md mx-auto mb-6 leading-relaxed">
             Ainda não definiste nenhum limite mensal para as tuas categorias. Clica no botão abaixo para começares a controlar os teus tetos de gastos.
           </p>
           <button
             onClick={handleOpenNewModal}
-            className="flex items-center gap-2 px-5 py-3 bg-primary hover:bg-primary/90 text-white font-bold rounded-xl shadow-lg shadow-primary/30 transition-all active:scale-95"
+            className="flex items-center gap-2 px-4 sm:px-5 py-2.5 sm:py-3 bg-primary hover:bg-primary/90 text-white font-bold rounded-xl shadow-lg shadow-primary/30 transition-all active:scale-95 text-xs sm:text-sm"
           >
-            <Plus className="w-5 h-5" /> Definir Primeiro Orçamento
+            <Plus className="w-4 h-4 sm:w-5 sm:h-5" /> Definir Primeiro Orçamento
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {budgetCategories.map((cat: any) => {
             const spent = categorySpending[cat.id] || 0;
             const limit = cat.budget_limit;
@@ -471,34 +473,34 @@ export default function OrcamentosPage() {
             
             let statusColor = "bg-emerald-500";
             let textColor = "text-emerald-500";
-            let statusIcon = <CheckCircle2 className="w-5 h-5 text-emerald-500" />;
+            let statusIcon = <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />;
             
             if (percentage >= 100) {
               statusColor = "bg-rose-500";
               textColor = "text-rose-500";
-              statusIcon = <AlertTriangle className="w-5 h-5 text-rose-500" />;
+              statusIcon = <AlertTriangle className="w-5 h-5 text-rose-500 shrink-0" />;
             } else if (percentage >= 70) {
               statusColor = "bg-amber-500";
               textColor = "text-amber-500";
-              statusIcon = <AlertTriangle className="w-5 h-5 text-amber-500" />;
+              statusIcon = <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0" />;
             }
 
             return (
               <div 
                 key={cat.id} 
                 onClick={() => setSelectedCategoryForDetails(cat)}
-                className="glass-card p-6 flex flex-col hover:-translate-y-1 hover:border-primary/40 hover:shadow-xl hover:shadow-primary/5 active:scale-[0.98] transition-all duration-300 cursor-pointer group relative"
+                className="glass-card p-4 sm:p-6 flex flex-col hover:-translate-y-1 hover:border-primary/40 hover:shadow-xl hover:shadow-primary/5 active:scale-[0.98] transition-all duration-300 cursor-pointer group relative"
                 title="Clica para ver o detalhe dos gastos desta categoria"
               >
-                <div className="flex justify-between items-start mb-6">
-                  <div>
-                    <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2.5 group-hover:text-primary transition-colors">
+                <div className="flex justify-between items-start mb-4 sm:mb-6 gap-2">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 group-hover:text-primary transition-colors truncate">
                       <CategoryIcon color={cat.color} icon={cat.icon} size="sm" />
-                      <span>{cat.name}</span>
+                      <span className="truncate">{cat.name}</span>
                     </h3>
-                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Limite: {formatCurrency(limit)}</p>
+                    <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">Limite: {formatCurrency(limit)}</p>
                   </div>
-                  <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
                     {statusIcon}
                     <button 
                       onClick={(e) => {
@@ -523,19 +525,19 @@ export default function OrcamentosPage() {
                   </div>
                 </div>
 
-                <div className="mt-auto">
-                  <div className="flex justify-between items-end mb-2">
+                <div className="space-y-3">
+                  <div className="flex justify-between items-end">
                     <div className="flex flex-col">
-                      <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Gasto</span>
-                      <span className={`text-2xl font-black ${textColor}`}>{formatCurrency(spent)}</span>
+                      <span className="text-[11px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider">Gasto Atual</span>
+                      <span className={`text-xl sm:text-2xl font-black ${textColor}`}>{formatCurrency(spent)}</span>
                     </div>
-                    <span className={`text-sm font-bold ${textColor}`}>
-                      {percentage.toFixed(0)}%
+                    <span className={`text-xs sm:text-sm font-black ${textColor}`}>
+                      {percentage >= 100 ? `${percentage.toFixed(0)}% (Ultrapassado)` : `${percentage.toFixed(0)}%`}
                     </span>
                   </div>
                   
                   {/* Progress Bar Container */}
-                  <div className="h-3 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                  <div className="h-2.5 sm:h-3 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                     <div 
                       className={`h-full rounded-full ${statusColor} transition-all duration-1000 ease-out`}
                       style={{ width: `${percentage}%` }}
@@ -543,15 +545,15 @@ export default function OrcamentosPage() {
                   </div>
                   
                   {percentage >= 100 && (
-                    <p className="text-xs font-bold text-rose-500 mt-3 bg-rose-50 dark:bg-rose-500/10 p-2 rounded-lg text-center">
+                    <p className="text-[11px] sm:text-xs font-bold text-rose-500 bg-rose-50 dark:bg-rose-500/10 p-2 rounded-xl text-center">
                       Atingiste o teu limite máximo!
                     </p>
                   )}
 
                   {/* Interactive Footer Cue */}
-                  <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs font-semibold text-slate-400 group-hover:text-primary transition-colors">
+                  <div className="pt-2.5 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs font-semibold text-slate-400 group-hover:text-primary transition-colors">
                     <span>{catTransactionsCount} {catTransactionsCount === 1 ? 'gasto registado' : 'gastos registados'}</span>
-                    <span className="flex items-center gap-1 group-hover:translate-x-0.5 transition-transform font-bold">
+                    <span className="flex items-center gap-1 group-hover:translate-x-0.5 transition-transform font-bold text-[11px] sm:text-xs">
                       Ver detalhes <ChevronRight className="w-3.5 h-3.5" />
                     </span>
                   </div>

@@ -991,3 +991,68 @@ CATEGORIES_CONFIG.forEach(cfg => {
 });
 
 export const TOTAL_NOTIFICATIONS_COUNT = NOTIFICATIONS_CATALOG.length;
+
+export interface MonthlyProgressionInfo {
+  dayOfMonth: number;
+  daysInMonth: number;
+  monthName: string;
+  year: number;
+  unlockedCount: number;
+  totalCount: number;
+  todayNewCount: number;
+  unlockedNotifications: FinancialNotification[];
+  allNotifications: FinancialNotification[];
+}
+
+/**
+ * Calcula a lista de notificações desbloqueadas progressivamente para o dia atual do mês
+ */
+export function getMonthlyProgressiveNotifications(targetDate: Date = new Date()): MonthlyProgressionInfo {
+  const dayOfMonth = targetDate.getDate(); // 1 - 31
+  const daysInMonth = new Date(targetDate.getFullYear(), targetDate.getMonth() + 1, 0).getDate(); // 28 - 31
+  const rawMonthName = targetDate.toLocaleString("pt-PT", { month: "long" });
+  const monthName = rawMonthName.charAt(0).toUpperCase() + rawMonthName.slice(1);
+  const year = targetDate.getFullYear();
+
+  const totalCount = NOTIFICATIONS_CATALOG.length; // 105
+  // Desbloqueia progressivamente ao longo do mês (ex: 3 a 4 por dia)
+  const unlockedCount = Math.min(totalCount, Math.max(3, Math.ceil((dayOfMonth / daysInMonth) * totalCount)));
+  const yesterdayUnlockedCount = dayOfMonth > 1 ? Math.min(totalCount, Math.ceil(((dayOfMonth - 1) / daysInMonth) * totalCount)) : 0;
+  const todayNewCount = Math.max(1, unlockedCount - yesterdayUnlockedCount);
+
+  // Mapeia cada notificação com a data contextual do mês corrente
+  const enrichedList: FinancialNotification[] = NOTIFICATIONS_CATALOG.map((item, index) => {
+    const assignedDay = Math.max(1, Math.min(daysInMonth, Math.ceil((index + 1) / (totalCount / daysInMonth))));
+    
+    let publishedAt = "";
+    if (assignedDay === dayOfMonth) {
+      publishedAt = "Hoje";
+    } else if (assignedDay === dayOfMonth - 1) {
+      publishedAt = "Ontem";
+    } else if (assignedDay < dayOfMonth) {
+      publishedAt = `${assignedDay} de ${monthName}`;
+    } else {
+      publishedAt = `Dia ${assignedDay} de ${monthName}`;
+    }
+
+    return {
+      ...item,
+      publishedAt
+    };
+  });
+
+  const unlockedNotifications = enrichedList.slice(0, unlockedCount);
+
+  return {
+    dayOfMonth,
+    daysInMonth,
+    monthName,
+    year,
+    unlockedCount,
+    totalCount,
+    todayNewCount,
+    unlockedNotifications,
+    allNotifications: enrichedList
+  };
+}
+

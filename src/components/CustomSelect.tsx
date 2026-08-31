@@ -66,21 +66,21 @@ export function CustomSelect({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className={`w-full min-w-fit px-3.5 py-2 text-left border ${isOpen ? 'border-primary ring-2 ring-primary/20' : 'border-slate-200 dark:border-slate-700'} rounded-xl bg-white/50 dark:bg-slate-800/50 focus:ring-2 focus:ring-primary focus:border-transparent outline-none flex items-center justify-between gap-2.5 whitespace-nowrap transition-all text-sm`}
+        className={`w-full min-w-0 max-w-full px-3 py-2 text-left border ${isOpen ? 'border-primary ring-2 ring-primary/20' : 'border-slate-200 dark:border-slate-700'} rounded-xl bg-white/50 dark:bg-slate-800/50 focus:ring-2 focus:ring-primary focus:border-transparent outline-none flex items-center justify-between gap-2 transition-all text-sm overflow-hidden`}
       >
-        <div className="flex items-center gap-2 truncate">
+        <div className="flex items-center gap-1.5 truncate min-w-0 flex-1">
           {selectedOption && (selectedOption.color || selectedOption.icon) && (
             <CategoryIcon color={selectedOption.color || "#6366f1"} icon={selectedOption.icon} size="xs" showBackground={false} />
           )}
-          <span className={`whitespace-nowrap ${selectedOption ? "text-slate-900 dark:text-white font-semibold" : "text-slate-500 dark:text-slate-400 font-medium"}`}>
+          <span className={`truncate text-xs sm:text-sm ${selectedOption ? "text-slate-900 dark:text-white font-semibold" : "text-slate-500 dark:text-slate-400 font-medium"}`}>
             {selectedOption ? selectedOption.label : placeholder}
           </span>
         </div>
-        <ChevronDown className={`w-4 h-4 text-slate-400 shrink-0 transition-transform duration-200 ${isOpen ? "rotate-180 text-primary" : ""}`} />
+        <ChevronDown className={`w-3.5 h-3.5 text-slate-400 shrink-0 transition-transform duration-200 ${isOpen ? "rotate-180 text-primary" : ""}`} />
       </button>
 
       {isOpen && (
-        <div className="absolute z-50 w-full mt-2 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+        <div className="absolute z-50 min-w-full w-max max-w-[280px] mt-2 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
           <div className="max-h-60 overflow-y-auto py-1 [scrollbar-width:thin]">
             {options.length === 0 ? (
               <div className="px-4 py-3 text-slate-500 dark:text-slate-400 text-sm text-center font-medium">Nenhuma opção disponível</div>

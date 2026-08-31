@@ -6,7 +6,6 @@ import {
   Bell, 
   Search, 
   Star, 
-  Check, 
   CheckCircle2, 
   ArrowRight, 
   Sparkles, 
@@ -19,13 +18,13 @@ import {
   Scale, 
   AlertTriangle, 
   Sliders, 
-  Share2, 
   Copy, 
   X, 
   ChevronRight, 
   BookOpen, 
-  Filter, 
-  RotateCcw
+  Calendar,
+  Unlock,
+  Lock
 } from "lucide-react";
 import { 
   ResponsiveContainer, 
@@ -40,9 +39,9 @@ import {
   Legend 
 } from "recharts";
 import { 
-  NOTIFICATIONS_CATALOG, 
   FinancialNotification, 
   calculateNotificationProjection, 
+  getMonthlyProgressiveNotifications,
   TOTAL_NOTIFICATIONS_COUNT 
 } from "@/lib/notificationsData";
 import { toast } from "sonner";
@@ -51,6 +50,12 @@ function NotificationsContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const initialId = searchParams.get("id");
+
+  // Informações de progressão mensal
+  const monthlyInfo = useMemo(() => getMonthlyProgressiveNotifications(), []);
+
+  // Visualização: apenas desbloqueadas no mês corrente vs catálogo completo
+  const [showFullCatalog, setShowFullCatalog] = useState(false);
 
   // Estado de persistência de lidas e favoritas
   const [readIds, setReadIds] = useState<Set<string>>(() => {
@@ -76,13 +81,18 @@ function NotificationsContent() {
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<"all" | "unread" | "favorites">("all");
 
+  // Lista base ativa (desbloqueadas ou catálogo completo)
+  const activePool = useMemo(() => {
+    return showFullCatalog ? monthlyInfo.allNotifications : monthlyInfo.unlockedNotifications;
+  }, [showFullCatalog, monthlyInfo]);
+
   // Notificação selecionada para leitura e simulação
   const [selectedNotification, setSelectedNotification] = useState<FinancialNotification>(() => {
     if (initialId) {
-      const found = NOTIFICATIONS_CATALOG.find((n) => n.id === initialId);
+      const found = monthlyInfo.allNotifications.find((n) => n.id === initialId);
       if (found) return found;
     }
-    return NOTIFICATIONS_CATALOG[0];
+    return activePool[0] || monthlyInfo.allNotifications[0];
   });
 
   // Valor personalizado do simulador
@@ -93,17 +103,57 @@ function NotificationsContent() {
   // Modal mobile de detalhe
   const [isMobileDetailOpen, setIsMobileDetailOpen] = useState(false);
 
-  // Sincronizar com query param
+  // Função para selecionar notificação por ID (com abertura garantida, reset de filtros se necessário e scroll suave)
+  const selectNotificationById = (id: string) => {
+    const found = monthlyInfo.allNotifications.find((n) => n.id === id);
+    if (found) {
+      setSelectedNotification(found);
+      setCustomMonthlyValue(found.defaultMonthlyValue);
+      markAsRead(found.id);
+
+      // Se a notificação for de um dia futuro do mês, ativa a visualização do catálogo completo
+      const isInUnlocked = monthlyInfo.unlockedNotifications.some((n) => n.id === id);
+      if (!isInUnlocked) {
+        setShowFullCatalog(true);
+      }
+
+      // Limpar busca e filtros de categoria para que o card selecionado fique visível na lista
+      setSearchQuery("");
+      setSelectedCategory("all");
+      setFilterStatus("all");
+
+      setIsMobileDetailOpen(true);
+
+      // Scroll suave até ao card na coluna esquerda
+      setTimeout(() => {
+        const el = document.getElementById(`notif-card-${id}`);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        }
+      }, 150);
+    }
+  };
+
+  // Sincronizar com query param da URL
   useEffect(() => {
     if (initialId) {
-      const found = NOTIFICATIONS_CATALOG.find((n) => n.id === initialId);
-      if (found) {
-        setSelectedNotification(found);
-        setCustomMonthlyValue(found.defaultMonthlyValue);
-        markAsRead(found.id);
-      }
+      selectNotificationById(initialId);
     }
-  }, [initialId]);
+  }, [initialId, monthlyInfo]);
+
+  // Listener para o evento global 'open-notification' disparado pelo Toast Inteligente
+  useEffect(() => {
+    const handleOpenNotif = (e: any) => {
+      const targetId = e?.detail?.id;
+      if (targetId) {
+        selectNotificationById(targetId);
+      }
+    };
+    window.addEventListener("open-notification", handleOpenNotif);
+    return () => {
+      window.removeEventListener("open-notification", handleOpenNotif);
+    };
+  }, [monthlyInfo]);
 
   // Atualizar valor customizado ao trocar de notificação
   const handleSelectNotification = (notif: FinancialNotification) => {
@@ -146,13 +196,16 @@ function NotificationsContent() {
   };
 
   const markAllAsRead = () => {
-    const allIds = new Set(NOTIFICATIONS_CATALOG.map((n) => n.id));
-    setReadIds(allIds);
-    try {
-      localStorage.setItem("pl_notifications_read", JSON.stringify(Array.from(allIds)));
-      window.dispatchEvent(new CustomEvent("notifications-updated"));
-      toast.success("Todas as notificações foram marcadas como lidas!");
-    } catch {}
+    const allUnlockedIds = new Set(activePool.map((n) => n.id));
+    setReadIds((prev) => {
+      const next = new Set([...Array.from(prev), ...Array.from(allUnlockedIds)]);
+      try {
+        localStorage.setItem("pl_notifications_read", JSON.stringify(Array.from(next)));
+        window.dispatchEvent(new CustomEvent("notifications-updated"));
+        toast.success("Todas as notificações ativas foram marcadas como lidas!");
+      } catch {}
+      return next;
+    });
   };
 
   const formatCurrency = (val: number) => {
@@ -168,7 +221,7 @@ function NotificationsContent() {
 
   // Filtragem da lista
   const filteredNotifications = useMemo(() => {
-    return NOTIFICATIONS_CATALOG.filter((notif) => {
+    return activePool.filter((notif) => {
       // Filtro de texto
       const matchesSearch =
         searchQuery.trim() === "" ||
@@ -189,7 +242,7 @@ function NotificationsContent() {
 
       return matchesSearch && matchesCategory && matchesStatus;
     });
-  }, [searchQuery, selectedCategory, filterStatus, readIds, favoriteIds]);
+  }, [activePool, searchQuery, selectedCategory, filterStatus, readIds, favoriteIds]);
 
   // Projeção calculada para a notificação ativa
   const projectionData = useMemo(() => {
@@ -201,16 +254,72 @@ function NotificationsContent() {
     );
   }, [selectedNotification, customMonthlyValue]);
 
-  // Estatísticas Rápidas
-  const unreadCount = TOTAL_NOTIFICATIONS_COUNT - readIds.size;
+  // Tooltip customizado com alto contraste em Dark Mode e Light Mode
+  const renderCustomChartTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      const semVal = payload.find((p: any) => p.dataKey === "semEstrategia")?.value;
+      const comVal = payload.find((p: any) => p.dataKey === "comEstrategia")?.value;
+      const diff = comVal !== undefined && semVal !== undefined ? comVal - semVal : 0;
+
+      return (
+        <div className="bg-slate-900/95 dark:bg-slate-950/95 backdrop-blur-xl border border-slate-700/80 dark:border-slate-800 p-3.5 rounded-xl shadow-2xl text-white text-xs min-w-[220px] space-y-2">
+          <div className="font-extrabold text-slate-200 border-b border-slate-800 pb-1.5 flex items-center justify-between">
+            <span>{label}</span>
+            <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Projeção</span>
+          </div>
+          <div className="space-y-1.5">
+            {comVal !== undefined && (
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-slate-300 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-primary" />
+                  Com Estratégia:
+                </span>
+                <span className="font-extrabold text-white">
+                  {formatCurrency(comVal)}
+                </span>
+              </div>
+            )}
+
+            {semVal !== undefined && (
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-slate-400 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-slate-400" />
+                  Sem Estratégia:
+                </span>
+                <span className="font-semibold text-slate-300">
+                  {formatCurrency(semVal)}
+                </span>
+              </div>
+            )}
+
+            {diff !== 0 && (
+              <div className="flex items-center justify-between gap-3 pt-1.5 border-t border-slate-800 text-[11px]">
+                <span className="text-emerald-400 font-bold">Ganho Líquido:</span>
+                <span className="font-extrabold text-emerald-400">
+                  +{formatCurrency(diff)}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+    return null;
+  };
+
+  // Estatísticas Rápidas do Pool Ativo
+  const unreadCount = useMemo(() => {
+    return activePool.filter((n) => !readIds.has(n.id)).length;
+  }, [activePool, readIds]);
+
   const favoritesCount = favoriteIds.size;
 
   const totalSimulatedSavings5Years = useMemo(() => {
     const monthlyRate = 0.08 / 12;
     const months = 60;
-    const totalMonthly = NOTIFICATIONS_CATALOG.slice(0, 10).reduce((acc, n) => acc + n.defaultMonthlyValue, 0);
+    const totalMonthly = activePool.slice(0, 10).reduce((acc, n) => acc + n.defaultMonthlyValue, 0);
     return Math.round(totalMonthly * ((Math.pow(1 + monthlyRate, months) - 1) / monthlyRate));
-  }, []);
+  }, [activePool]);
 
   const getCategoryIcon = (iconType: string) => {
     switch (iconType) {
@@ -252,21 +361,23 @@ function NotificationsContent() {
     }
   };
 
+  const progressPercentage = Math.round((monthlyInfo.dayOfMonth / monthlyInfo.daysInMonth) * 100);
+
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
-      {/* 🌟 Cabeçalho da Página */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      {/* 🌟 Cabeçalho da Página com Contexto Mensal Dinâmico */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
         <div>
-          <div className="flex items-center gap-3 mb-1">
-            <div className="p-2.5 rounded-2xl bg-primary/10 text-primary border border-primary/20 shadow-sm">
-              <Bell className="w-6 h-6" />
+          <div className="flex items-center gap-2.5 sm:gap-3 mb-1">
+            <div className="p-2 sm:p-2.5 rounded-2xl bg-primary/10 text-primary border border-primary/20 shadow-sm shrink-0">
+              <Bell className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
             <div>
-              <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-                Notificações & Insights Estratégicos
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+                Notificações & Insights de {monthlyInfo.monthName}
               </h1>
-              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium">
-                Catálogo inteligente com mais de 100 análises detalhadas, projeções em tempo real e gráficos de impacto.
+              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
+                Desbloqueio progressivo de dicas diárias ao longo do mês com análises completas e simulações.
               </p>
             </div>
           </div>
@@ -276,60 +387,115 @@ function NotificationsContent() {
         {unreadCount > 0 && (
           <button
             onClick={markAllAsRead}
-            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all text-xs font-bold shrink-0 self-start md:self-auto border border-slate-200/80 dark:border-slate-700/80"
+            className="inline-flex items-center justify-center gap-2 px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all text-xs font-bold shrink-0 self-start md:self-auto border border-slate-200/80 dark:border-slate-700/80"
           >
-            <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-            Marcar todas como lidas
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+            Marcar visíveis como lidas
           </button>
         )}
       </div>
 
-      {/* 📊 KPI Cards de Visão Geral */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
-          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-2">
-            <span className="text-xs font-bold uppercase tracking-wider">Total de Dicas</span>
-            <BookOpen className="w-4 h-4 text-primary" />
+      {/* 📅 Banner de Calendário & Desbloqueio Diário */}
+      <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-start sm:items-center gap-3.5 min-w-0">
+          <div className="p-2.5 sm:p-3 rounded-2xl bg-white dark:bg-slate-900 border border-primary/20 text-primary shadow-sm shrink-0">
+            <Calendar className="w-5 h-5" />
           </div>
-          <p className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
-            {TOTAL_NOTIFICATIONS_COUNT}
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
+              <span className="text-[11px] sm:text-xs font-black uppercase tracking-wider text-primary">
+                Dia {monthlyInfo.dayOfMonth} de {monthlyInfo.daysInMonth} • {monthlyInfo.monthName} {monthlyInfo.year}
+              </span>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 whitespace-nowrap">
+                +{monthlyInfo.todayNewCount} novas hoje
+              </span>
+            </div>
+            <p className="text-xs text-slate-600 dark:text-slate-300 font-medium leading-relaxed">
+              {showFullCatalog 
+                ? `A visualizar o catálogo completo com todas as ${TOTAL_NOTIFICATIONS_COUNT} estratégias financeiras.`
+                : `${monthlyInfo.unlockedCount} de ${TOTAL_NOTIFICATIONS_COUNT} dicas desbloqueadas até ao dia de hoje (libertação de ~3 a 4 por dia).`
+              }
+            </p>
+          </div>
+        </div>
+
+        {/* Alternador de Visualização */}
+        <div className="w-full sm:w-auto grid grid-cols-2 sm:flex items-center gap-1.5 p-1 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm shrink-0">
+          <button
+            onClick={() => setShowFullCatalog(false)}
+            className={`px-3 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+              !showFullCatalog
+                ? "bg-primary text-white shadow-sm"
+                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+            }`}
+          >
+            <Calendar className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">Deste Mês ({monthlyInfo.unlockedCount})</span>
+          </button>
+
+          <button
+            onClick={() => setShowFullCatalog(true)}
+            className={`px-3 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+              showFullCatalog
+                ? "bg-primary text-white shadow-sm"
+                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+            }`}
+          >
+            <Unlock className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">Catálogo ({TOTAL_NOTIFICATIONS_COUNT})</span>
+          </button>
+        </div>
+      </div>
+
+      {/* 📊 KPI Cards de Visão Geral */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+        <div className="p-3.5 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between min-w-0">
+          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-1.5">
+            <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider truncate">
+              {showFullCatalog ? "Total de Dicas" : "Desbloqueadas"}
+            </span>
+            <BookOpen className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary shrink-0 ml-1" />
+          </div>
+          <p className="text-lg sm:text-2xl md:text-3xl font-black text-slate-900 dark:text-white truncate">
+            {showFullCatalog ? TOTAL_NOTIFICATIONS_COUNT : `${monthlyInfo.unlockedCount}`}
+            <span className="text-xs font-semibold text-slate-400 ml-1">/ 105</span>
           </p>
         </div>
 
-        <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
-          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-2">
-            <span className="text-xs font-bold uppercase tracking-wider">Não Lidas</span>
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+        <div className="p-3.5 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between min-w-0">
+          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-1.5">
+            <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider truncate">Não Lidas</span>
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0 ml-1" />
           </div>
-          <p className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400">
+          <p className="text-lg sm:text-2xl md:text-3xl font-black text-emerald-600 dark:text-emerald-400 truncate">
             {unreadCount}
           </p>
         </div>
 
-        <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
-          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-2">
-            <span className="text-xs font-bold uppercase tracking-wider">Favoritas</span>
-            <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
+        <div className="p-3.5 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between min-w-0">
+          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-1.5">
+            <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider truncate">Favoritas</span>
+            <Star className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-500 fill-amber-500 shrink-0 ml-1" />
           </div>
-          <p className="text-2xl sm:text-3xl font-black text-amber-500">
+          <p className="text-lg sm:text-2xl md:text-3xl font-black text-amber-500 truncate">
             {favoritesCount}
           </p>
         </div>
 
-        <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
-          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-2">
-            <span className="text-xs font-bold uppercase tracking-wider">Potencial a 5 Anos</span>
-            <TrendingUp className="w-4 h-4 text-indigo-500" />
+        <div className="p-3.5 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between min-w-0">
+          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-1.5">
+            <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider truncate">Potencial Acumulado</span>
+            <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-500 shrink-0 ml-1" />
           </div>
-          <p className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white truncate">
+          <p className="text-sm sm:text-xl md:text-2xl font-black text-slate-900 dark:text-white truncate" title={formatCurrency(totalSimulatedSavings5Years)}>
             {formatCurrency(totalSimulatedSavings5Years)}
           </p>
         </div>
       </div>
 
       {/* 🔍 Barra de Pesquisa e Filtros */}
-      <div className="flex flex-col gap-3 p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm">
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+      <div className="flex flex-col gap-3 p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3">
           {/* Input de Busca */}
           <div className="relative flex-1">
             <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -337,8 +503,8 @@ function NotificationsContent() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Pesquisar por título, estratégia, conceito (ex: juros compostos, 50/30/20, café)..."
-              className="w-full pl-10 pr-9 py-2.5 text-sm rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all font-medium"
+              placeholder="Pesquisar estratégias, conceitos (50/30/20, juros, café)..."
+              className="w-full pl-10 pr-9 py-2.5 text-xs sm:text-sm rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all font-medium"
             />
             {searchQuery && (
               <button
@@ -351,20 +517,20 @@ function NotificationsContent() {
           </div>
 
           {/* Abas de Status */}
-          <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 shrink-0">
+          <div className="w-full sm:w-auto grid grid-cols-3 sm:flex items-center gap-1 p-1 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 shrink-0">
             <button
               onClick={() => setFilterStatus("all")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all text-center truncate ${
                 filterStatus === "all"
                   ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm"
                   : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
               }`}
             >
-              Todas ({TOTAL_NOTIFICATIONS_COUNT})
+              Todas ({activePool.length})
             </button>
             <button
               onClick={() => setFilterStatus("unread")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all text-center truncate ${
                 filterStatus === "unread"
                   ? "bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-sm"
                   : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
@@ -374,7 +540,7 @@ function NotificationsContent() {
             </button>
             <button
               onClick={() => setFilterStatus("favorites")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all text-center truncate ${
                 filterStatus === "favorites"
                   ? "bg-white dark:bg-slate-900 text-amber-500 shadow-sm"
                   : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
@@ -411,9 +577,9 @@ function NotificationsContent() {
         </div>
       </div>
 
-      {/* 📱💻 Layout Dividido Master-Detail (Desktop 2 Colunas / Mobile Adaptado) */}
+      {/* 📱💻 Layout Dividido Master-Detail */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* COLUNA ESQUERDA: Lista de Notificações (5 colunas no Desktop) */}
+        {/* COLUNA ESQUERDA: Lista de Notificações */}
         <div className="lg:col-span-5 flex flex-col gap-3 max-h-[780px] overflow-y-auto pr-1">
           {filteredNotifications.length === 0 ? (
             <div className="p-8 text-center rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-slate-500 dark:text-slate-400">
@@ -421,7 +587,7 @@ function NotificationsContent() {
               <h4 className="text-base font-bold text-slate-900 dark:text-white mb-1">
                 Nenhuma notificação encontrada
               </h4>
-              <p className="text-xs">Tenta ajustar a tua pesquisa ou os filtros de categoria.</p>
+              <p className="text-xs">Tenta ajustar a tua pesquisa ou filtros.</p>
             </div>
           ) : (
             filteredNotifications.map((notif) => {
@@ -432,6 +598,7 @@ function NotificationsContent() {
               return (
                 <div
                   key={notif.id}
+                  id={`notif-card-${notif.id}`}
                   onClick={() => handleSelectNotification(notif)}
                   className={`p-4 rounded-2xl border transition-all duration-200 cursor-pointer relative group ${
                     isSelected
@@ -493,7 +660,7 @@ function NotificationsContent() {
           )}
         </div>
 
-        {/* COLUNA DIREITA: Painel de Leitura Aprofundada & Gráfico Interativo (7 colunas no Desktop) */}
+        {/* COLUNA DIREITA: Painel de Leitura Aprofundada & Gráfico Interativo */}
         <div className="hidden lg:flex lg:col-span-7 flex-col gap-6 p-6 sm:p-7 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xl shadow-slate-900/5">
           {/* Header da Notificação Ativa */}
           <div className="flex items-start justify-between gap-4 pb-5 border-b border-slate-100 dark:border-slate-800">
@@ -507,7 +674,7 @@ function NotificationsContent() {
                     {selectedNotification.categoryLabel}
                   </span>
                   <span className="text-xs text-slate-400 dark:text-slate-500">
-                    • Leitura de {selectedNotification.readTime}
+                    • {selectedNotification.publishedAt}
                   </span>
                 </div>
                 <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">
@@ -591,61 +758,51 @@ function NotificationsContent() {
               </span>
             </div>
 
-            <div className="h-60 w-full rounded-2xl bg-slate-50/60 dark:bg-slate-850/50 p-2 sm:p-3 border border-slate-100 dark:border-slate-800">
+            <div className="h-64 w-full rounded-2xl bg-slate-50/70 dark:bg-slate-950/60 p-2.5 sm:p-3.5 border border-slate-200/80 dark:border-slate-800/80 shadow-inner">
               <ResponsiveContainer width="100%" height="100%">
                 {selectedNotification.chartType === "bar" ? (
-                  <BarChart data={projectionData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
-                    <XAxis dataKey="period" tick={{ fontSize: 11 }} />
-                    <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${Math.round(v / 1000)}k€`} />
-                    <Tooltip
-                      formatter={(val: any) => [formatCurrency(Number(val)), ""]}
-                      contentStyle={{
-                        backgroundColor: "#0f172a",
-                        borderRadius: "12px",
-                        border: "1px solid #334155",
-                        color: "#fff",
-                        fontSize: "12px",
-                        fontWeight: "600",
-                      }}
+                  <BarChart data={projectionData} margin={{ top: 12, right: 12, left: -8, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(148, 163, 184, 0.15)" vertical={false} />
+                    <XAxis dataKey="period" stroke="#64748b" tick={{ fill: '#94a3b8', fontSize: 11 }} tickLine={false} axisLine={{ stroke: 'rgba(148, 163, 184, 0.2)' }} />
+                    <YAxis stroke="#64748b" tick={{ fill: '#94a3b8', fontSize: 11 }} tickFormatter={(v) => `${Math.round(v / 1000)}k€`} tickLine={false} axisLine={{ stroke: 'rgba(148, 163, 184, 0.2)' }} />
+                    <Tooltip content={renderCustomChartTooltip} cursor={{ fill: 'rgba(255, 255, 255, 0.06)', radius: 6 }} />
+                    <Legend 
+                      wrapperStyle={{ fontSize: "11px", paddingTop: "8px" }} 
+                      formatter={(val) => <span className="text-slate-700 dark:text-slate-300 font-semibold">{val}</span>} 
                     />
-                    <Legend wrapperStyle={{ fontSize: "11px", paddingTop: "6px" }} />
-                    <Bar dataKey="semEstrategia" name="Sem a Estratégia" fill="#94a3b8" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="semEstrategia" name="Sem a Estratégia" fill="#64748b" radius={[4, 4, 0, 0]} />
                     <Bar dataKey="comEstrategia" name="Aplicando a Estratégia" fill="var(--primary, #6366f1)" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 ) : (
-                  <AreaChart data={projectionData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                  <AreaChart data={projectionData} margin={{ top: 12, right: 12, left: -8, bottom: 0 }}>
                     <defs>
                       <linearGradient id="colorWithStrategy" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="var(--primary, #6366f1)" stopOpacity={0.4} />
+                        <stop offset="5%" stopColor="var(--primary, #6366f1)" stopOpacity={0.45} />
                         <stop offset="95%" stopColor="var(--primary, #6366f1)" stopOpacity={0.0} />
                       </linearGradient>
                       <linearGradient id="colorWithoutStrategy" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#94a3b8" stopOpacity={0.3} />
+                        <stop offset="5%" stopColor="#94a3b8" stopOpacity={0.25} />
                         <stop offset="95%" stopColor="#94a3b8" stopOpacity={0.0} />
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
-                    <XAxis dataKey="period" tick={{ fontSize: 11 }} />
-                    <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${Math.round(v / 1000)}k€`} />
-                    <Tooltip
-                      formatter={(val: any) => [formatCurrency(Number(val)), ""]}
-                      contentStyle={{
-                        backgroundColor: "#0f172a",
-                        borderRadius: "12px",
-                        border: "1px solid #334155",
-                        color: "#fff",
-                        fontSize: "12px",
-                        fontWeight: "600",
-                      }}
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(148, 163, 184, 0.15)" vertical={false} />
+                    <XAxis dataKey="period" stroke="#64748b" tick={{ fill: '#94a3b8', fontSize: 11 }} tickLine={false} axisLine={{ stroke: 'rgba(148, 163, 184, 0.2)' }} />
+                    <YAxis stroke="#64748b" tick={{ fill: '#94a3b8', fontSize: 11 }} tickFormatter={(v) => `${Math.round(v / 1000)}k€`} tickLine={false} axisLine={{ stroke: 'rgba(148, 163, 184, 0.2)' }} />
+                    <Tooltip 
+                      content={renderCustomChartTooltip} 
+                      cursor={{ stroke: 'var(--primary, #6366f1)', strokeWidth: 1.5, strokeDasharray: '4 4' }} 
                     />
-                    <Legend wrapperStyle={{ fontSize: "11px", paddingTop: "6px" }} />
+                    <Legend 
+                      wrapperStyle={{ fontSize: "11px", paddingTop: "8px" }} 
+                      formatter={(val) => <span className="text-slate-700 dark:text-slate-300 font-semibold">{val}</span>} 
+                    />
                     <Area
                       type="monotone"
                       dataKey="semEstrategia"
                       name="Sem a Estratégia"
                       stroke="#94a3b8"
                       strokeWidth={2}
+                      strokeDasharray="4 4"
                       fillOpacity={1}
                       fill="url(#colorWithoutStrategy)"
                     />
@@ -657,6 +814,7 @@ function NotificationsContent() {
                       strokeWidth={3}
                       fillOpacity={1}
                       fill="url(#colorWithStrategy)"
+                      activeDot={{ r: 6, strokeWidth: 2, stroke: '#ffffff', fill: 'var(--primary, #6366f1)' }}
                     />
                   </AreaChart>
                 )}
@@ -755,14 +913,25 @@ function NotificationsContent() {
               </p>
 
               {/* Gráfico Mobile */}
-              <div className="h-52 w-full rounded-2xl bg-slate-50 dark:bg-slate-850/50 p-2 border border-slate-100 dark:border-slate-800">
+              <div className="h-56 w-full rounded-2xl bg-slate-50/70 dark:bg-slate-950/60 p-2 border border-slate-200/80 dark:border-slate-800/80 shadow-inner">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={projectionData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
-                    <XAxis dataKey="period" tick={{ fontSize: 10 }} />
-                    <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${Math.round(v / 1000)}k€`} />
-                    <Tooltip formatter={(val: any) => [formatCurrency(Number(val)), ""]} />
-                    <Area type="monotone" dataKey="comEstrategia" name="Com Estratégia" stroke="var(--primary, #6366f1)" fill="var(--primary, #6366f1)" fillOpacity={0.25} />
+                    <defs>
+                      <linearGradient id="colorWithStrategyMobile" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="var(--primary, #6366f1)" stopOpacity={0.45} />
+                        <stop offset="95%" stopColor="var(--primary, #6366f1)" stopOpacity={0.0} />
+                      </linearGradient>
+                      <linearGradient id="colorWithoutStrategyMobile" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#94a3b8" stopOpacity={0.25} />
+                        <stop offset="95%" stopColor="#94a3b8" stopOpacity={0.0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(148, 163, 184, 0.15)" vertical={false} />
+                    <XAxis dataKey="period" stroke="#64748b" tick={{ fill: '#94a3b8', fontSize: 10 }} tickLine={false} axisLine={{ stroke: 'rgba(148, 163, 184, 0.2)' }} />
+                    <YAxis stroke="#64748b" tick={{ fill: '#94a3b8', fontSize: 10 }} tickFormatter={(v) => `${Math.round(v / 1000)}k€`} tickLine={false} axisLine={{ stroke: 'rgba(148, 163, 184, 0.2)' }} />
+                    <Tooltip content={renderCustomChartTooltip} cursor={{ stroke: 'var(--primary, #6366f1)', strokeWidth: 1.5, strokeDasharray: '4 4' }} />
+                    <Area type="monotone" dataKey="semEstrategia" name="Sem Estratégia" stroke="#94a3b8" strokeWidth={1.5} strokeDasharray="3 3" fill="url(#colorWithoutStrategyMobile)" fillOpacity={1} />
+                    <Area type="monotone" dataKey="comEstrategia" name="Com Estratégia" stroke="var(--primary, #6366f1)" strokeWidth={2.5} fill="url(#colorWithStrategyMobile)" fillOpacity={1} activeDot={{ r: 5, strokeWidth: 2, stroke: '#ffffff', fill: 'var(--primary, #6366f1)' }} />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>

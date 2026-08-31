@@ -123,91 +123,91 @@ export default function PrevisaoPage() {
 
   return (
     <div className="animate-in fade-in zoom-in-95 duration-500 pb-10">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 sm:mb-8 gap-3 sm:gap-4">
         <div>
-          <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-3">
-            <LineChartIcon className="w-8 h-8 text-primary" />
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
+            <LineChartIcon className="w-6 h-6 sm:w-8 sm:h-8 text-primary shrink-0" />
             Previsão Patrimonial
           </h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-1">
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
             Calcula o poder dos juros compostos a longo prazo.
           </p>
         </div>
-        <div className="flex items-center gap-3 w-full md:w-auto">
-          <button onClick={() => exportPrevisaoToCSV(chartData)} className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-700 dark:text-slate-300 hover:text-emerald-600 hover:border-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-all font-semibold text-sm shadow-sm">
-            <FileText className="w-4 h-4 text-emerald-500" /> Exportar CSV
+        <div className="flex items-center gap-2.5 w-full sm:w-auto">
+          <button onClick={() => exportPrevisaoToCSV(chartData)} className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-700 dark:text-slate-300 hover:text-emerald-600 hover:border-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-all font-semibold text-xs sm:text-sm shadow-sm">
+            <FileText className="w-4 h-4 text-emerald-500 shrink-0" /> Exportar CSV
           </button>
-          <button onClick={() => exportPrevisaoToPDF(chartData, results, customYears)} className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-700 dark:text-slate-300 hover:text-rose-600 hover:border-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-all font-semibold text-sm shadow-sm">
-            <Download className="w-4 h-4 text-rose-500" /> Exportar PDF
+          <button onClick={() => exportPrevisaoToPDF(chartData, results, customYears)} className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-700 dark:text-slate-300 hover:text-rose-600 hover:border-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-all font-semibold text-xs sm:text-sm shadow-sm">
+            <Download className="w-4 h-4 text-rose-500 shrink-0" /> Exportar PDF
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
         {/* Formulário */}
-        <div className="glass-card p-6 xl:col-span-1 space-y-6">
-          <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-2">
+        <div className="glass-card p-4 sm:p-6 xl:col-span-1 space-y-4 sm:space-y-6">
+          <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-2">
             <Calculator className="w-5 h-5 text-primary" /> Parâmetros
           </h2>
           
           <div>
-            <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
+            <label className="block text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5 sm:mb-2">
               Património Inicial (€)
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                <Wallet className="w-5 h-5 text-slate-400" />
+                <Wallet className="w-4 h-4 sm:w-5 sm:h-5 text-slate-400" />
               </div>
               <input
                 type="number"
                 value={initialAmount}
                 onChange={(e) => setInitialAmount(e.target.value)}
-                className="w-full pl-11 pr-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800/50 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary outline-none transition-all font-medium"
+                className="w-full pl-10 sm:pl-11 pr-4 py-2.5 sm:py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800/50 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary outline-none transition-all font-medium text-sm sm:text-base"
                 placeholder="0.00"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
+            <label className="block text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5 sm:mb-2">
               Aporte Mensal (€)
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                <PiggyBank className="w-5 h-5 text-slate-400" />
+                <PiggyBank className="w-4 h-4 sm:w-5 sm:h-5 text-slate-400" />
               </div>
               <input
                 type="number"
                 value={monthlyContribution}
                 onChange={(e) => setMonthlyContribution(e.target.value)}
-                className="w-full pl-11 pr-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800/50 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary outline-none transition-all font-medium"
+                className="w-full pl-10 sm:pl-11 pr-4 py-2.5 sm:py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800/50 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary outline-none transition-all font-medium text-sm sm:text-base"
                 placeholder="0.00"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
+            <label className="block text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5 sm:mb-2">
               Taxa de Juro Anual (%)
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                <TrendingUp className="w-5 h-5 text-slate-400" />
+                <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-slate-400" />
               </div>
               <input
                 type="number"
                 value={annualRate}
                 onChange={(e) => setAnnualRate(e.target.value)}
-                className="w-full pl-11 pr-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800/50 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary outline-none transition-all font-medium"
+                className="w-full pl-10 sm:pl-11 pr-4 py-2.5 sm:py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800/50 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary outline-none transition-all font-medium text-sm sm:text-base"
                 placeholder="0.00"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2 flex justify-between">
+            <label className="block text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5 sm:mb-2 flex justify-between">
               <span>Período Personalizado (Anos)</span>
-              <span className="text-primary">{customYears} Anos</span>
+              <span className="text-primary font-bold">{customYears} Anos</span>
             </label>
             <input
               type="range"
@@ -221,44 +221,44 @@ export default function PrevisaoPage() {
         </div>
 
         {/* Resultados em Cartões */}
-        <div className="xl:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4 h-fit">
-          <div className="glass-card p-6 border-l-4 border-l-indigo-400 hover:-translate-y-1 active:scale-[0.98] transition-transform duration-300">
-            <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-2">
+        <div className="xl:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 h-fit">
+          <div className="glass-card p-4 sm:p-6 border-l-4 border-l-indigo-400 hover:-translate-y-1 active:scale-[0.98] transition-transform duration-300">
+            <h3 className="text-xs sm:text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5 sm:mb-2 flex items-center gap-1.5 sm:gap-2">
               <CalendarDays className="w-4 h-4" /> Em 10 Anos
             </h3>
-            <p className="text-3xl font-bold text-slate-900 dark:text-white">{formatCurrency(results.year10)}</p>
+            <p className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white truncate">{formatCurrency(results.year10)}</p>
           </div>
           
-          <div className="glass-card p-6 border-l-4 border-l-violet-500 hover:-translate-y-1 active:scale-[0.98] transition-transform duration-300">
-            <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-2">
+          <div className="glass-card p-4 sm:p-6 border-l-4 border-l-violet-500 hover:-translate-y-1 active:scale-[0.98] transition-transform duration-300">
+            <h3 className="text-xs sm:text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5 sm:mb-2 flex items-center gap-1.5 sm:gap-2">
               <CalendarDays className="w-4 h-4" /> Em 20 Anos
             </h3>
-            <p className="text-3xl font-bold text-slate-900 dark:text-white">{formatCurrency(results.year20)}</p>
+            <p className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white truncate">{formatCurrency(results.year20)}</p>
           </div>
 
-          <div className="glass-card p-6 border-l-4 border-l-fuchsia-500 hover:-translate-y-1 active:scale-[0.98] transition-transform duration-300">
-            <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-2">
+          <div className="glass-card p-4 sm:p-6 border-l-4 border-l-fuchsia-500 hover:-translate-y-1 active:scale-[0.98] transition-transform duration-300">
+            <h3 className="text-xs sm:text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5 sm:mb-2 flex items-center gap-1.5 sm:gap-2">
               <CalendarDays className="w-4 h-4" /> Em 30 Anos
             </h3>
-            <p className="text-3xl font-bold text-slate-900 dark:text-white">{formatCurrency(results.year30)}</p>
+            <p className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white truncate">{formatCurrency(results.year30)}</p>
           </div>
 
-          <div className="glass-card p-6 border-l-4 border-l-primary relative overflow-hidden group hover:-translate-y-1 active:scale-[0.98] transition-all duration-300">
+          <div className="glass-card p-4 sm:p-6 border-l-4 border-l-primary relative overflow-hidden group hover:-translate-y-1 active:scale-[0.98] transition-all duration-300">
             <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 active:opacity-100 transition-opacity" />
-            <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-2">
+            <h3 className="text-xs sm:text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5 sm:mb-2 flex items-center gap-1.5 sm:gap-2">
               <Target className="w-4 h-4 text-primary" /> Meta ({customYears} Anos)
             </h3>
-            <p className="text-3xl font-extrabold text-primary">{formatCurrency(results.custom)}</p>
-            <div className="mt-3 text-sm flex gap-3 text-slate-500 dark:text-slate-400">
+            <p className="text-2xl sm:text-3xl font-extrabold text-primary truncate">{formatCurrency(results.custom)}</p>
+            <div className="mt-2.5 sm:mt-3 text-xs sm:text-sm flex flex-wrap gap-2 sm:gap-3 text-slate-500 dark:text-slate-400">
               <span title="Total Investido do teu bolso" className="cursor-help">Investido: {formatCurrency(results.customInvested)}</span>
-              <span className="text-emerald-500 font-medium hidden sm:inline">Juros: +{formatCurrency(results.customInterest)}</span>
+              <span className="text-emerald-500 font-medium">Juros: +{formatCurrency(results.customInterest)}</span>
             </div>
           </div>
         </div>
       </div>
 
       {/* Gráfico */}
-      <div className="glass-card p-6">
+      <div className="glass-card p-4 sm:p-6">
         <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-6">Projeção de Crescimento vs Total Investido</h3>
         <div className="h-[400px] w-full">
           <ResponsiveContainer width="100%" height="100%">

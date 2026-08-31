@@ -47,6 +47,7 @@ import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { SmartAdvisorToastManager } from "@/components/SmartAdvisorToast";
 import { ConfirmModal } from "@/components/ConfirmModal";
+import { getMonthlyProgressiveNotifications } from "@/lib/notificationsData";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -415,10 +416,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const calculateUnreadNotifs = () => {
     try {
       const saved = localStorage.getItem("pl_notifications_read");
-      const readSet = saved ? new Set(JSON.parse(saved)) : new Set();
-      setUnreadNotifsCount(Math.max(0, 105 - readSet.size));
+      const readSet: Set<string> = saved ? new Set(JSON.parse(saved)) : new Set();
+      const { unlockedNotifications } = getMonthlyProgressiveNotifications();
+      const unreadUnlocked = unlockedNotifications.filter(n => !readSet.has(n.id)).length;
+      setUnreadNotifsCount(unreadUnlocked);
     } catch {
-      setUnreadNotifsCount(105);
+      setUnreadNotifsCount(0);
     }
   };
 
@@ -729,38 +732,63 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       </main>
 
-      {/* 📱 Mobile Fixed Bottom Navigation Bar */}
+      {/* 🔔 Mobile Floating Notifications Button (FAB) */}
+      <Link
+        href="/dashboard/notificacoes"
+        className={`md:hidden fixed bottom-[72px] right-4 z-40 w-12 h-12 rounded-full shadow-2xl flex items-center justify-center transition-all duration-300 active:scale-90 ${
+          normalizedPath === "/dashboard/notificacoes"
+            ? "bg-primary text-white ring-4 ring-primary/30 shadow-primary/40 scale-105"
+            : "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border border-slate-200/90 dark:border-slate-800/90 shadow-slate-950/20 hover:text-primary"
+        }`}
+        style={{
+          boxShadow: normalizedPath === "/dashboard/notificacoes"
+            ? "0 10px 25px -5px var(--primary-glow, rgba(99, 102, 241, 0.5))"
+            : "0 8px 20px -4px rgba(0, 0, 0, 0.25)"
+        }}
+        title="Notificações & Dicas"
+      >
+        <Bell className="w-5 h-5" />
+        {unreadNotifsCount > 0 && (
+          <span className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1 rounded-full bg-emerald-500 text-[10px] font-black text-white ring-2 ring-white dark:ring-slate-900 flex items-center justify-center shadow-md animate-pulse">
+            {unreadNotifsCount}
+          </span>
+        )}
+      </Link>
+
+      {/* 📱 Mobile Fixed Bottom Navigation Bar (7 Abas Descomprimidas e Espaçosas) */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-t border-slate-200/80 dark:border-slate-800/80 px-2 py-1.5 shadow-[0_-4px_25px_rgba(0,0,0,0.08)] flex items-center justify-around">
-        {allNavItems.map((item) => {
-          const normalizedPathname = pathname.endsWith('/') && pathname !== '/' ? pathname.slice(0, -1) : pathname;
-          const isActive = normalizedPathname === item.href;
-          const Icon = item.icon;
-          return (
-            <Link
-              key={item.name}
-              href={item.href}
-              className={`flex flex-col items-center justify-center py-1 px-1.5 rounded-xl transition-all relative ${
-                isActive 
-                  ? "text-primary font-bold" 
-                  : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
-              }`}
-            >
-              <div className={`p-1.5 rounded-xl transition-all relative ${
-                isActive 
-                  ? "bg-primary text-white shadow-sm ring-2 ring-primary/20 scale-105" 
-                  : "hover:bg-slate-100 dark:hover:bg-slate-800"
-              }`}>
-                <Icon className="w-4 h-4" />
-                {item.badge !== undefined && item.badge > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-slate-900" />
-                )}
-              </div>
-              <span className="text-[10px] mt-0.5 tracking-tight font-medium">
-                {item.mobileLabel}
-              </span>
-            </Link>
-          );
-        })}
+        {allNavItems
+          .filter((item) => item.href !== "/dashboard/notificacoes")
+          .map((item) => {
+            const normalizedPathname = pathname.endsWith('/') && pathname !== '/' ? pathname.slice(0, -1) : pathname;
+            const isActive = normalizedPathname === item.href;
+            const Icon = item.icon;
+            return (
+              <Link
+                key={item.name}
+                href={item.href}
+                className={`flex flex-col items-center justify-center py-1 px-1.5 rounded-xl transition-all relative ${
+                  isActive 
+                    ? "text-primary font-bold" 
+                    : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
+                }`}
+              >
+                <div className={`p-1.5 rounded-xl transition-all relative ${
+                  isActive 
+                    ? "bg-primary text-white shadow-sm ring-2 ring-primary/20 scale-105" 
+                    : "hover:bg-slate-100 dark:hover:bg-slate-800"
+                }`}>
+                  <Icon className="w-4 h-4" />
+                  {item.badge !== undefined && item.badge > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-slate-900" />
+                  )}
+                </div>
+                <span className="text-[10px] mt-0.5 tracking-tight font-medium">
+                  {item.mobileLabel}
+                </span>
+              </Link>
+            );
+          })}
       </div>
 
       {/* Enhanced Tabbed Settings Modal */}

@@ -850,19 +850,19 @@ export default function InvestimentosPage() {
 
           <div className="lg:col-span-2 space-y-8">
             {/* Chart Section */}
-            <div className="glass-card p-6">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-                <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <div className="glass-card p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
+                <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
                   <TrendingUp className="w-5 h-5 text-primary" /> Evolução Patrimonial
                 </h3>
-                <div className="flex flex-wrap gap-2">
-                  <div className="w-24 sm:w-28">
+                <div className="grid grid-cols-3 sm:flex gap-2 w-full sm:w-auto">
+                  <div className="w-full sm:w-28">
                     <CustomSelect value={filterYear} onChange={setFilterYear as any} options={[{value:"Todos",label:"Todos"},{value:"2025",label:"2025"},{value:"2026",label:"2026"}]} />
                   </div>
-                  <div className="w-24 sm:w-28">
+                  <div className="w-full sm:w-28">
                     <CustomSelect value={filterMonth} onChange={setFilterMonth as any} options={[{value:"Todos",label:"Todos"},{value:"1",label:"Jan"},{value:"2",label:"Fev"},{value:"3",label:"Mar"},{value:"4",label:"Abr"},{value:"5",label:"Mai"},{value:"6",label:"Jun"},{value:"7",label:"Jul"},{value:"8",label:"Ago"},{value:"9",label:"Set"},{value:"10",label:"Out"},{value:"11",label:"Nov"},{value:"12",label:"Dez"}]} />
                   </div>
-                  <div className="w-24 sm:w-28">
+                  <div className="w-full sm:w-28">
                     <CustomSelect value={filterDay} onChange={setFilterDay as any} options={[{value:"Todos",label:"Todos"},{value:"1",label:"01"},{value:"5",label:"05"},{value:"10",label:"10"},{value:"15",label:"15"},{value:"20",label:"20"},{value:"25",label:"25"}]} />
                   </div>
                 </div>
@@ -892,9 +892,9 @@ export default function InvestimentosPage() {
             </div>
 
             {/* Asset Cards Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
               {investments.length === 0 ? (
-                <div className="col-span-full glass-card p-8 text-center text-slate-500 dark:text-slate-400">
+                <div className="col-span-full glass-card p-6 sm:p-8 text-center text-slate-500 dark:text-slate-400 text-sm sm:text-base">
                   Nenhum investimento registado. Adiciona o teu primeiro ativo para começares a acompanhar.
                 </div>
               ) : (
@@ -902,39 +902,39 @@ export default function InvestimentosPage() {
                   const progress = inv.target ? Math.min((inv.balance / inv.target) * 100, 100) : 0;
                   
                   return (
-                    <div key={inv.id} className="glass-card p-6 relative overflow-hidden group hover:-translate-y-1 transition-all duration-300">
+                    <div key={inv.id} className="glass-card p-4 sm:p-6 relative overflow-hidden group hover:-translate-y-1 transition-all duration-300">
                       <div className="absolute top-0 right-0 p-4 opacity-10 transform translate-x-4 -translate-y-4 group-hover:scale-110 transition-transform">
-                        <TrendingUp className="w-24 h-24 text-primary" />
+                        <TrendingUp className="w-20 h-20 sm:w-24 sm:h-24 text-primary" />
                       </div>
                       
                       <div className="relative z-10">
-                        <div className="flex justify-between items-start mb-4">
-                          <div>
-                            <span className="inline-block px-2 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-xs font-bold rounded-md mb-2">{inv.asset_type}</span>
-                            <h3 className="text-xl font-bold text-slate-900 dark:text-white">{inv.name}</h3>
+                        <div className="flex justify-between items-start mb-3 sm:mb-4 gap-2">
+                          <div className="min-w-0 flex-1">
+                            <span className="inline-block px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-[11px] sm:text-xs font-bold rounded-md mb-1.5">{inv.asset_type}</span>
+                            <h3 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white truncate">{inv.name}</h3>
                           </div>
-                          <div className="flex flex-wrap justify-end gap-1.5 relative z-20">
-                            <button onClick={() => { setAdjustInv(inv); setAdjustType("add"); setAdjustModalOpen(true); }} className="p-2 text-slate-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:text-emerald-500 rounded-lg transition-colors" title="Adicionar Valor"><Plus className="w-4 h-4" /></button>
-                            <button onClick={() => { setAdjustInv(inv); setAdjustType("remove"); setAdjustModalOpen(true); }} className="p-2 text-slate-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 hover:text-amber-500 rounded-lg transition-colors" title="Retirar Valor"><Minus className="w-4 h-4" /></button>
-                            <button onClick={() => handleEdit(inv)} className="p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-primary rounded-lg transition-colors" title="Editar Ativo"><Pencil className="w-4 h-4" /></button>
-                            <button onClick={() => setInvestmentToDelete(inv)} className="p-2 text-slate-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-500 rounded-lg transition-colors" title="Eliminar Ativo"><Trash2 className="w-4 h-4" /></button>
+                          <div className="flex flex-wrap justify-end gap-1 relative z-20 shrink-0">
+                            <button onClick={() => { setAdjustInv(inv); setAdjustType("add"); setAdjustModalOpen(true); }} className="p-1.5 sm:p-2 text-slate-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:text-emerald-500 rounded-lg transition-colors" title="Adicionar Valor"><Plus className="w-4 h-4" /></button>
+                            <button onClick={() => { setAdjustInv(inv); setAdjustType("remove"); setAdjustModalOpen(true); }} className="p-1.5 sm:p-2 text-slate-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 hover:text-amber-500 rounded-lg transition-colors" title="Retirar Valor"><Minus className="w-4 h-4" /></button>
+                            <button onClick={() => handleEdit(inv)} className="p-1.5 sm:p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-primary rounded-lg transition-colors" title="Editar Ativo"><Pencil className="w-4 h-4" /></button>
+                            <button onClick={() => setInvestmentToDelete(inv)} className="p-1.5 sm:p-2 text-slate-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-500 rounded-lg transition-colors" title="Eliminar Ativo"><Trash2 className="w-4 h-4" /></button>
                           </div>
                         </div>
                         
-                        <div className="mt-4">
-                          <p className="text-3xl font-black text-primary">{formatCurrency(inv.balance)}</p>
+                        <div className="mt-3 sm:mt-4">
+                          <p className="text-2xl sm:text-3xl font-black text-primary truncate" title={formatCurrency(inv.balance)}>{formatCurrency(inv.balance)}</p>
                         </div>
 
                         {inv.target && (
-                          <div className="mt-6">
-                            <div className="flex justify-between text-sm mb-2 font-medium">
-                              <span className="text-slate-500 flex items-center gap-1"><Target className="w-4 h-4" /> Meta</span>
+                          <div className="mt-4 sm:mt-6">
+                            <div className="flex justify-between text-xs sm:text-sm mb-1.5 font-medium">
+                              <span className="text-slate-500 flex items-center gap-1"><Target className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Meta</span>
                               <span className="text-slate-900 dark:text-white font-bold">{formatCurrency(inv.target)}</span>
                             </div>
-                            <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2.5 overflow-hidden">
-                              <div className="bg-primary h-2.5 rounded-full transition-all duration-1000" style={{ width: `${progress}%` }}></div>
+                            <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2 sm:h-2.5 overflow-hidden">
+                              <div className="bg-primary h-2 sm:h-2.5 rounded-full transition-all duration-1000" style={{ width: `${progress}%` }}></div>
                             </div>
-                            <p className="text-right text-xs font-bold text-primary mt-1">{progress.toFixed(1)}% alcançado</p>
+                            <p className="text-right text-[11px] sm:text-xs font-bold text-primary mt-1">{progress.toFixed(1)}% alcançado</p>
                           </div>
                         )}
                       </div>
@@ -951,8 +951,8 @@ export default function InvestimentosPage() {
       {/* ========================================================================= */}
       {/* SECÇÃO 2: SISTEMA DE METAS MENSAIS INTELIGENTES (CRUZAMENTO DE DADOS) */}
       {/* ========================================================================= */}
-      <div className="pt-8 border-t border-slate-200/80 dark:border-slate-800/80 space-y-8">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+      <div className="pt-6 sm:pt-8 border-t border-slate-200/80 dark:border-slate-800/80 space-y-6 sm:space-y-8">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 sm:gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2.5">
               <span className="p-2 bg-amber-500/10 text-amber-500 rounded-xl border border-amber-500/20 shrink-0">
@@ -962,21 +962,21 @@ export default function InvestimentosPage() {
                 Metas Mensais & Inteligência Financeira
               </h2>
             </div>
-            <p className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm max-w-2xl">
+            <p className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm max-w-2xl leading-relaxed">
               Estipula e acompanha os teus objetivos com aconselhamento em tempo real cruzado com os teus movimentos, orçamentos e investimentos.
             </p>
           </div>
 
-          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5 shrink-0">
-            <div className="flex items-center gap-2">
-              <div className="w-28 sm:w-32">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 shrink-0 w-full lg:w-auto">
+            <div className="grid grid-cols-2 sm:flex items-center gap-2 w-full sm:w-auto">
+              <div className="w-full sm:w-32">
                 <CustomSelect 
                   value={goalFilterYear} 
                   onChange={setGoalFilterYear as any} 
                   options={[{value:"Todos",label:"Todos"},{value:"2025",label:"2025"},{value:"2026",label:"2026"}]} 
                 />
               </div>
-              <div className="w-28 sm:w-32">
+              <div className="w-full sm:w-32">
                 <CustomSelect 
                   value={goalFilterMonth} 
                   onChange={setGoalFilterMonth as any} 
@@ -1000,7 +1000,7 @@ export default function InvestimentosPage() {
             </div>
             <button
               onClick={handleOpenNewGoalModal}
-              className="flex items-center gap-2 px-4 py-2.5 bg-primary hover:bg-primary/90 text-white font-bold rounded-xl shadow-md shadow-primary/25 transition-all active:scale-95 text-xs sm:text-sm whitespace-nowrap"
+              className="flex items-center justify-center gap-2 px-4 py-2.5 bg-primary hover:bg-primary/90 text-white font-bold rounded-xl shadow-md shadow-primary/25 transition-all active:scale-95 text-xs sm:text-sm whitespace-nowrap order-first sm:order-last"
             >
               <Plus className="w-4 h-4 shrink-0" /> Nova Meta
             </button>
@@ -1008,52 +1008,49 @@ export default function InvestimentosPage() {
         </div>
 
         {/* Resumo de Indicadores de Metas */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-          <div className="glass-card p-5 flex items-center gap-4">
-            <div className="p-3 bg-primary/10 text-primary rounded-xl shrink-0">
-              <Target className="w-6 h-6" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
+          <div className="glass-card p-4 sm:p-5 flex items-center gap-3.5 sm:gap-4">
+            <div className="p-2.5 sm:p-3 bg-primary/10 text-primary rounded-xl shrink-0">
+              <Target className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
             <div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Metas Ativas</p>
-              <p className="text-2xl font-black text-slate-900 dark:text-white mt-0.5">{goalCalculations.totalGoalsCount}</p>
+              <p className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">Metas Ativas</p>
+              <p className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white mt-0.5">{goalCalculations.totalGoalsCount}</p>
             </div>
           </div>
 
-          <div className="glass-card p-5 flex items-center gap-4">
-            <div className="p-3 bg-emerald-500/10 text-emerald-500 rounded-xl shrink-0">
-              <CheckCircle2 className="w-6 h-6" />
+          <div className="glass-card p-4 sm:p-5 flex items-center gap-3.5 sm:gap-4">
+            <div className="p-2.5 sm:p-3 bg-emerald-500/10 text-emerald-500 rounded-xl shrink-0">
+              <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
             <div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Concluídas</p>
-              <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-0.5">
+              <p className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">Concluídas</p>
+              <p className="text-xl sm:text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-0.5">
                 {goalCalculations.completedGoalsCount} de {goalCalculations.totalGoalsCount}
               </p>
             </div>
           </div>
 
-          <div className="glass-card p-5 flex items-center gap-4">
-            <div className="p-3 bg-amber-500/10 text-amber-500 rounded-xl shrink-0">
-              <Flame className="w-6 h-6" />
+          <div className="glass-card p-4 sm:p-5 flex items-center gap-3.5 sm:gap-4">
+            <div className="p-2.5 sm:p-3 bg-amber-500/10 text-amber-500 rounded-xl shrink-0">
+              <Flame className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
             <div className="flex-1">
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Progresso Global</p>
+              <p className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">Progresso Global</p>
               <div className="flex items-center gap-2 mt-0.5">
-                <p className="text-2xl font-black text-slate-900 dark:text-white">{goalCalculations.averageProgress}%</p>
+                <p className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">{goalCalculations.averageProgress}%</p>
               </div>
             </div>
           </div>
 
-          <div className="glass-card p-5 flex items-center gap-4">
-            <div className="p-3 bg-cyan-500/10 text-cyan-500 rounded-xl shrink-0">
-              <Calendar className="w-6 h-6" />
+          <div className="glass-card p-4 sm:p-5 flex items-center gap-3.5 sm:gap-4">
+            <div className="p-2.5 sm:p-3 bg-cyan-500/10 text-cyan-500 rounded-xl shrink-0">
+              <Calendar className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
             <div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Dias Restantes</p>
-              <p className="text-2xl font-black text-slate-900 dark:text-white mt-0.5">
-                {goalCalculations.isAllMonths 
-                  ? (goalCalculations.remainingDays > 0 ? `${goalCalculations.remainingDays} dias no ano` : "Ano Encerrado")
-                  : (goalCalculations.remainingDays > 0 ? `${goalCalculations.remainingDays} dias` : "Mês Fechado")
-                }
+              <p className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">Período</p>
+              <p className="text-base sm:text-lg font-black text-slate-900 dark:text-white mt-0.5">
+                {goalCalculations.periodLabel}
               </p>
             </div>
           </div>
@@ -1120,11 +1117,11 @@ export default function InvestimentosPage() {
               }
 
               return (
-                <div key={g.id} className="glass-card p-6 flex flex-col justify-between hover:-translate-y-1 active:scale-[0.99] transition-all duration-300 border border-slate-200/80 dark:border-slate-800/80">
+                <div key={g.id} className="glass-card p-4 sm:p-6 flex flex-col justify-between hover:-translate-y-1 active:scale-[0.99] transition-all duration-300 border border-slate-200/80 dark:border-slate-800/80">
                   <div>
                     {/* Top Header */}
-                    <div className="flex items-start justify-between gap-4 mb-4">
-                      <div className="flex items-start gap-3 flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-3 sm:gap-4 mb-3 sm:mb-4">
+                      <div className="flex items-start gap-2.5 sm:gap-3 flex-1 min-w-0">
                         <input
                           type="checkbox"
                           checked={selectedGoals.includes(g.id)}
@@ -1132,48 +1129,48 @@ export default function InvestimentosPage() {
                           className="mt-1 w-4 h-4 text-primary rounded border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:ring-primary accent-primary shrink-0 cursor-pointer"
                         />
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-2 flex-wrap">
-                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold border ${badgeBg}`}>
+                          <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-2 flex-wrap">
+                            <span className={`inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-lg text-[11px] sm:text-xs font-bold border ${badgeBg}`}>
                               {icon} {badgeLabel}
                             </span>
                             {g.category_name && (() => {
                               const cat = categories.find((c: any) => c.id === g.category_id);
                               return (
-                                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md flex items-center gap-1.5">
+                                <span className="text-[11px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md flex items-center gap-1.5">
                                   <CategoryIcon color={cat?.color} icon={cat?.icon} size="xs" showBackground={false} />
                                   <span>{g.category_name}</span>
                                 </span>
                               );
                             })()}
                             {g.investment_name && (
-                              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
+                              <span className="text-[11px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
                                 {g.investment_name}
                               </span>
                             )}
                             {goalCalculations.isAllMonths && g.month && (
-                              <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/80 px-2 py-0.5 rounded-md">
+                              <span className="text-[10px] sm:text-[11px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/80 px-2 py-0.5 rounded-md">
                                 Mês {g.month}
                               </span>
                             )}
                           </div>
-                          <h3 className="text-xl font-bold text-slate-900 dark:text-white truncate">
+                          <h3 className="text-base sm:text-xl font-bold text-slate-900 dark:text-white truncate">
                             {g.title}
                           </h3>
                         </div>
                       </div>
 
                       {/* Actions */}
-                      <div className="flex items-center gap-1 shrink-0">
+                      <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
                         <button
                           onClick={() => handleOpenEditGoalModal(g)}
-                          className="p-2 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
+                          className="p-1.5 sm:p-2 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
                           title="Editar Meta"
                         >
                           <Pencil className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => setGoalToDelete(g)}
-                          className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-lg transition-colors"
+                          className="p-1.5 sm:p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-lg transition-colors"
                           title="Eliminar Meta"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -1182,21 +1179,21 @@ export default function InvestimentosPage() {
                     </div>
 
                     {/* Metric Values */}
-                    <div className="flex items-baseline justify-between mb-3 mt-4">
+                    <div className="flex items-baseline justify-between mb-3 mt-3 sm:mt-4">
                       <div>
-                        <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Atual / Objetivo</span>
+                        <span className="text-[10px] sm:text-xs font-semibold text-slate-400 uppercase tracking-wider">Atual / Objetivo</span>
                         <div className="flex items-baseline gap-1.5 mt-0.5">
-                          <span className="text-2xl font-black text-slate-900 dark:text-white">
+                          <span className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
                             {g.goal_type === "savings_rate" ? `${g.currentVal}%` : formatCurrency(g.currentVal)}
                           </span>
-                          <span className="text-sm font-bold text-slate-400">
+                          <span className="text-xs sm:text-sm font-bold text-slate-400">
                             / {g.goal_type === "savings_rate" ? `${g.target_amount}%` : formatCurrency(g.target_amount)}
                           </span>
                         </div>
                       </div>
 
                       <div className="text-right">
-                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-extrabold ${
+                        <span className={`inline-flex items-center gap-1 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full text-[11px] sm:text-xs font-extrabold ${
                           g.status === 'completed'
                             ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400"
                             : g.status === 'exceeded'
@@ -1208,14 +1205,14 @@ export default function InvestimentosPage() {
                           {g.status === 'completed' && <CheckCircle2 className="w-3.5 h-3.5" />}
                           {g.status === 'exceeded' && <AlertTriangle className="w-3.5 h-3.5" />}
                           {g.status === 'on_track' && <Flame className="w-3.5 h-3.5" />}
-                          {g.status === 'completed' ? "Concluída" : g.status === 'exceeded' ? "Ultrapassada" : g.status === 'on_track' ? "No Caminho" : "Atenção ao Ritmo"}
+                          {g.status === 'completed' ? "Concluída" : g.status === 'exceeded' ? "Ultrapassada" : g.status === 'on_track' ? "No Caminho" : "Atenção"}
                         </span>
-                        <p className="text-xs font-black text-slate-500 mt-1">{g.progress.toFixed(0)}%</p>
+                        <p className="text-[11px] sm:text-xs font-black text-slate-500 mt-1">{g.progress.toFixed(0)}%</p>
                       </div>
                     </div>
 
                     {/* Progress Bar */}
-                    <div className="h-2.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden mb-5">
+                    <div className="h-2 sm:h-2.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden mb-4 sm:mb-5">
                       <div 
                         className={`h-full rounded-full ${progressColor} transition-all duration-1000 ease-out`}
                         style={{ width: `${Math.min(100, Math.max(0, g.progress))}%` }}
@@ -1224,11 +1221,11 @@ export default function InvestimentosPage() {
                   </div>
 
                   {/* AI Smart Advisory Box */}
-                  <div className="p-3.5 rounded-xl bg-slate-100/90 dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 text-slate-800 dark:text-white flex items-start gap-3 mt-2 shadow-sm">
+                  <div className="p-3 sm:p-3.5 rounded-xl bg-slate-100/90 dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 text-slate-800 dark:text-white flex items-start gap-2.5 sm:gap-3 mt-2 shadow-sm">
                     <div className="p-1.5 bg-amber-500/20 text-amber-500 dark:text-amber-400 rounded-lg shrink-0 mt-0.5">
-                      <Lightbulb className="w-4 h-4" />
+                      <Lightbulb className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     </div>
-                    <div className="text-xs text-slate-600 dark:text-slate-300 font-medium leading-relaxed">
+                    <div className="text-[11px] sm:text-xs text-slate-600 dark:text-slate-300 font-medium leading-relaxed">
                       {g.advisorMessage}
                     </div>
                   </div>
