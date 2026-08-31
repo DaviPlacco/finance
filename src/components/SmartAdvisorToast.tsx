@@ -1,11 +1,14 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { TrendingUp, AlertTriangle, PiggyBank, Target, X, Lightbulb, ChevronRight } from "lucide-react";
+import { TrendingUp, AlertTriangle, PiggyBank, Target, X, Lightbulb, ChevronRight, BarChart3 } from "lucide-react";
 import { generateSmartInsights, SmartInsight } from "@/lib/smartAdvisor";
+import { NOTIFICATIONS_CATALOG } from "@/lib/notificationsData";
 
 export function SmartAdvisorToastManager() {
+  const router = useRouter();
   const insightsCacheRef = useRef<SmartInsight[]>([]);
 
   const showNextInsight = async () => {
@@ -21,13 +24,19 @@ export function SmartAdvisorToastManager() {
 
     // Atualizar lista de insights caso o cache esteja vazio
     if (insightsCacheRef.current.length === 0) {
-      const list = await generateSmartInsights();
-      // Re-verificar autenticação após a resolução da promessa assíncrona
-      if (localStorage.getItem("isAuthenticated") !== "true" || !window.location.pathname.startsWith("/dashboard")) {
-        toast.dismiss();
-        return;
-      }
-      insightsCacheRef.current = list;
+      const dynamicList = await generateSmartInsights();
+      
+      // Combinar os insights dinâmicos com as 100+ notificações do catálogo
+      const catalogInsights: SmartInsight[] = NOTIFICATIONS_CATALOG.map(n => ({
+        id: n.id,
+        title: n.title,
+        message: n.summary,
+        type: n.category === "investimentos" ? "compound" : n.category === "reserva" ? "runway" : n.category === "poupanca" ? "savings_rate" : "goal",
+        iconType: n.iconType === "trending_up" ? "trending_up" : n.iconType === "shield" || n.iconType === "piggy" ? "piggy" : n.iconType === "alert" ? "alert" : "target"
+      }));
+
+      // Intercalar os dinâmicos prioritários com o catálogo completo
+      insightsCacheRef.current = [...dynamicList, ...catalogInsights];
     }
 
     const list = insightsCacheRef.current;
@@ -80,6 +89,10 @@ export function SmartAdvisorToastManager() {
           badgeText = "PATRIMÓNIO & RESERVA";
         }
 
+        const targetUrl = insight.id && insight.id.startsWith("notif_") 
+          ? `/dashboard/notificacoes?id=${insight.id}`
+          : "/dashboard/notificacoes";
+
         return (
           <div className="w-full max-w-md bg-white/95 dark:bg-slate-900/95 text-slate-900 dark:text-white border border-slate-200/90 dark:border-slate-800/80 backdrop-blur-xl rounded-2xl p-4 sm:p-5 shadow-xl shadow-slate-900/10 dark:shadow-2xl dark:shadow-black/50 relative flex gap-4 items-start animate-in fade-in slide-in-from-top-4 duration-300">
             {/* Ícone com Badge */}
@@ -101,16 +114,29 @@ export function SmartAdvisorToastManager() {
                 {insight.message}
               </p>
 
-              {/* Ação rápida para ver próxima dica */}
-              <button
-                onClick={() => {
-                  toast.dismiss(t);
-                  setTimeout(() => showNextInsight(), 200);
-                }}
-                className="mt-3 inline-flex items-center gap-1 text-[11px] font-bold text-primary hover:opacity-80 transition-opacity"
-              >
-                Ver outra dica <ChevronRight className="w-3 h-3" />
-              </button>
+              {/* Ações: Ver Análise Completa + Próxima Dica */}
+              <div className="mt-3.5 flex items-center justify-between gap-3 pt-2.5 border-t border-slate-100 dark:border-slate-800/80">
+                <button
+                  onClick={() => {
+                    toast.dismiss(t);
+                    router.push(targetUrl);
+                  }}
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:opacity-80 transition-all active:scale-95"
+                >
+                  <BarChart3 className="w-3.5 h-3.5" />
+                  Ver Análise & Gráfico →
+                </button>
+
+                <button
+                  onClick={() => {
+                    toast.dismiss(t);
+                    setTimeout(() => showNextInsight(), 200);
+                  }}
+                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                >
+                  Outra dica <ChevronRight className="w-3 h-3" />
+                </button>
+              </div>
             </div>
 
             {/* Botão Fechar */}
@@ -125,7 +151,7 @@ export function SmartAdvisorToastManager() {
         );
       },
       {
-        duration: 14000 // 14 segundos visível para leitura confortável
+        duration: 16000 // 16 segundos visível para leitura confortável
       }
     );
   };

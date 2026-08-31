@@ -30,7 +30,8 @@ import {
   Plus,
   Trash2,
   Edit2,
-  Smile
+  Smile,
+  Bell
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { 
@@ -409,6 +410,27 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     fetchBalance();
   }, [pathname]);
 
+  const [unreadNotifsCount, setUnreadNotifsCount] = useState(0);
+
+  const calculateUnreadNotifs = () => {
+    try {
+      const saved = localStorage.getItem("pl_notifications_read");
+      const readSet = saved ? new Set(JSON.parse(saved)) : new Set();
+      setUnreadNotifsCount(Math.max(0, 105 - readSet.size));
+    } catch {
+      setUnreadNotifsCount(105);
+    }
+  };
+
+  useEffect(() => {
+    calculateUnreadNotifs();
+    const handleNotifsUpdate = () => calculateUnreadNotifs();
+    window.addEventListener("notifications-updated", handleNotifsUpdate);
+    return () => {
+      window.removeEventListener("notifications-updated", handleNotifsUpdate);
+    };
+  }, []);
+
   const handleLogout = async () => {
     try {
       await fetch('/api/auth/logout', { method: 'POST' });
@@ -435,6 +457,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard, mobileLabel: "Início" },
         { name: "Gestão", href: "/dashboard/gestao", icon: Wallet, mobileLabel: "Gestão" },
         { name: "Orçamentos", href: "/dashboard/orcamentos", icon: PieChart, mobileLabel: "Orçamentos" },
+        { 
+          name: "Notificações", 
+          href: "/dashboard/notificacoes", 
+          icon: Bell, 
+          mobileLabel: "Dicas", 
+          badge: unreadNotifsCount > 0 ? unreadNotifsCount : undefined 
+        },
       ]
     },
     {
@@ -621,7 +650,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     <Link
                       key={item.name}
                       href={item.href}
-                      className={`flex items-center gap-3 transition-all shrink-0 ${
+                      className={`flex items-center gap-3 transition-all shrink-0 relative ${
                         isCollapsed ? 'justify-center w-12 h-12 mx-auto rounded-2xl' : 'py-2.5 px-3.5 sm:py-2.5 sm:px-3.5 rounded-xl'
                       } font-medium ${
                         isActive 
@@ -634,7 +663,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                       title={isCollapsed ? item.name : undefined}
                     >
                       <Icon className={`w-5 h-5 flex-shrink-0 ${isActive ? "text-white" : "text-slate-400 dark:text-slate-500"}`} />
-                      {!isCollapsed && <span className="whitespace-nowrap transition-all duration-300 text-sm sm:text-[14.5px]">{item.name}</span>}
+                      {!isCollapsed ? (
+                        <div className="flex items-center justify-between flex-1 min-w-0">
+                          <span className="whitespace-nowrap transition-all duration-300 text-sm sm:text-[14.5px] truncate">{item.name}</span>
+                          {item.badge !== undefined && item.badge > 0 && (
+                            <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full ${
+                              isActive ? 'bg-white text-primary' : 'bg-emerald-500 text-white'
+                            }`}>
+                              {item.badge}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        item.badge !== undefined && item.badge > 0 && (
+                          <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-slate-900" />
+                        )
+                      )}
                     </Link>
                   );
                 })}
@@ -701,12 +745,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
               }`}
             >
-              <div className={`p-1.5 rounded-xl transition-all ${
+              <div className={`p-1.5 rounded-xl transition-all relative ${
                 isActive 
                   ? "bg-primary text-white shadow-sm ring-2 ring-primary/20 scale-105" 
                   : "hover:bg-slate-100 dark:hover:bg-slate-800"
               }`}>
                 <Icon className="w-4 h-4" />
+                {item.badge !== undefined && item.badge > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-slate-900" />
+                )}
               </div>
               <span className="text-[10px] mt-0.5 tracking-tight font-medium">
                 {item.mobileLabel}
