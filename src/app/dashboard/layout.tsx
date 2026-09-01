@@ -103,10 +103,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (!isCreditPayment(t.payment_method)) return false;
     const settled = getSettledTransactionIds();
     if (settled.includes(Number(t.id))) return false;
-    const isPaidVal = t.is_paid;
-    if (isPaidVal === true || isPaidVal === 1 || isPaidVal === "1" || isPaidVal === "true") {
-      return false;
-    }
     return true;
   };
 

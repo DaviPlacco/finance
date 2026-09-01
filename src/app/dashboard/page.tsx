@@ -97,10 +97,6 @@ export default function DashboardPage() {
     if (!isCreditPayment(t.payment_method)) return false;
     const settled = getSettledTransactionIds();
     if (settled.includes(Number(t.id))) return false;
-    const isPaidVal = t.is_paid;
-    if (isPaidVal === true || isPaidVal === 1 || isPaidVal === "1" || isPaidVal === "true") {
-      return false;
-    }
     return true;
   };
 
@@ -110,15 +106,17 @@ export default function DashboardPage() {
       if (filterYear) query.append("year", filterYear);
       if (filterMonth) query.append("month", filterMonth);
 
-      const [sumRes, transRes, catRes, groupsRes, goalsRes] = await Promise.all([
+      const [sumRes, transRes, allTransRes, catRes, groupsRes, goalsRes] = await Promise.all([
         api.get(`/summary?${query.toString()}`).catch(() => ({ data: { balance: 0, income: 0, expense: 0, investments: 0, chartData: [] } })),
         api.get(`/transactions?${query.toString()}`).catch(() => ({ data: [] })),
+        api.get("/transactions").catch(() => ({ data: [] })),
         api.get("/categories").catch(() => ({ data: [] })),
         api.get("/category-groups").catch(() => ({ data: [] })),
         api.get("/goals").catch(() => ({ data: [] }))
       ]);
 
       const rawTrans: any[] = Array.isArray(transRes.data) ? transRes.data : [];
+      const allTx: any[] = Array.isArray(allTransRes.data) ? allTransRes.data : (rawTrans.length > 0 ? rawTrans : []);
       let currentSum = sumRes.data || { balance: 0, income: 0, expense: 0, investments: 0, chartData: [] };
 
       // Se houver transações carregadas, calcular valores reais reconciliados do período filtrado
@@ -141,10 +139,44 @@ export default function DashboardPage() {
           expense: paidExpenses,
           pendingCreditExpense: pendingExpenses,
         };
+      } else {
+        currentSum = {
+          ...currentSum,
+          income: 0,
+          expense: 0,
+          pendingCreditExpense: 0,
+        };
       }
 
-      // O Saldo no card principal reflete o Saldo Acumulado da Conta até ao período selecionado
-      currentSum.balance = typeof sumRes?.data?.balance === 'number' ? sumRes.data.balance : 0;
+      // Determinar cutoffDate do período selecionado
+      let cutoffDate = new Date();
+      if (filterYear && filterMonth) {
+        const y = parseInt(filterYear);
+        const m = parseInt(filterMonth);
+        const lastDay = new Date(y, m, 0).getDate();
+        cutoffDate = new Date(y, m - 1, lastDay, 23, 59, 59, 999);
+      } else if (filterYear) {
+        const y = parseInt(filterYear);
+        cutoffDate = new Date(y, 11, 31, 23, 59, 59, 999);
+      }
+
+      // Calcular o Saldo Acumulado Real da Conta até ao final do período selecionado
+      let calculatedBalance = 0;
+      if (allTx.length > 0) {
+        const cumIncome = allTx
+          .filter((t: any) => t.type === 'income' && !t.is_transfer && new Date(t.date) <= cutoffDate)
+          .reduce((acc: number, t: any) => acc + (Number(t.amount) || 0), 0);
+        
+        const cumPaidExpenses = allTx
+          .filter((t: any) => t.type === 'expense' && !isTransactionPendingCredit(t) && new Date(t.date) <= cutoffDate)
+          .reduce((acc: number, t: any) => acc + (Number(t.amount) || 0), 0);
+        
+        calculatedBalance = cumIncome - cumPaidExpenses;
+      } else if (typeof sumRes?.data?.balance === 'number') {
+        calculatedBalance = sumRes.data.balance;
+      }
+
+      currentSum.balance = calculatedBalance;
 
       setSummary(currentSum);
       setTransactions(rawTrans);
