@@ -145,17 +145,22 @@ export default function GestaoPage() {
       if (filterStatus === "paid") query.append("is_paid", "true");
 
       const [transRes, catRes] = await Promise.all([
-        api.get(`/transactions?${query.toString()}`),
-        api.get("/categories")
+        api.get(`/transactions?${query.toString()}`).catch(() => ({ data: [] })),
+        api.get("/categories").catch(() => ({ data: [] }))
       ]);
       const storedIcons = getStoredCategoryIcons();
-      setTransactions(transRes.data || []);
-      setCategories((catRes.data || []).map((c: any) => ({
+      const rawTx = Array.isArray(transRes?.data) ? transRes.data : [];
+      const rawCats = Array.isArray(catRes?.data) ? catRes.data : [];
+
+      setTransactions(rawTx);
+      setCategories(rawCats.map((c: any) => ({
         ...c,
         icon: c.icon || storedIcons[String(c.id)] || null
       })));
     } catch (err) {
-      console.error(err);
+      console.error("Erro ao carregar dados na gestão:", err);
+      setTransactions([]);
+      setCategories([]);
     } finally {
       setLoading(false);
     }
@@ -480,8 +485,11 @@ export default function GestaoPage() {
     return new Date(dateString).toLocaleDateString('pt-PT');
   };
 
-  const totalPages = Math.ceil(transactions.length / itemsPerPage);
-  const paginatedTransactions = transactions.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const safeTransactions = useMemo(() => Array.isArray(transactions) ? transactions : [], [transactions]);
+  const safeCategories = useMemo(() => Array.isArray(categories) ? categories : [], [categories]);
+
+  const totalPages = Math.max(1, Math.ceil(safeTransactions.length / (itemsPerPage || 10)));
+  const paginatedTransactions = safeTransactions.slice((currentPage - 1) * (itemsPerPage || 10), currentPage * (itemsPerPage || 10));
 
   // Limpeza de todos os filtros ativos
   const handleClearFilters = () => {
@@ -508,7 +516,7 @@ export default function GestaoPage() {
       parts.push(pm ? `${pm.icon} ${pm.label}` : filterPaymentMethod);
     }
     if (filterCategoryId) {
-      const cat = categories.find((c: any) => String(c.id) === String(filterCategoryId));
+      const cat = safeCategories.find((c: any) => c && String(c.id) === String(filterCategoryId));
       parts.push(cat ? cat.name : "Categoria");
     }
     if (filterType) {
@@ -522,12 +530,12 @@ export default function GestaoPage() {
       parts.push(filterYear);
     }
     return parts.join(" • ");
-  }, [filterStatus, filterPaymentMethod, filterCategoryId, filterType, filterMonth, filterYear, categories]);
+  }, [filterStatus, filterPaymentMethod, filterCategoryId, filterType, filterMonth, filterYear, safeCategories]);
 
   // Transações de Crédito Pendentes (não descontadas do Saldo Atual)
   const pendingCreditTransactions = useMemo(() => {
-    return transactions.filter((t: any) => isTransactionPendingCredit(t));
-  }, [transactions]);
+    return safeTransactions.filter((t: any) => isTransactionPendingCredit(t));
+  }, [safeTransactions]);
 
   const pendingCreditTotal = useMemo(() => {
     return pendingCreditTransactions.reduce((acc: number, t: any) => acc + (Number(t.amount) || 0), 0);
@@ -535,31 +543,31 @@ export default function GestaoPage() {
 
   // Totais das Transações Filtradas Atualmente na Tabela
   const filteredIncomeTotal = useMemo(() => {
-    return transactions.filter((t: any) => t.type === "income").reduce((acc: number, t: any) => acc + (t.amount || 0), 0);
-  }, [transactions]);
+    return safeTransactions.filter((t: any) => t && t.type === "income").reduce((acc: number, t: any) => acc + (Number(t.amount) || 0), 0);
+  }, [safeTransactions]);
 
   // Apenas despesas que foram liquidadas entram no total de despesas debitadas
   const filteredPaidExpenseTotal = useMemo(() => {
-    return transactions.filter((t: any) => t.type === "expense" && !isTransactionPendingCredit(t)).reduce((acc: number, t: any) => acc + (t.amount || 0), 0);
-  }, [transactions]);
+    return safeTransactions.filter((t: any) => t && t.type === "expense" && !isTransactionPendingCredit(t)).reduce((acc: number, t: any) => acc + (Number(t.amount) || 0), 0);
+  }, [safeTransactions]);
 
   const filteredPendingCreditExpenseTotal = useMemo(() => {
-    return transactions.filter((t: any) => isTransactionPendingCredit(t)).reduce((acc: number, t: any) => acc + (t.amount || 0), 0);
-  }, [transactions]);
+    return safeTransactions.filter((t: any) => isTransactionPendingCredit(t)).reduce((acc: number, t: any) => acc + (Number(t.amount) || 0), 0);
+  }, [safeTransactions]);
 
   const filteredNetTotal = filteredIncomeTotal - filteredPaidExpenseTotal;
 
   // Totais das Transações Selecionadas via Checkbox
   const selectedTransactionsList = useMemo(() => {
-    return transactions.filter((t: any) => selectedTransactions.includes(t.id));
-  }, [transactions, selectedTransactions]);
+    return safeTransactions.filter((t: any) => t && Array.isArray(selectedTransactions) && selectedTransactions.includes(t.id));
+  }, [safeTransactions, selectedTransactions]);
 
   const selectedIncomeTotal = useMemo(() => {
-    return selectedTransactionsList.filter((t: any) => t.type === "income").reduce((acc: number, t: any) => acc + (t.amount || 0), 0);
+    return selectedTransactionsList.filter((t: any) => t && t.type === "income").reduce((acc: number, t: any) => acc + (Number(t.amount) || 0), 0);
   }, [selectedTransactionsList]);
 
   const selectedExpenseTotal = useMemo(() => {
-    return selectedTransactionsList.filter((t: any) => t.type === "expense").reduce((acc: number, t: any) => acc + (t.amount || 0), 0);
+    return selectedTransactionsList.filter((t: any) => t && t.type === "expense").reduce((acc: number, t: any) => acc + (Number(t.amount) || 0), 0);
   }, [selectedTransactionsList]);
 
   const selectedNetTotal = selectedIncomeTotal - selectedExpenseTotal;
@@ -568,7 +576,7 @@ export default function GestaoPage() {
     e.preventDefault();
     if (!budgetCategoryId || !budgetAmount) return;
     try {
-      const cat: any = categories.find((c: any) => String(c.id) === String(budgetCategoryId));
+      const cat: any = safeCategories.find((c: any) => c && String(c.id) === String(budgetCategoryId));
       if (cat) {
         await api.put(`/categories/${budgetCategoryId}`, {
           name: cat.name,
@@ -588,15 +596,16 @@ export default function GestaoPage() {
   };
 
   const expensesByCategory = useMemo(() => {
-    const expenses = transactions.filter((t: any) => t.type === 'expense');
+    const expenses = safeTransactions.filter((t: any) => t && t.type === 'expense');
     
     const grouped = expenses.reduce((acc: any, t: any) => {
-      acc[t.category_id] = (acc[t.category_id] || 0) + t.amount;
+      const cid = t.category_id || "outros";
+      acc[cid] = (acc[cid] || 0) + (Number(t.amount) || 0);
       return acc;
     }, {});
 
     return Object.keys(grouped).map(catId => {
-      const category = categories.find((c: any) => c.id === parseInt(catId));
+      const category = safeCategories.find((c: any) => c && String(c.id) === String(catId));
       return {
         id: catId,
         name: category ? category.name : "Sem Categoria",
@@ -604,7 +613,7 @@ export default function GestaoPage() {
         amount: grouped[catId]
       };
     }).sort((a, b) => b.amount - a.amount);
-  }, [transactions, categories]);
+  }, [safeTransactions, safeCategories]);
 
   if (loading) {
     return (
