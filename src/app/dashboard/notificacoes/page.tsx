@@ -22,9 +22,7 @@ import {
   X, 
   ChevronRight, 
   BookOpen, 
-  Calendar,
-  Unlock,
-  Lock
+  Calendar
 } from "lucide-react";
 import { 
   ResponsiveContainer, 
@@ -73,9 +71,6 @@ function NotificationsContent() {
   // Informações de progressão mensal com base nos dados reais
   const monthlyInfo = useMemo(() => getMonthlyProgressiveNotifications(new Date(), profile), [profile]);
 
-  // Visualização: apenas desbloqueadas no mês corrente vs catálogo completo
-  const [showFullCatalog, setShowFullCatalog] = useState(false);
-
   // Estado de persistência de lidas por mês e ano
   const [readIds, setReadIds] = useState<Set<string>>(() => {
     return getStoredReadIds(monthlyInfo.year, monthlyInfo.month);
@@ -95,18 +90,18 @@ function NotificationsContent() {
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<"all" | "unread" | "favorites">("all");
 
-  // Lista base ativa (desbloqueadas ou catálogo completo)
+  // Lista base ativa: estritamente as notificações desbloqueadas até ao dia atual
   const activePool = useMemo(() => {
-    return showFullCatalog ? monthlyInfo.allNotifications : monthlyInfo.unlockedNotifications;
-  }, [showFullCatalog, monthlyInfo]);
+    return monthlyInfo.unlockedNotifications;
+  }, [monthlyInfo]);
 
   // Notificação selecionada para leitura e simulação
   const [selectedNotification, setSelectedNotification] = useState<FinancialNotification>(() => {
     if (initialId) {
-      const found = monthlyInfo.allNotifications.find((n) => n.id === initialId);
+      const found = monthlyInfo.unlockedNotifications.find((n) => n.id === initialId);
       if (found) return found;
     }
-    return activePool[0] || monthlyInfo.allNotifications[0];
+    return monthlyInfo.unlockedNotifications[0];
   });
 
   // Valor personalizado do simulador
@@ -117,13 +112,16 @@ function NotificationsContent() {
   // Atualizar a notificação selecionada se a lista mudar e a atual não existir
   useEffect(() => {
     if (selectedNotification) {
-      const updated = monthlyInfo.allNotifications.find(n => n.id === selectedNotification.id);
+      const updated = monthlyInfo.unlockedNotifications.find(n => n.id === selectedNotification.id);
       if (updated) {
         setSelectedNotification(updated);
-      } else if (activePool.length > 0) {
-        setSelectedNotification(activePool[0]);
-        setCustomMonthlyValue(activePool[0].defaultMonthlyValue);
+      } else if (monthlyInfo.unlockedNotifications.length > 0) {
+        setSelectedNotification(monthlyInfo.unlockedNotifications[0]);
+        setCustomMonthlyValue(monthlyInfo.unlockedNotifications[0].defaultMonthlyValue);
       }
+    } else if (monthlyInfo.unlockedNotifications.length > 0) {
+      setSelectedNotification(monthlyInfo.unlockedNotifications[0]);
+      setCustomMonthlyValue(monthlyInfo.unlockedNotifications[0].defaultMonthlyValue);
     }
   }, [monthlyInfo]);
 
@@ -132,17 +130,11 @@ function NotificationsContent() {
 
   // Função para selecionar notificação por ID (com abertura garantida, reset de filtros se necessário e scroll suave)
   const selectNotificationById = (id: string) => {
-    const found = monthlyInfo.allNotifications.find((n) => n.id === id);
+    const found = monthlyInfo.unlockedNotifications.find((n) => n.id === id);
     if (found) {
       setSelectedNotification(found);
       setCustomMonthlyValue(found.defaultMonthlyValue);
       markAsRead(found.id);
-
-      // Se a notificação for de um dia futuro do mês, ativa a visualização do catálogo completo
-      const isInUnlocked = monthlyInfo.unlockedNotifications.some((n) => n.id === id);
-      if (!isInUnlocked) {
-        setShowFullCatalog(true);
-      }
 
       // Limpar busca e filtros de categoria para que o card selecionado fique visível na lista
       setSearchQuery("");
@@ -429,39 +421,17 @@ function NotificationsContent() {
               </span>
             </div>
             <p className="text-xs text-slate-600 dark:text-slate-300 font-medium leading-relaxed">
-              {showFullCatalog 
-                ? `A visualizar o catálogo completo com todas as ${TOTAL_NOTIFICATIONS_COUNT} estratégias financeiras.`
-                : `${monthlyInfo.unlockedCount} de ${TOTAL_NOTIFICATIONS_COUNT} dicas desbloqueadas até ao dia de hoje (libertação de ~3 a 4 por dia).`
-              }
+              {monthlyInfo.unlockedCount} de {TOTAL_NOTIFICATIONS_COUNT} dicas desbloqueadas até ao dia de hoje (libertação progressiva de ~3 a 4 por dia).
             </p>
           </div>
         </div>
 
-        {/* Alternador de Visualização */}
-        <div className="w-full sm:w-auto grid grid-cols-2 sm:flex items-center gap-1.5 p-1 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm shrink-0">
-          <button
-            onClick={() => setShowFullCatalog(false)}
-            className={`px-3 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
-              !showFullCatalog
-                ? "bg-primary text-white shadow-sm"
-                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-            }`}
-          >
-            <Calendar className="w-3.5 h-3.5 shrink-0" />
-            <span className="truncate">Deste Mês ({monthlyInfo.unlockedCount})</span>
-          </button>
-
-          <button
-            onClick={() => setShowFullCatalog(true)}
-            className={`px-3 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
-              showFullCatalog
-                ? "bg-primary text-white shadow-sm"
-                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-            }`}
-          >
-            <Unlock className="w-3.5 h-3.5 shrink-0" />
-            <span className="truncate">Catálogo ({TOTAL_NOTIFICATIONS_COUNT})</span>
-          </button>
+        {/* Badge de Dicas Disponíveis */}
+        <div className="w-full sm:w-auto flex items-center justify-center sm:justify-start gap-2 px-3.5 py-2 rounded-xl bg-white/90 dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 shadow-sm shrink-0">
+          <Sparkles className="w-4 h-4 text-primary shrink-0" />
+          <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
+            {monthlyInfo.unlockedCount} {monthlyInfo.unlockedCount === 1 ? "Dica Ativa" : "Dicas Ativas"}
+          </span>
         </div>
       </div>
 
@@ -470,12 +440,12 @@ function NotificationsContent() {
         <div className="p-3.5 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between min-w-0">
           <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-1.5">
             <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider truncate">
-              {showFullCatalog ? "Total de Dicas" : "Desbloqueadas"}
+              Desbloqueadas
             </span>
             <BookOpen className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary shrink-0 ml-1" />
           </div>
           <p className="text-lg sm:text-2xl md:text-3xl font-black text-slate-900 dark:text-white truncate">
-            {showFullCatalog ? TOTAL_NOTIFICATIONS_COUNT : `${monthlyInfo.unlockedCount}`}
+            {monthlyInfo.unlockedCount}
             <span className="text-xs font-semibold text-slate-400 ml-1">/ 105</span>
           </p>
         </div>
