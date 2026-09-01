@@ -186,10 +186,27 @@ if (typeof window !== 'undefined') {
 
     const totalInvested = investments.reduce((acc: number, i: any) => acc + (Number(i.balance) || 0), 0);
 
-    // Cumulative balance of all transactions
+    // Calcular cutoffDate com base no período filtrado
+    const now = new Date();
+    let cutoffDate: Date = now;
+    if (filterYear && filterYear !== "Todos" && filterYear !== "" && filterMonth && filterMonth !== "Todos" && filterMonth !== "") {
+      const y = parseInt(filterYear);
+      const m = parseInt(filterMonth);
+      const lastDay = new Date(y, m, 0).getDate();
+      const endOfPeriod = new Date(y, m - 1, lastDay, 23, 59, 59, 999);
+      cutoffDate = endOfPeriod < now ? endOfPeriod : now;
+    } else if (filterYear && filterYear !== "Todos" && filterYear !== "") {
+      const y = parseInt(filterYear);
+      const endOfYear = new Date(y, 11, 31, 23, 59, 59, 999);
+      cutoffDate = endOfYear < now ? endOfYear : now;
+    }
+
+    // Cumulative balance of all transactions up to the end of the selected period (cutoffDate)
     let cumulativeIncome = 0;
     let cumulativeExpense = 0;
     transactions.forEach((t: any) => {
+      const tDate = new Date(t.date);
+      if (tDate > cutoffDate) return;
       const type = String(t.type || '').toLowerCase();
       if (type === 'income' || type === 'receita') {
         if (!t.is_transfer) cumulativeIncome += Number(t.amount) || 0;

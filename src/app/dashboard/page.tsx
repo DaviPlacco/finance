@@ -144,16 +144,8 @@ export default function DashboardPage() {
         };
       }
 
-      // O Saldo Atual no card principal reflete o Saldo Real Acumulado da Conta
-      let actualAccountBalance = typeof sumRes?.data?.balance === 'number' ? sumRes.data.balance : 0;
-      try {
-        const cached = localStorage.getItem("pl_cached_balance");
-        if (cached !== null && !isNaN(Number(cached))) {
-          actualAccountBalance = Number(cached);
-        }
-      } catch {}
-
-      currentSum.balance = actualAccountBalance;
+      // O Saldo no card principal reflete o Saldo Acumulado da Conta até ao período selecionado
+      currentSum.balance = typeof sumRes?.data?.balance === 'number' ? sumRes.data.balance : 0;
 
       setSummary(currentSum);
       setTransactions(rawTrans);
