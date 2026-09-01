@@ -123,17 +123,16 @@ export default function DashboardPage() {
 
       // Se houver transações carregadas, calcular valores reais reconciliados do período filtrado
       if (rawTrans.length > 0) {
-        const now = new Date();
         const totalIncome = rawTrans
-          .filter((t: any) => t.type === 'income' && !t.is_transfer && new Date(t.date) <= now)
+          .filter((t: any) => t.type === 'income' && !t.is_transfer)
           .reduce((acc: number, t: any) => acc + (Number(t.amount) || 0), 0);
         
         const paidExpenses = rawTrans
-          .filter((t: any) => t.type === 'expense' && !isTransactionPendingCredit(t) && new Date(t.date) <= now)
+          .filter((t: any) => t.type === 'expense' && !isTransactionPendingCredit(t))
           .reduce((acc: number, t: any) => acc + (Number(t.amount) || 0), 0);
 
         const pendingExpenses = rawTrans
-          .filter((t: any) => isTransactionPendingCredit(t) && new Date(t.date) <= now)
+          .filter((t: any) => isTransactionPendingCredit(t))
           .reduce((acc: number, t: any) => acc + (Number(t.amount) || 0), 0);
 
         currentSum = {
