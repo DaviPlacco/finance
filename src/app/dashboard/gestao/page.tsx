@@ -46,6 +46,16 @@ export const isCreditPayment = (pm?: string | null) => {
   return lower.includes("crédito") || lower.includes("credito");
 };
 
+export const isTransactionPendingCredit = (t: any) => {
+  if (!t || t.type !== 'expense') return false;
+  if (!isCreditPayment(t.payment_method)) return false;
+  return t.is_paid === false || t.is_paid === 0 || t.is_paid === "0" || t.is_paid === "false" || t.is_paid === null || t.is_paid === undefined;
+};
+
+export const isTransactionPaid = (t: any) => {
+  return !isTransactionPendingCredit(t);
+};
+
 export const PAYMENT_METHODS = [
   { id: "Cartão de Crédito", label: "Cartão de Crédito", icon: "💳", color: "#8b5cf6" },
   { id: "Cartão de Débito", label: "Cartão de Débito", icon: "💳", color: "#3b82f6" },
@@ -516,7 +526,7 @@ export default function GestaoPage() {
 
   // Transações de Crédito Pendentes (não descontadas do Saldo Atual)
   const pendingCreditTransactions = useMemo(() => {
-    return transactions.filter((t: any) => t.type === 'expense' && t.is_paid === false);
+    return transactions.filter((t: any) => isTransactionPendingCredit(t));
   }, [transactions]);
 
   const pendingCreditTotal = useMemo(() => {
@@ -1109,7 +1119,7 @@ export default function GestaoPage() {
                                 <span className="text-slate-400 dark:text-slate-600 text-xs italic">Não definido</span>
                               )}
 
-                              {t.type === 'expense' && t.is_paid === false ? (
+                              {isTransactionPendingCredit(t) ? (
                                 <div className="flex items-center gap-1.5 mt-0.5">
                                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30">
                                     <Clock className="w-2.5 h-2.5" /> Pendente (Crédito)
@@ -1126,7 +1136,7 @@ export default function GestaoPage() {
                                     Fechar
                                   </button>
                                 </div>
-                              ) : isCreditPayment(t.payment_method) && t.is_paid !== false ? (
+                              ) : isCreditPayment(t.payment_method) ? (
                                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 mt-0.5">
                                   <CheckCircle2 className="w-2.5 h-2.5" /> Liquidado
                                 </span>
@@ -1238,7 +1248,7 @@ export default function GestaoPage() {
                               <span className="whitespace-nowrap">{t.payment_method}</span>
                             </span>
                           )}
-                          {t.type === 'expense' && t.is_paid === false ? (
+                          {isTransactionPendingCredit(t) ? (
                             <div className="flex items-center gap-1">
                               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30 whitespace-nowrap shrink-0">
                                 <Clock className="w-2.5 h-2.5" /> Pendente
@@ -1254,7 +1264,7 @@ export default function GestaoPage() {
                                 Fechar
                               </button>
                             </div>
-                          ) : isCreditPayment(t.payment_method) && t.is_paid !== false ? (
+                          ) : isCreditPayment(t.payment_method) ? (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 whitespace-nowrap shrink-0">
                               <CheckCircle2 className="w-2.5 h-2.5" /> Liquidado
                             </span>
@@ -1611,7 +1621,7 @@ export default function GestaoPage() {
             </div>
             
             <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
-              {selectedTransactionsList.some((t: any) => t.type === 'expense' && t.is_paid === false) && (
+              {selectedTransactionsList.some((t: any) => isTransactionPendingCredit(t)) && (
                 <button
                   type="button"
                   onClick={() => {
@@ -1622,7 +1632,7 @@ export default function GestaoPage() {
                   title="Fechar pagamentos de crédito selecionados"
                 >
                   <CreditCard className="w-3.5 h-3.5" />
-                  <span>Fechar Crédito ({selectedTransactionsList.filter((t: any) => t.type === 'expense' && t.is_paid === false).length})</span>
+                  <span>Fechar Crédito ({selectedTransactionsList.filter((t: any) => isTransactionPendingCredit(t)).length})</span>
                 </button>
               )}
               <button
@@ -1930,8 +1940,8 @@ export default function GestaoPage() {
         description={
           creditTxToSettle
             ? `Tens a certeza de que desejas fechar o pagamento de "${creditTxToSettle.description || 'Despesa no Crédito'}" no valor de ${formatCurrency(creditTxToSettle.amount)}? Este valor será debitado imediatamente do teu Saldo Atual.`
-            : selectedTransactions.length > 0 && selectedTransactionsList.some((t: any) => t.type === 'expense' && t.is_paid === false)
-            ? `Tens a certeza de que desejas fechar ${selectedTransactionsList.filter((t: any) => t.type === 'expense' && t.is_paid === false).length} pagamentos pendentes selecionados no valor de ${formatCurrency(selectedTransactionsList.filter((t: any) => t.type === 'expense' && t.is_paid === false).reduce((acc: number, t: any) => acc + (t.amount || 0), 0))}? Este valor será debitado imediatamente do teu Saldo Atual.`
+            : selectedTransactions.length > 0 && selectedTransactionsList.some((t: any) => isTransactionPendingCredit(t))
+            ? `Tens a certeza de que desejas fechar ${selectedTransactionsList.filter((t: any) => isTransactionPendingCredit(t)).length} pagamentos pendentes selecionados no valor de ${formatCurrency(selectedTransactionsList.filter((t: any) => isTransactionPendingCredit(t)).reduce((acc: number, t: any) => acc + (t.amount || 0), 0))}? Este valor será debitado imediatamente do teu Saldo Atual.`
             : `Tens a certeza de que desejas fechar e liquidar ${pendingCreditTransactions.length} ${pendingCreditTransactions.length === 1 ? 'pagamento pendente' : 'pagamentos pendentes'} no valor total de ${formatCurrency(pendingCreditTotal)}? Este valor será debitado imediatamente do teu Saldo Atual.`
         }
         confirmText="Sim, Fechar e Debitar Saldo"
@@ -1941,8 +1951,8 @@ export default function GestaoPage() {
         onConfirm={() => {
           if (creditTxToSettle) {
             handleSettleCredit([creditTxToSettle.id]);
-          } else if (selectedTransactions.length > 0 && selectedTransactionsList.some((t: any) => t.type === 'expense' && t.is_paid === false)) {
-            const ids = selectedTransactionsList.filter((t: any) => t.type === 'expense' && t.is_paid === false).map((t: any) => t.id);
+          } else if (selectedTransactions.length > 0 && selectedTransactionsList.some((t: any) => isTransactionPendingCredit(t))) {
+            const ids = selectedTransactionsList.filter((t: any) => isTransactionPendingCredit(t)).map((t: any) => t.id);
             handleSettleCredit(ids);
             setSelectedTransactions([]);
           } else {
