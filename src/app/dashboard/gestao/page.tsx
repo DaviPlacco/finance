@@ -24,7 +24,9 @@ import {
   CreditCard,
   FileText,
   Filter,
-  SlidersHorizontal
+  SlidersHorizontal,
+  CheckCircle2,
+  AlertCircle
 } from "lucide-react";
 import { CustomSelect } from "@/components/CustomSelect";
 import { ConfirmModal } from "@/components/ConfirmModal";
@@ -36,6 +38,12 @@ import { toast } from "sonner";
 export const isPdfDocument = (dataOrUrl?: string | null) => {
   if (!dataOrUrl) return false;
   return dataOrUrl.startsWith("data:application/pdf") || dataOrUrl.toLowerCase().includes(".pdf");
+};
+
+export const isCreditPayment = (pm?: string | null) => {
+  if (!pm) return false;
+  const lower = pm.toLowerCase();
+  return lower.includes("crédito") || lower.includes("credito");
 };
 
 export const PAYMENT_METHODS = [
@@ -73,7 +81,13 @@ export default function GestaoPage() {
   const [editType, setEditType] = useState("expense");
   const [editPaymentMethod, setEditPaymentMethod] = useState("");
   const [editReceiptImage, setEditReceiptImage] = useState<string | null>(null);
+  const [editIsPaid, setEditIsPaid] = useState(true);
   const [savingEdit, setSavingEdit] = useState(false);
+
+  // Settle Credit State & Modals
+  const [showSettleCreditModal, setShowSettleCreditModal] = useState(false);
+  const [creditTxToSettle, setCreditTxToSettle] = useState<any | null>(null);
+  const [settlingCredit, setSettlingCredit] = useState(false);
 
   // Budget state
   const [budgetCategoryId, setBudgetCategoryId] = useState("");
@@ -91,6 +105,7 @@ export default function GestaoPage() {
   const [filterType, setFilterType] = useState("");
   const [filterCategoryId, setFilterCategoryId] = useState("");
   const [filterPaymentMethod, setFilterPaymentMethod] = useState("");
+  const [filterStatus, setFilterStatus] = useState(""); // "" | "pending_credit" | "paid"
 
   const [selectedTransactions, setSelectedTransactions] = useState<number[]>([]);
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
@@ -98,7 +113,7 @@ export default function GestaoPage() {
   useEffect(() => {
     setCurrentPage(1);
     fetchData();
-  }, [filterYear, filterMonth, filterType, filterCategoryId, filterPaymentMethod]);
+  }, [filterYear, filterMonth, filterType, filterCategoryId, filterPaymentMethod, filterStatus]);
 
   useEffect(() => {
     const handleCategoriesUpdate = () => {
@@ -116,6 +131,8 @@ export default function GestaoPage() {
       if (filterType) query.append("type", filterType);
       if (filterCategoryId) query.append("category_id", filterCategoryId);
       if (filterPaymentMethod) query.append("payment_method", filterPaymentMethod);
+      if (filterStatus === "pending_credit") query.append("is_paid", "false");
+      if (filterStatus === "paid") query.append("is_paid", "true");
 
       const [transRes, catRes] = await Promise.all([
         api.get(`/transactions?${query.toString()}`),
@@ -186,6 +203,7 @@ export default function GestaoPage() {
   const handleAddTransaction = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const isCreditExpense = type === "expense" && isCreditPayment(paymentMethod);
       await api.post("/transactions", {
         amount: parseFloat(amount),
         type,
@@ -193,15 +211,21 @@ export default function GestaoPage() {
         payment_method: paymentMethod || null,
         description,
         date,
-        receipt_image: receiptImage
+        receipt_image: receiptImage,
+        is_paid: isCreditExpense ? false : true
       });
       setAmount("");
       setDescription("");
       setPaymentMethod("");
       setReceiptImage(null);
       fetchData();
-      toast.success("Registo adicionado com sucesso!");
+      if (isCreditExpense) {
+        toast.success("Despesa em Crédito registada! Ficou pendente e será debitada ao fechar a fatura.");
+      } else {
+        toast.success("Registo adicionado com sucesso!");
+      }
       window.dispatchEvent(new CustomEvent("transactions-updated"));
+      window.dispatchEvent(new CustomEvent("summary-updated"));
     } catch (err) {
       console.error("Failed to add transaction", err);
       toast.error("Erro ao adicionar registo");
@@ -266,6 +290,7 @@ export default function GestaoPage() {
     setEditType(t.type || "expense");
     setEditPaymentMethod(t.payment_method || "");
     setEditReceiptImage(t.receipt_image || null);
+    setEditIsPaid(t.is_paid !== false);
   };
 
   const handleSaveEdit = async (e: React.FormEvent) => {
@@ -289,18 +314,45 @@ export default function GestaoPage() {
         description: editDescription,
         date: editDate,
         payment_method: editPaymentMethod || null,
-        receipt_image: editReceiptImage
+        receipt_image: editReceiptImage,
+        is_paid: editIsPaid
       });
 
       toast.success("Transação atualizada com sucesso!");
       setEditingTransaction(null);
       fetchData();
       window.dispatchEvent(new CustomEvent("transactions-updated"));
+      window.dispatchEvent(new CustomEvent("summary-updated"));
     } catch (err: any) {
       console.error("Erro ao atualizar transação:", err);
       toast.error(err?.response?.data?.detail || "Erro ao atualizar transação");
     } finally {
       setSavingEdit(false);
+    }
+  };
+
+  const handleSettleCredit = async (txIds?: number[]) => {
+    setSettlingCredit(true);
+    try {
+      const payload = txIds && txIds.length > 0 
+        ? { transaction_ids: txIds } 
+        : { 
+            year: filterYear ? parseInt(filterYear) : undefined, 
+            month: filterMonth && filterMonth !== 'all' ? parseInt(filterMonth) : undefined 
+          };
+      
+      const res = await api.post("/transactions/settle-credit", payload);
+      toast.success(res.data?.message || "Pagamentos de crédito liquidados com sucesso! O valor foi debitado do teu Saldo Atual.");
+      setShowSettleCreditModal(false);
+      setCreditTxToSettle(null);
+      fetchData();
+      window.dispatchEvent(new CustomEvent("transactions-updated"));
+      window.dispatchEvent(new CustomEvent("summary-updated"));
+    } catch (err: any) {
+      console.error("Erro ao fechar pagamentos de crédito:", err);
+      toast.error(err?.response?.data?.detail || "Erro ao fechar pagamentos de crédito.");
+    } finally {
+      setSettlingCredit(false);
     }
   };
 
@@ -428,15 +480,19 @@ export default function GestaoPage() {
     setFilterType("");
     setFilterCategoryId("");
     setFilterPaymentMethod("");
+    setFilterStatus("");
   };
 
   // Verificação e nomes dos filtros ativos
   const isFilterActive = Boolean(
-    filterYear || filterMonth || filterType || filterCategoryId || filterPaymentMethod
+    filterYear || filterMonth || filterType || filterCategoryId || filterPaymentMethod || filterStatus
   );
 
   const activeFilterName = useMemo(() => {
     const parts: string[] = [];
+    if (filterStatus) {
+      parts.push(filterStatus === "pending_credit" ? "💳 Apenas Pendentes (Crédito)" : "✅ Apenas Liquidados");
+    }
     if (filterPaymentMethod) {
       const pm = PAYMENT_METHODS.find(p => p.id === filterPaymentMethod);
       parts.push(pm ? `${pm.icon} ${pm.label}` : filterPaymentMethod);
@@ -456,7 +512,16 @@ export default function GestaoPage() {
       parts.push(filterYear);
     }
     return parts.join(" • ");
-  }, [filterPaymentMethod, filterCategoryId, filterType, filterMonth, filterYear, categories]);
+  }, [filterStatus, filterPaymentMethod, filterCategoryId, filterType, filterMonth, filterYear, categories]);
+
+  // Transações de Crédito Pendentes (não descontadas do Saldo Atual)
+  const pendingCreditTransactions = useMemo(() => {
+    return transactions.filter((t: any) => t.type === 'expense' && t.is_paid === false);
+  }, [transactions]);
+
+  const pendingCreditTotal = useMemo(() => {
+    return pendingCreditTransactions.reduce((acc: number, t: any) => acc + (Number(t.amount) || 0), 0);
+  }, [pendingCreditTransactions]);
 
   // Totais das Transações Filtradas Atualmente na Tabela
   const filteredIncomeTotal = useMemo(() => {
@@ -662,6 +727,19 @@ export default function GestaoPage() {
                 />
               </div>
 
+              {/* 💳 Alerta Informativo para Compras no Crédito */}
+              {type === "expense" && isCreditPayment(paymentMethod) && (
+                <div className="p-3.5 rounded-xl bg-violet-500/10 border border-violet-500/25 text-violet-800 dark:text-violet-300 text-xs flex items-start gap-2.5 animate-in fade-in duration-200">
+                  <CreditCard className="w-4 h-4 shrink-0 mt-0.5 text-violet-600 dark:text-violet-400" />
+                  <div className="space-y-0.5">
+                    <p className="font-extrabold text-violet-900 dark:text-violet-200">Pagamento no Crédito (Pendente)</p>
+                    <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
+                      Esta despesa ficará registada como <strong>Pagamento Pendente</strong> e <u>não será descontada</u> do teu <strong>Saldo Atual</strong> até fechares a fatura.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 uppercase tracking-wider">
                   Descrição (Opcional)
@@ -752,14 +830,9 @@ export default function GestaoPage() {
                 <CustomSelect 
                   required
                   value={budgetCategoryId} 
-                  onChange={val => {
-                    setBudgetCategoryId(String(val));
-                    const cat: any = categories.find((c: any) => String(c.id) === String(val));
-                    if (cat && cat.budget_limit) setBudgetAmount(cat.budget_limit.toString());
-                    else setBudgetAmount("");
-                  }} 
-                  options={categories.filter((c: any) => c.type === "expense").map((cat: any) => ({ value: cat.id, label: cat.name, color: cat.color, icon: cat.icon }))}
-                  placeholder="Selecione uma despesa"
+                  onChange={val => setBudgetCategoryId(String(val))} 
+                  options={categories.filter((c: any) => c.type === 'expense').map((cat: any) => ({ value: cat.id, label: cat.name, color: cat.color, icon: cat.icon }))}
+                  placeholder="Selecione a categoria"
                 />
               </div>
               <div>
@@ -788,9 +861,45 @@ export default function GestaoPage() {
 
         {/* Table & History Column */}
         <div className="lg:col-span-2 space-y-6">
+          {/* 💳 BANNER DE ALERTA: FECHAR PAGAMENTOS PENDENTES NO CRÉDITO */}
+          {pendingCreditTransactions.length > 0 && (
+            <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-violet-600/15 via-purple-600/10 to-indigo-600/15 border border-violet-500/30 dark:border-violet-500/25 shadow-xl shadow-violet-500/5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
+              <div className="flex items-start sm:items-center gap-3.5 min-w-0 flex-1">
+                <div className="w-11 h-11 rounded-2xl bg-violet-500/20 border border-violet-500/30 flex items-center justify-center text-violet-600 dark:text-violet-400 shrink-0 shadow-inner">
+                  <CreditCard className="w-6 h-6 animate-pulse" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h4 className="text-base font-black text-slate-900 dark:text-white">
+                      Fechar Pagamentos Pendentes
+                    </h4>
+                    <span className="px-2 py-0.5 rounded-full text-[11px] font-black bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30">
+                      {pendingCreditTransactions.length} {pendingCreditTransactions.length === 1 ? 'despesa no crédito' : 'despesas no crédito'}
+                    </span>
+                  </div>
+                  <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 mt-1 leading-relaxed">
+                    Tens <strong className="text-violet-600 dark:text-violet-400 font-extrabold">{formatCurrency(pendingCreditTotal)}</strong> em pagamentos no crédito que <span className="underline decoration-violet-400 underline-offset-2 font-semibold">ainda não foram debitados</span> do teu <strong>Saldo Atual</strong>.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setCreditTxToSettle(null);
+                  setShowSettleCreditModal(true);
+                }}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-black text-xs sm:text-sm shadow-lg shadow-violet-600/30 hover:shadow-violet-600/50 hover:-translate-y-0.5 active:translate-y-0 transition-all shrink-0 uppercase tracking-wider"
+              >
+                <CreditCard className="w-4 h-4" />
+                <span>Fechar Pagamento ({formatCurrency(pendingCreditTotal)})</span>
+              </button>
+            </div>
+          )}
+
           {/* Filters Bar */}
           <div className="glass-card p-4 border border-slate-200/80 dark:border-slate-800 shadow-md">
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 w-full min-w-0">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 w-full min-w-0">
               <div className="min-w-0">
                 <label className="block text-[11px] font-bold text-slate-500 mb-1 uppercase tracking-wider">Ano</label>
                 <CustomSelect 
@@ -854,6 +963,18 @@ export default function GestaoPage() {
                       value: pm.id,
                       label: `${pm.icon} ${pm.label}`
                     }))
+                  ]}
+                />
+              </div>
+              <div className="min-w-0">
+                <label className="block text-[11px] font-bold text-slate-500 mb-1 uppercase tracking-wider">Estado</label>
+                <CustomSelect 
+                  value={filterStatus} 
+                  onChange={val => setFilterStatus(val as string)} 
+                  options={[
+                    { value: "", label: "Todos" },
+                    { value: "pending_credit", label: "🟡 Pendentes (Crédito)" },
+                    { value: "paid", label: "🟢 Liquidados" }
                   ]}
                 />
               </div>
@@ -978,14 +1099,39 @@ export default function GestaoPage() {
                             </span>
                           </td>
                           <td className="p-4 whitespace-nowrap">
-                            {t.payment_method ? (
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200/80 dark:border-slate-700/80">
-                                <span>{pm?.icon || '💳'}</span>
-                                <span className="truncate max-w-[130px]">{t.payment_method}</span>
-                              </span>
-                            ) : (
-                              <span className="text-slate-400 dark:text-slate-600 text-xs italic">Não definido</span>
-                            )}
+                            <div className="flex flex-col items-start gap-1">
+                              {t.payment_method ? (
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200/80 dark:border-slate-700/80">
+                                  <span>{pm?.icon || '💳'}</span>
+                                  <span className="truncate max-w-[130px]">{t.payment_method}</span>
+                                </span>
+                              ) : (
+                                <span className="text-slate-400 dark:text-slate-600 text-xs italic">Não definido</span>
+                              )}
+
+                              {t.type === 'expense' && t.is_paid === false ? (
+                                <div className="flex items-center gap-1.5 mt-0.5">
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30">
+                                    <Clock className="w-2.5 h-2.5" /> Pendente (Crédito)
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setCreditTxToSettle(t);
+                                    }}
+                                    className="text-[10px] font-black text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 hover:underline px-1.5 py-0.5 rounded bg-violet-500/10 hover:bg-violet-500/20 transition-all cursor-pointer"
+                                    title="Fechar e debitar este pagamento do Saldo Atual"
+                                  >
+                                    Fechar
+                                  </button>
+                                </div>
+                              ) : isCreditPayment(t.payment_method) && t.is_paid !== false ? (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 mt-0.5">
+                                  <CheckCircle2 className="w-2.5 h-2.5" /> Liquidado
+                                </span>
+                              ) : null}
+                            </div>
                           </td>
                           <td className="p-4 text-slate-900 dark:text-slate-100 font-semibold text-sm max-w-[200px] truncate" title={t.description || '-'}>
                             {t.description || '-'}
@@ -1092,6 +1238,27 @@ export default function GestaoPage() {
                               <span className="whitespace-nowrap">{t.payment_method}</span>
                             </span>
                           )}
+                          {t.type === 'expense' && t.is_paid === false ? (
+                            <div className="flex items-center gap-1">
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30 whitespace-nowrap shrink-0">
+                                <Clock className="w-2.5 h-2.5" /> Pendente
+                              </span>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setCreditTxToSettle(t);
+                                }}
+                                className="text-[10px] font-black text-violet-600 dark:text-violet-400 hover:underline px-1.5 py-0.5 rounded bg-violet-500/10"
+                              >
+                                Fechar
+                              </button>
+                            </div>
+                          ) : isCreditPayment(t.payment_method) && t.is_paid !== false ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 whitespace-nowrap shrink-0">
+                              <CheckCircle2 className="w-2.5 h-2.5" /> Liquidado
+                            </span>
+                          ) : null}
                           {t.receipt_image && (
                             <button
                               type="button"
@@ -1443,7 +1610,21 @@ export default function GestaoPage() {
               </div>
             </div>
             
-            <div className="flex items-center gap-1 shrink-0">
+            <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+              {selectedTransactionsList.some((t: any) => t.type === 'expense' && t.is_paid === false) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCreditTxToSettle(null);
+                    setShowSettleCreditModal(true);
+                  }}
+                  className="bg-violet-600 hover:bg-violet-700 text-white text-xs px-2.5 sm:px-3 py-1 rounded-full font-bold transition-all flex items-center gap-1 whitespace-nowrap shadow-sm active:scale-95"
+                  title="Fechar pagamentos de crédito selecionados"
+                >
+                  <CreditCard className="w-3.5 h-3.5" />
+                  <span>Fechar Crédito ({selectedTransactionsList.filter((t: any) => t.type === 'expense' && t.is_paid === false).length})</span>
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => setSelectedTransactions([])}
@@ -1623,6 +1804,44 @@ export default function GestaoPage() {
                   />
                 </div>
 
+                {/* 💳 Switcher de Estado de Pagamento no Crédito */}
+                {editType === "expense" && isCreditPayment(editPaymentMethod) && (
+                  <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 space-y-2">
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                      Estado da Fatura / Débito no Saldo
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setEditIsPaid(false)}
+                        className={`py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 border ${
+                          !editIsPaid 
+                            ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/40 shadow-xs' 
+                            : 'bg-white dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700'
+                        }`}
+                      >
+                        <Clock className="w-3.5 h-3.5" /> Pendente no Crédito
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditIsPaid(true)}
+                        className={`py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 border ${
+                          editIsPaid 
+                            ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/40 shadow-xs' 
+                            : 'bg-white dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700'
+                        }`}
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5" /> Liquidado / Pago
+                      </button>
+                    </div>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                      {!editIsPaid 
+                        ? "Este valor NÃO está descontado do teu Saldo Atual." 
+                        : "Este valor está DEBITADO do teu Saldo Atual."}
+                    </p>
+                  </div>
+                )}
+
                 {/* Descrição */}
                 <div>
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 uppercase tracking-wider">
@@ -1703,6 +1922,38 @@ export default function GestaoPage() {
           </div>
         </ModalPortal>
       )}
+
+      {/* 💳 MODAL DE CONFIRMAÇÃO DE FECHAR PAGAMENTOS NO CRÉDITO */}
+      <ConfirmModal
+        isOpen={showSettleCreditModal || Boolean(creditTxToSettle)}
+        title="Fechar Pagamentos de Crédito"
+        description={
+          creditTxToSettle
+            ? `Tens a certeza de que desejas fechar o pagamento de "${creditTxToSettle.description || 'Despesa no Crédito'}" no valor de ${formatCurrency(creditTxToSettle.amount)}? Este valor será debitado imediatamente do teu Saldo Atual.`
+            : selectedTransactions.length > 0 && selectedTransactionsList.some((t: any) => t.type === 'expense' && t.is_paid === false)
+            ? `Tens a certeza de que desejas fechar ${selectedTransactionsList.filter((t: any) => t.type === 'expense' && t.is_paid === false).length} pagamentos pendentes selecionados no valor de ${formatCurrency(selectedTransactionsList.filter((t: any) => t.type === 'expense' && t.is_paid === false).reduce((acc: number, t: any) => acc + (t.amount || 0), 0))}? Este valor será debitado imediatamente do teu Saldo Atual.`
+            : `Tens a certeza de que desejas fechar e liquidar ${pendingCreditTransactions.length} ${pendingCreditTransactions.length === 1 ? 'pagamento pendente' : 'pagamentos pendentes'} no valor total de ${formatCurrency(pendingCreditTotal)}? Este valor será debitado imediatamente do teu Saldo Atual.`
+        }
+        confirmText="Sim, Fechar e Debitar Saldo"
+        cancelText="Cancelar"
+        variant="primary"
+        isLoading={settlingCredit}
+        onConfirm={() => {
+          if (creditTxToSettle) {
+            handleSettleCredit([creditTxToSettle.id]);
+          } else if (selectedTransactions.length > 0 && selectedTransactionsList.some((t: any) => t.type === 'expense' && t.is_paid === false)) {
+            const ids = selectedTransactionsList.filter((t: any) => t.type === 'expense' && t.is_paid === false).map((t: any) => t.id);
+            handleSettleCredit(ids);
+            setSelectedTransactions([]);
+          } else {
+            handleSettleCredit(pendingCreditTransactions.map((t: any) => t.id));
+          }
+        }}
+        onCancel={() => {
+          setShowSettleCreditModal(false);
+          setCreditTxToSettle(null);
+        }}
+      />
 
       {/* MODAL DE EXCLUSÃO EM MASSA */}
       <ConfirmModal
