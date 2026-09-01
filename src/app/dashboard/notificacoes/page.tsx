@@ -42,8 +42,17 @@ import {
   FinancialNotification, 
   calculateNotificationProjection, 
   getMonthlyProgressiveNotifications,
+  getStoredReadIds,
+  saveStoredReadIds,
+  getStoredFavoriteIds,
+  saveStoredFavoriteIds,
   TOTAL_NOTIFICATIONS_COUNT 
 } from "@/lib/notificationsData";
+import { 
+  UserFinancialProfile, 
+  getCachedFinancialProfile, 
+  refreshUserFinancialProfile 
+} from "@/lib/financialContext";
 import { toast } from "sonner";
 
 function NotificationsContent() {
@@ -51,29 +60,34 @@ function NotificationsContent() {
   const router = useRouter();
   const initialId = searchParams.get("id");
 
-  // Informações de progressão mensal
-  const monthlyInfo = useMemo(() => getMonthlyProgressiveNotifications(), []);
+  // Perfil Financeiro Real do Utilizador
+  const [profile, setProfile] = useState<UserFinancialProfile>(() => getCachedFinancialProfile());
+
+  // Atualizar perfil financeiro ao carregar a página
+  useEffect(() => {
+    refreshUserFinancialProfile().then((p) => {
+      setProfile(p);
+    }).catch(() => {});
+  }, []);
+
+  // Informações de progressão mensal com base nos dados reais
+  const monthlyInfo = useMemo(() => getMonthlyProgressiveNotifications(new Date(), profile), [profile]);
 
   // Visualização: apenas desbloqueadas no mês corrente vs catálogo completo
   const [showFullCatalog, setShowFullCatalog] = useState(false);
 
-  // Estado de persistência de lidas e favoritas
+  // Estado de persistência de lidas por mês e ano
   const [readIds, setReadIds] = useState<Set<string>>(() => {
-    try {
-      const saved = localStorage.getItem("pl_notifications_read");
-      return saved ? new Set(JSON.parse(saved)) : new Set<string>();
-    } catch {
-      return new Set<string>();
-    }
+    return getStoredReadIds(monthlyInfo.year, monthlyInfo.month);
   });
 
+  // Sincronizar readIds quando o mês muda
+  useEffect(() => {
+    setReadIds(getStoredReadIds(monthlyInfo.year, monthlyInfo.month));
+  }, [monthlyInfo.year, monthlyInfo.month]);
+
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(() => {
-    try {
-      const saved = localStorage.getItem("pl_notifications_favorites");
-      return saved ? new Set(JSON.parse(saved)) : new Set<string>();
-    } catch {
-      return new Set<string>();
-    }
+    return getStoredFavoriteIds();
   });
 
   // Filtros
@@ -97,8 +111,21 @@ function NotificationsContent() {
 
   // Valor personalizado do simulador
   const [customMonthlyValue, setCustomMonthlyValue] = useState<number>(() => {
-    return selectedNotification.defaultMonthlyValue;
+    return selectedNotification ? selectedNotification.defaultMonthlyValue : 100;
   });
+
+  // Atualizar a notificação selecionada se a lista mudar e a atual não existir
+  useEffect(() => {
+    if (selectedNotification) {
+      const updated = monthlyInfo.allNotifications.find(n => n.id === selectedNotification.id);
+      if (updated) {
+        setSelectedNotification(updated);
+      } else if (activePool.length > 0) {
+        setSelectedNotification(activePool[0]);
+        setCustomMonthlyValue(activePool[0].defaultMonthlyValue);
+      }
+    }
+  }, [monthlyInfo]);
 
   // Modal mobile de detalhe
   const [isMobileDetailOpen, setIsMobileDetailOpen] = useState(false);
@@ -167,10 +194,7 @@ function NotificationsContent() {
     setReadIds((prev) => {
       const next = new Set(prev);
       next.add(id);
-      try {
-        localStorage.setItem("pl_notifications_read", JSON.stringify(Array.from(next)));
-        window.dispatchEvent(new CustomEvent("notifications-updated"));
-      } catch {}
+      saveStoredReadIds(monthlyInfo.year, monthlyInfo.month, next);
       return next;
     });
   };
@@ -187,10 +211,7 @@ function NotificationsContent() {
         next.add(id);
         toast.success("Adicionado aos favoritos!");
       }
-      try {
-        localStorage.setItem("pl_notifications_favorites", JSON.stringify(Array.from(next)));
-        window.dispatchEvent(new CustomEvent("notifications-updated"));
-      } catch {}
+      saveStoredFavoriteIds(next);
       return next;
     });
   };
@@ -199,11 +220,8 @@ function NotificationsContent() {
     const allUnlockedIds = new Set(activePool.map((n) => n.id));
     setReadIds((prev) => {
       const next = new Set([...Array.from(prev), ...Array.from(allUnlockedIds)]);
-      try {
-        localStorage.setItem("pl_notifications_read", JSON.stringify(Array.from(next)));
-        window.dispatchEvent(new CustomEvent("notifications-updated"));
-        toast.success("Todas as notificações ativas foram marcadas como lidas!");
-      } catch {}
+      saveStoredReadIds(monthlyInfo.year, monthlyInfo.month, next);
+      toast.success("Todas as notificações ativas foram marcadas como lidas!");
       return next;
     });
   };
@@ -608,10 +626,15 @@ function NotificationsContent() {
                 >
                   {/* Linha de topo: Categoria, Tempo e Favorito */}
                   <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 flex-wrap">
                       <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md border ${getBadgeStyle(notif.category)}`}>
                         {notif.categoryLabel}
                       </span>
+                      {notif.isCustomized && (
+                        <span className="text-[10px] font-bold text-primary bg-primary/10 border border-primary/20 px-1.5 py-0.5 rounded-md flex items-center gap-1">
+                          <Sparkles className="w-2.5 h-2.5" /> Dados Reais
+                        </span>
+                      )}
                       {!isRead && (
                         <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" title="Nova Dica Não Lida" />
                       )}
@@ -669,10 +692,15 @@ function NotificationsContent() {
                 {getCategoryIcon(selectedNotification.iconType)}
               </div>
               <div>
-                <div className="flex items-center gap-2 mb-1">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
                   <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md border ${getBadgeStyle(selectedNotification.category)}`}>
                     {selectedNotification.categoryLabel}
                   </span>
+                  {selectedNotification.isCustomized && (
+                    <span className="text-[10px] font-bold text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-md flex items-center gap-1">
+                      <Sparkles className="w-3 h-3" /> Gerado com os Teus Dados Reais
+                    </span>
+                  )}
                   <span className="text-xs text-slate-400 dark:text-slate-500">
                     • {selectedNotification.publishedAt}
                   </span>
@@ -889,10 +917,15 @@ function NotificationsContent() {
           <div className="bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-3xl shadow-2xl w-full max-w-xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col max-h-[90vh] animate-in slide-in-from-bottom duration-200">
             {/* Header Mobile */}
             <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-850 shrink-0">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md border ${getBadgeStyle(selectedNotification.category)}`}>
                   {selectedNotification.categoryLabel}
                 </span>
+                {selectedNotification.isCustomized && (
+                  <span className="text-[10px] font-bold text-primary bg-primary/10 border border-primary/20 px-1.5 py-0.5 rounded-md flex items-center gap-1">
+                    <Sparkles className="w-2.5 h-2.5" /> Dados Reais
+                  </span>
+                )}
               </div>
               <button
                 onClick={() => setIsMobileDetailOpen(false)}

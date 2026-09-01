@@ -47,7 +47,8 @@ import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { SmartAdvisorToastManager } from "@/components/SmartAdvisorToast";
 import { ConfirmModal } from "@/components/ConfirmModal";
-import { getMonthlyProgressiveNotifications } from "@/lib/notificationsData";
+import { getMonthlyProgressiveNotifications, getStoredReadIds } from "@/lib/notificationsData";
+import { refreshUserFinancialProfile } from "@/lib/financialContext";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -415,9 +416,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const calculateUnreadNotifs = () => {
     try {
-      const saved = localStorage.getItem("pl_notifications_read");
-      const readSet: Set<string> = saved ? new Set(JSON.parse(saved)) : new Set();
-      const { unlockedNotifications } = getMonthlyProgressiveNotifications();
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = now.getMonth() + 1;
+      const readSet = getStoredReadIds(year, month);
+      const { unlockedNotifications } = getMonthlyProgressiveNotifications(now);
       const unreadUnlocked = unlockedNotifications.filter(n => !readSet.has(n.id)).length;
       setUnreadNotifsCount(unreadUnlocked);
     } catch {
@@ -427,10 +430,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   useEffect(() => {
     calculateUnreadNotifs();
+    refreshUserFinancialProfile().then(() => calculateUnreadNotifs()).catch(() => {});
     const handleNotifsUpdate = () => calculateUnreadNotifs();
     window.addEventListener("notifications-updated", handleNotifsUpdate);
+    window.addEventListener("financial-profile-updated", handleNotifsUpdate);
     return () => {
       window.removeEventListener("notifications-updated", handleNotifsUpdate);
+      window.removeEventListener("financial-profile-updated", handleNotifsUpdate);
     };
   }, []);
 

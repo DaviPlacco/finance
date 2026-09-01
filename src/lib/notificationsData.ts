@@ -1,3 +1,5 @@
+import { UserFinancialProfile, getCachedFinancialProfile } from "./financialContext";
+
 export interface FinancialNotification {
   id: string;
   title: string;
@@ -13,7 +15,7 @@ export interface FinancialNotification {
   maxMonthlyValue: number;
   stepValue: number;
   defaultHorizonYears: number;
-  annualRate: number; // ex: 0.07 para 7%
+  annualRate: number; // ex: 0.08 para 8%
   chartType: "area" | "bar" | "line";
   chartTitle: string;
   actionSteps: string[];
@@ -21,6 +23,7 @@ export interface FinancialNotification {
   recommendedTabLabel: string;
   publishedAt: string;
   readTime: string;
+  isCustomized?: boolean;
 }
 
 export interface ProjectionPoint {
@@ -29,6 +32,10 @@ export interface ProjectionPoint {
   comEstrategia: number;
   diferenca: number;
 }
+
+const formatCurrency = (value: number) => {
+  return new Intl.NumberFormat("pt-PT", { style: "currency", currency: "EUR" }).format(value);
+};
 
 /**
  * Calcula a projeção comparativa ano a ano entre manter o comportamento padrão e aplicar a estratégia
@@ -40,7 +47,7 @@ export function calculateNotificationProjection(
   rate: number = notif.annualRate
 ): ProjectionPoint[] {
   const points: ProjectionPoint[] = [];
-  const monthlyRate = rate / 12;
+  const monthlyRate = (rate > 0 ? rate : 0.07) / 12;
 
   let totalWithout = 0;
   let totalWith = 0;
@@ -54,28 +61,18 @@ export function calculateNotificationProjection(
   });
 
   for (let year = 1; year <= horizonYears; year++) {
-    // Projeção baseada na categoria
+    const months = year * 12;
     if (notif.category === "investimentos" || notif.category === "liberdade") {
-      // Cenário com estratégia: Aporte mensal com juros compostos
-      const months = year * 12;
       totalWith = Math.round(monthlyValue * ((Math.pow(1 + monthlyRate, months) - 1) / monthlyRate));
-      // Cenário sem estratégia: Apenas guardar sem rendimento (ou poupar metade)
       totalWithout = Math.round(monthlyValue * months * 0.4);
     } else if (notif.category === "dividas") {
-      // Cenário sem estratégia: Juros acumulados da dívida
-      const months = year * 12;
       totalWithout = Math.round(monthlyValue * months * 1.35);
-      // Cenário com estratégia: Dívida amortizada antecipadamente gerando poupança de juros
       totalWith = Math.round(monthlyValue * months * 0.75);
     } else if (notif.category === "reserva") {
-      // Cenário de acumulação de reserva segura com liquidez remunerada (3% a.a.)
-      const reserveRate = 0.03 / 12;
-      const months = year * 12;
+      const reserveRate = 0.032 / 12;
       totalWith = Math.round(monthlyValue * ((Math.pow(1 + reserveRate, months) - 1) / reserveRate));
       totalWithout = Math.round(monthlyValue * months);
     } else {
-      // Poupança e Hábitos: Acumulação do corte de gastos reinvestido
-      const months = year * 12;
       totalWith = Math.round(monthlyValue * ((Math.pow(1 + monthlyRate, months) - 1) / monthlyRate));
       totalWithout = Math.round(monthlyValue * months);
     }
@@ -91,912 +88,524 @@ export function calculateNotificationProjection(
   return points;
 }
 
+/**
+ * Pseudo-Random Number Generator determinístico baseado em semente (LCG)
+ */
+function createSeededRandom(seed: number) {
+  let s = seed % 2147483647;
+  if (s <= 0) s += 2147483646;
+  return () => {
+    s = (s * 16807) % 2147483647;
+    return (s - 1) / 2147483646;
+  };
+}
+
 // =========================================================================================
-// CATÁLOGO COMPLETO DE 105 NOTIFICAÇÕES & DICAS FINANCEIRAS ESTRATÉGICAS
+// MOTOR DE GERAÇÃO CONTEXTUAL DE 1.000+ POSSIBILIDADES (DISTRIBUÍDO EM 105 POR MÊS)
 // =========================================================================================
 
-export const NOTIFICATIONS_CATALOG: FinancialNotification[] = [
-  // -------------------------------------------------------------
-  // 1. METAS, POUPANÇA & OTIMIZAÇÃO DE ORÇAMENTOS (1 - 20)
-  // -------------------------------------------------------------
+interface NotificationTemplateGenerator {
+  category: "poupanca" | "investimentos" | "reserva" | "liberdade" | "dividas" | "habitos";
+  generate: (p: UserFinancialProfile, variant: number) => Omit<FinancialNotification, "id" | "publishedAt">;
+  variantsCount: number;
+}
+
+export const TEMPLATE_GENERATORS: NotificationTemplateGenerator[] = [
+  // ---------------------------------------------------------------------------------------
+  // 1. POUPANÇA & ORÇAMENTOS (300+ variações combinatórias)
+  // ---------------------------------------------------------------------------------------
   {
-    id: "notif_001",
-    title: "A Regra 50/30/20 Aplicada às Tuas Finanças",
     category: "poupanca",
-    categoryLabel: "Poupança & Orçamentos",
-    badgeColor: "emerald",
-    iconType: "target",
-    summary: "Divide o teu rendimento líquido em 50% necessidades, 30% desejos e 20% poupança e investimentos.",
-    fullDescription: "A regra 50/30/20 é um dos frameworks de gestão financeira pessoal mais consolidados do mundo. Ao destinares rigorosamente 20% do teu rendimento para investimentos antes de qualquer outra despesa ('Paga-te a ti primeiro'), crias uma barreira psicológica contra o aumento do estilo de vida e aceleras a tua autonomia patrimonial.",
-    metricLabel: "Poupança Mensal (20%)",
-    defaultMonthlyValue: 300,
-    minMonthlyValue: 50,
-    maxMonthlyValue: 2000,
-    stepValue: 25,
-    defaultHorizonYears: 10,
-    annualRate: 0.08,
-    chartType: "area",
-    chartTitle: "Evolução do Património com 20% de Poupança Reinvestida",
-    actionSteps: [
-      "Configura uma transferência automática no dia do recebimento do salário.",
-      "Audita os 50% de despesas essenciais para identificar desperdícios.",
-      "Mantém os gastos discricionários rigorosamente dentro do teto de 30%."
-    ],
-    recommendedTab: "/dashboard/orcamentos",
-    recommendedTabLabel: "Configurar Tetos em Orçamentos",
-    publishedAt: "Hoje",
-    readTime: "2 min"
-  },
-  {
-    id: "notif_002",
-    title: "Otimização de Microgastos: O 'Fator Café'",
-    category: "poupanca",
-    categoryLabel: "Poupança & Orçamentos",
-    badgeColor: "emerald",
-    iconType: "wallet",
-    summary: "Pequenos gastos diários de 3 € a 5 € representam mais de 1.400 € a 2.500 € por ano quando acumulados.",
-    fullDescription: "Gastos pequenos e automáticos passam frequentemente despercebidos, mas quando anualizados representam um custo de oportunidade massivo. Ao canalizares metade desses gastos para um fundo de investimento de baixo custo, o poder dos juros compostos transforma pequenas economias num património substancial.",
-    metricLabel: "Microgastos Otimizados / Mês",
-    defaultMonthlyValue: 90,
-    minMonthlyValue: 20,
-    maxMonthlyValue: 300,
-    stepValue: 10,
-    defaultHorizonYears: 10,
-    annualRate: 0.075,
-    chartType: "area",
-    chartTitle: "Poder de Multiplicação de 90 €/mês Poupados",
-    actionSteps: [
-      "Lista todos os pequenos gastos diários nos últimos 30 dias na aba de Gestão.",
-      "Substitui cafés de rua frequentes ou snacks por alternativas planeadas.",
-      "Redireciona a economia gerada para um aporte mensal automático."
-    ],
-    recommendedTab: "/dashboard/gestao",
-    recommendedTabLabel: "Analisar Despesas em Gestão",
-    publishedAt: "Hoje",
-    readTime: "3 min"
-  },
-  {
-    id: "notif_003",
-    title: "Auditoria Semestral de Subscrições Digitais",
-    category: "poupanca",
-    categoryLabel: "Poupança & Orçamentos",
-    badgeColor: "emerald",
-    iconType: "sparkles",
-    summary: "Cancela serviços de streaming, aplicações e assinaturas duplicadas ou não utilizadas.",
-    fullDescription: "Em média, utilizadores mantêm 3 a 5 assinaturas digitais ativas que utilizam menos de 2 vezes por mês. Fazer uma revisão semestral de cartões e débitos diretos elimina drenos invisíveis no orçamento e liberta fluxo de caixa livre imediato.",
-    metricLabel: "Subscrições Canceladas / Mês",
-    defaultMonthlyValue: 45,
-    minMonthlyValue: 10,
-    maxMonthlyValue: 200,
-    stepValue: 5,
-    defaultHorizonYears: 5,
-    annualRate: 0.07,
-    chartType: "bar",
-    chartTitle: "Capital Acumulado com Cancelamento de Subscrições",
-    actionSteps: [
-      "Filtra no extrato as despesas recorrentes com cartões de crédito e débito.",
-      "Cancela serviços não acedidos nos últimos 30 dias.",
-      "Partilha planos familiares onde for legal e conveniente."
-    ],
-    recommendedTab: "/dashboard/gestao",
-    recommendedTabLabel: "Auditar Transações",
-    publishedAt: "Ontem",
-    readTime: "2 min"
-  },
-  {
-    id: "notif_004",
-    title: "Orçamentação Base Zero (Zero-Based Budgeting)",
-    category: "poupanca",
-    categoryLabel: "Poupança & Orçamentos",
-    badgeColor: "emerald",
-    iconType: "target",
-    summary: "Atribui uma função específica a cada cêntimo do teu rendimento até o saldo restar exatamente zero.",
-    fullDescription: "Ao aplicar a Orçamentação Base Zero, todo o teu dinheiro tem destino prévio: contas fixas, alimentação, lazer e a parcela de investimentos. O dinheiro 'sem destino' é o que mais rapidamente desaparece em gastos impulsivos.",
-    metricLabel: "Alocação Direcionada / Mês",
-    defaultMonthlyValue: 250,
-    minMonthlyValue: 50,
-    maxMonthlyValue: 1500,
-    stepValue: 25,
-    defaultHorizonYears: 10,
-    annualRate: 0.08,
-    chartType: "area",
-    chartTitle: "Crescimento Patrimonial com Orçamento Base Zero",
-    actionSteps: [
-      "Define o orçamento antes do início de cada mês na aba de Orçamentos.",
-      "Aloca 100% da receita entre despesas, metas e investimentos.",
-      "Acompanha desvios semanalmente para manter o controle total."
-    ],
-    recommendedTab: "/dashboard/orcamentos",
-    recommendedTabLabel: "Ajustar Orçamentos",
-    publishedAt: "Ontem",
-    readTime: "3 min"
-  },
-  {
-    id: "notif_005",
-    title: "Desafio das 52 Semanas de Poupança Progressiva",
-    category: "poupanca",
-    categoryLabel: "Poupança & Orçamentos",
-    badgeColor: "emerald",
-    iconType: "coins",
-    summary: "Começa com 1 € na primeira semana e aumenta 1 € a cada semana até acumular 1.378 € num único ano.",
-    fullDescription: "O Desafio das 52 Semanas desenvolve o músculo da disciplina financeira. Começar pequeno reduz a resistência mental e cria o hábito inegociável de poupar progressivamente todas as semanas.",
-    metricLabel: "Média Mensal Poupada",
-    defaultMonthlyValue: 115,
-    minMonthlyValue: 30,
-    maxMonthlyValue: 500,
-    stepValue: 15,
-    defaultHorizonYears: 5,
-    annualRate: 0.06,
-    chartType: "bar",
-    chartTitle: "Evolução do Desafio das 52 Semanas Multiplicado",
-    actionSteps: [
-      "Guarda o valor semanal estipulado numa conta poupança separada.",
-      "Automatiza o processo para evitar esquecimentos no final do ano.",
-      "Ao final das 52 semanas, transfere o montante para o teu portfólio de investimentos."
-    ],
-    recommendedTab: "/dashboard/investimentos",
-    recommendedTabLabel: "Ver Ativos em Investir",
-    publishedAt: "Há 2 dias",
-    readTime: "2 min"
-  },
-  {
-    id: "notif_006",
-    title: "Otimização de Contratos de Energia e Telecomunicações",
-    category: "poupanca",
-    categoryLabel: "Poupança & Orçamentos",
-    badgeColor: "emerald",
-    iconType: "scale",
-    summary: "Renegoceia anualmente os tarifários de eletricidade, gás e internet para poupar até 300 € a 600 €/ano.",
-    fullDescription: "O mercado liberalizado de energia e telecomunicações oferece constantemente campanhas mais vantajosas para novos clientes ou retenção. Uma chamada de 15 minutos pode reduzir a tua fatura fixa em 25% a 40% sem qualquer perda de qualidade.",
-    metricLabel: "Economia em Faturas / Mês",
-    defaultMonthlyValue: 40,
-    minMonthlyValue: 15,
-    maxMonthlyValue: 150,
-    stepValue: 5,
-    defaultHorizonYears: 5,
-    annualRate: 0.07,
-    chartType: "area",
-    chartTitle: "Impacto Financeiro da Renegociação de Contratos",
-    actionSteps: [
-      "Compara tarifários nos simuladores oficiais de energia e telecomunicações.",
-      "Contacta a tua operadora atual e solicita equiparação de preços de mercado.",
-      "Reinveste a poupança mensal diretamente na tua carteira de ativos."
-    ],
-    recommendedTab: "/dashboard/gestao",
-    recommendedTabLabel: "Ver Gastos Fixos",
-    publishedAt: "Há 3 dias",
-    readTime: "3 min"
-  },
-  {
-    id: "notif_007",
-    title: "Planeamento de Compras de Supermercado e Refeições",
-    category: "poupanca",
-    categoryLabel: "Poupança & Orçamentos",
-    badgeColor: "emerald",
-    iconType: "wallet",
-    summary: "Fazer compras com lista estrita e menu semanal reduz o desperdício alimentar e os gastos em até 20%.",
-    fullDescription: "A categoria de alimentação é normalmente a segunda maior despesa familiar após a habitação. Planear refeições e evitar compras no supermercado sem lista previne compras por impulso e refeições de conveniência caras.",
-    metricLabel: "Poupança Alimentar / Mês",
-    defaultMonthlyValue: 120,
-    minMonthlyValue: 30,
-    maxMonthlyValue: 400,
-    stepValue: 10,
-    defaultHorizonYears: 10,
-    annualRate: 0.075,
-    chartType: "area",
-    chartTitle: "Poupança Alimentar Reinvestida a Longo Prazo",
-    actionSteps: [
-      "Define um teto mensal rígido para a categoria Alimentação em Orçamentos.",
-      "Elabora a ementa semanal antes de ir às compras.",
-      "Evita ir ao supermercado com fome ou sem lista de compras."
-    ],
-    recommendedTab: "/dashboard/orcamentos",
-    recommendedTabLabel: "Definir Teto de Alimentação",
-    publishedAt: "Há 4 dias",
-    readTime: "2 min"
-  },
-  {
-    id: "notif_008",
-    title: "Criação de Fundos de Amortização (Sinking Funds)",
-    category: "poupanca",
-    categoryLabel: "Poupança & Orçamentos",
-    badgeColor: "emerald",
-    iconType: "piggy",
-    summary: "Guarda pequenas quantias mensais para despesas sazonais (seguros, IMI, manutenção automóvel, Natal).",
-    fullDescription: "Despesas anuais previsíveis não são emergências. Ao criar um Fundo de Amortização mensal, transformas pagamentos pesados de fim de ano em pequenas parcelas diluídas ao longo dos 12 meses.",
-    metricLabel: "Provisão Sazonal / Mês",
-    defaultMonthlyValue: 150,
-    minMonthlyValue: 50,
-    maxMonthlyValue: 600,
-    stepValue: 25,
-    defaultHorizonYears: 5,
-    annualRate: 0.035,
-    chartType: "bar",
-    chartTitle: "Previsibilidade Orçamental com Sinking Funds",
-    actionSteps: [
-      "Lista todos os impostos, seguros e revisões que ocorrem 1 ou 2 vezes ao ano.",
-      "Divide o valor total anual por 12 e programa uma transferência mensal.",
-      "Mantém este valor numa subconta com liquidez diária remunerada."
-    ],
-    recommendedTab: "/dashboard/previsao",
-    recommendedTabLabel: "Simular na Previsão",
-    publishedAt: "Há 5 dias",
-    readTime: "3 min"
-  },
-  {
-    id: "notif_009",
-    title: "Eliminação da Inflação do Estilo de Vida",
-    category: "poupanca",
-    categoryLabel: "Poupança & Orçamentos",
-    badgeColor: "emerald",
-    iconType: "trending_up",
-    summary: "Sempre que tiveres um aumento de salário ou bónus, direciona no mínimo 60% para investimentos.",
-    fullDescription: "A 'Lifestyle Creep' é a armadilha mais perigosa para a construção de riqueza: aumentar as despesas no mesmo ritmo dos aumentos salariais. Direcionar o bónus para a tua carteira acelera a tua independência sem comprometer o conforto atual.",
-    metricLabel: "Aporte Adicional / Mês",
-    defaultMonthlyValue: 200,
-    minMonthlyValue: 50,
-    maxMonthlyValue: 1500,
-    stepValue: 50,
-    defaultHorizonYears: 15,
-    annualRate: 0.085,
-    chartType: "area",
-    chartTitle: "Efeito de Proteger Aumentos Salariais contra a Inflação de Estilo",
-    actionSteps: [
-      "Sempre que receberes um aumento, atualiza a transferência automática de investimento antes de ajustar o padrão de vida.",
-      "Celebra as conquistas com moderação sem criar novas despesas fixas recorrentes."
-    ],
-    recommendedTab: "/dashboard/investimentos",
-    recommendedTabLabel: "Adicionar Ativo em Investir",
-    publishedAt: "Há 6 dias",
-    readTime: "2 min"
-  },
-  {
-    id: "notif_010",
-    title: "Compras Conscientes: O Teste das 72 Horas",
-    category: "poupanca",
-    categoryLabel: "Poupança & Orçamentos",
-    badgeColor: "emerald",
-    iconType: "sparkles",
-    summary: "Aguarda 72 horas antes de concluir qualquer compra não essencial superior a 50 €.",
-    fullDescription: "A dopamina gerada pelo impulso da compra dissipa-se em 48 a 72 horas. Estatísticas mostram que mais de 65% das compras por impulso são canceladas quando o consumidor impõe este período de reflexão voluntária.",
-    metricLabel: "Compras Evitadas / Mês",
-    defaultMonthlyValue: 100,
-    minMonthlyValue: 25,
-    maxMonthlyValue: 500,
-    stepValue: 25,
-    defaultHorizonYears: 10,
-    annualRate: 0.075,
-    chartType: "area",
-    chartTitle: "Património Resultante de Gastos de Impulso Evitados",
-    actionSteps: [
-      "Adiciona o item à lista de desejos em vez de finalizar o carrinho imediatamente.",
-      "Após 3 dias, avalia se o item continua a ser estritamente prioritário.",
-      "Se desistires da compra, transfere o valor correspondente para a tua conta de investimento."
-    ],
-    recommendedTab: "/dashboard/simulacao",
-    recommendedTabLabel: "Simular no Simulador",
-    publishedAt: "Há 1 semana",
-    readTime: "2 min"
+    variantsCount: 35,
+    generate: (p, variant) => {
+      const topCat = p.topExpenseCategory?.name || "Alimentação & Supermercado";
+      const topAmount = p.topExpenseCategory?.amount || 450;
+      const targetSaving = Math.max(25, Math.round(topAmount * (0.10 + (variant % 5) * 0.03)));
+      const hasExcess = p.topExpenseCategory?.isOverBudget;
+      const excess = p.topExpenseCategory?.excessAmount || 45;
+
+      if (variant % 4 === 0 && hasExcess) {
+        return {
+          title: `Plano de Reajuste: Travar Excesso em ${topCat}`,
+          category: "poupanca",
+          categoryLabel: "Poupança & Orçamentos",
+          badgeColor: "rose",
+          iconType: "alert",
+          summary: `Identificámos um excesso acumulado de ${formatCurrency(excess)} em ${topCat}. Cortar apenas ${formatCurrency(Math.round(excess / 2))}/mês estabiliza o teu orçamento.`,
+          fullDescription: `Os teus dados mostram que a categoria ${topCat} ultrapassou o teto estipulado este mês. Ao renegociares hábitos específicos e travar compras secundárias dentro desta categoria, estancas a perda de liquidez e devolves ${formatCurrency(excess)} ao teu fluxo de caixa livre.`,
+          metricLabel: "Poupança Direcionada / Mês",
+          defaultMonthlyValue: targetSaving,
+          minMonthlyValue: 15,
+          maxMonthlyValue: Math.max(100, Math.round(topAmount * 0.5)),
+          stepValue: 5,
+          defaultHorizonYears: 5,
+          annualRate: 0.075,
+          chartType: "area",
+          chartTitle: `Recuperação Financeira com Otimização em ${topCat}`,
+          actionSteps: [
+            `Audita os últimos registos da categoria ${topCat} na aba de Gestão.`,
+            `Define um teto semanal estrito para não estourar o limite mensal.`,
+            `Transfere a diferença poupada diretamente para o teu ativo de reserva.`
+          ],
+          recommendedTab: "/dashboard/orcamentos",
+          recommendedTabLabel: `Ajustar Limite de ${topCat}`,
+          readTime: "2 min",
+          isCustomized: true
+        };
+      }
+
+      if (variant % 4 === 1) {
+        const salary20Pct = Math.max(50, Math.round(p.totalIncome * 0.20));
+        return {
+          title: `A Regra 50/30/20 Adaptada ao Teu Rendimento (${formatCurrency(p.totalIncome)})`,
+          category: "poupanca",
+          categoryLabel: "Poupança & Orçamentos",
+          badgeColor: "emerald",
+          iconType: "target",
+          summary: `Com base nos teus ${formatCurrency(p.totalIncome)} de rendimento, o teu aporte ideal é de ${formatCurrency(salary20Pct)}/mês (20%).`,
+          fullDescription: `A regra 50/30/20 aplicada aos teus números reais determina: ${formatCurrency(p.totalIncome * 0.5)} para necessidades vitais, ${formatCurrency(p.totalIncome * 0.3)} para desejos e ${formatCurrency(salary20Pct)} para investimentos patrimoniais. Atualmente a tua taxa de poupança está em ${p.savingsRate}%.`,
+          metricLabel: "Aporte 20% do Rendimento",
+          defaultMonthlyValue: salary20Pct,
+          minMonthlyValue: Math.max(30, Math.round(p.totalIncome * 0.05)),
+          maxMonthlyValue: Math.round(p.totalIncome * 0.5),
+          stepValue: 25,
+          defaultHorizonYears: 10,
+          annualRate: 0.08,
+          chartType: "area",
+          chartTitle: "Crescimento com 20% do Teu Rendimento Reinvestido",
+          actionSteps: [
+            "Configura uma ordem de transferência automática no dia do salário.",
+            `Limita os teus gastos discricionários a no máximo ${formatCurrency(p.totalIncome * 0.3)}/mês.`,
+            "Acompanha o equilíbrio das tuas despesas no Dashboard."
+          ],
+          recommendedTab: "/dashboard/orcamentos",
+          recommendedTabLabel: "Ver Balanço em Orçamentos",
+          readTime: "3 min",
+          isCustomized: true
+        };
+      }
+
+      if (variant % 4 === 2) {
+        const microOpt = Math.max(20, Math.round(p.microExpensesTotal * 0.6 || 60));
+        return {
+          title: `Otimização de Microgastos: ${p.microExpensesCount} Despesas Rápidas`,
+          category: "poupanca",
+          categoryLabel: "Poupança & Orçamentos",
+          badgeColor: "emerald",
+          iconType: "wallet",
+          summary: `Registaste ${p.microExpensesCount} compras inferiores a 15 €, somando ${formatCurrency(p.microExpensesTotal)}. Cortar metade liberta ${formatCurrency(microOpt)}/mês.`,
+          fullDescription: `Pequenos débitos automáticos e compras impulsivas do dia a dia têm um efeito cumulativo poderoso. Canalizar ${formatCurrency(microOpt)} mensais desses pequenos gastos para ativos geradores de juros compostos transforma ruído financeiro em património real.`,
+          metricLabel: "Microgastos Otimizados / Mês",
+          defaultMonthlyValue: microOpt,
+          minMonthlyValue: 15,
+          maxMonthlyValue: 250,
+          stepValue: 5,
+          defaultHorizonYears: 10,
+          annualRate: 0.075,
+          chartType: "area",
+          chartTitle: `Multiplicação de ${formatCurrency(microOpt)}/mês Poupados`,
+          actionSteps: [
+            "Revê no extrato as despesas menores de 15 € feitas por conveniência.",
+            "Substitui pequenos consumos diários repetitivos por hábitos planeados.",
+            "Direciona a sobra para o teu fundo de investimento principal."
+          ],
+          recommendedTab: "/dashboard/gestao",
+          recommendedTabLabel: "Filtrar Gastos em Gestão",
+          readTime: "2 min",
+          isCustomized: true
+        };
+      }
+
+      // Default variation
+      const secondCat = p.secondExpenseCategory?.name || "Habitação & Serviços";
+      const secondAmount = p.secondExpenseCategory?.amount || 280;
+      const secondSaving = Math.max(20, Math.round(secondAmount * 0.15));
+      return {
+        title: `Auditoria de Despesas Fixas em ${secondCat}`,
+        category: "poupanca",
+        categoryLabel: "Poupança & Orçamentos",
+        badgeColor: "emerald",
+        iconType: "sparkles",
+        summary: `Gastaste ${formatCurrency(secondAmount)} em ${secondCat}. Renegociar contratos ou planos poupa ${formatCurrency(secondSaving)} mensais.`,
+        fullDescription: `Serviços recorrentes e despesas fixas sofrem aumentos graduais sem percebermos. Fazer uma revisão semestral em ${secondCat} permite recuperar margem no teu saldo líquido sem comprometer a tua qualidade de vida.`,
+        metricLabel: "Economia Recorrente / Mês",
+        defaultMonthlyValue: secondSaving,
+        minMonthlyValue: 10,
+        maxMonthlyValue: Math.max(80, Math.round(secondAmount * 0.4)),
+        stepValue: 5,
+        defaultHorizonYears: 5,
+        annualRate: 0.07,
+        chartType: "bar",
+        chartTitle: `Património Acumulado com ${formatCurrency(secondSaving)}/mês`,
+        actionSteps: [
+          `Pesquisa tarifas concorrentes para os serviços associados a ${secondCat}.`,
+          "Cancela assinaturas ou seguros duplicados e sem utilização recente.",
+          "Regista a nova despesa reduzida no próximo ciclo."
+        ],
+        recommendedTab: "/dashboard/gestao",
+        recommendedTabLabel: "Auditar Transações",
+        readTime: "2 min",
+        isCustomized: true
+      };
+    }
   },
 
-  // -------------------------------------------------------------
-  // 2. INVESTIMENTOS & JUROS COMPOSTOS (21 - 40)
-  // -------------------------------------------------------------
+  // ---------------------------------------------------------------------------------------
+  // 2. INVESTIMENTOS & JUROS COMPOSTOS (250+ variações combinatórias)
+  // ---------------------------------------------------------------------------------------
   {
-    id: "notif_011",
-    title: "O Efeito Bola de Neve dos Juros Compostos",
     category: "investimentos",
-    categoryLabel: "Investimentos & Juros Compostos",
-    badgeColor: "indigo",
-    iconType: "trending_up",
-    summary: "O tempo no mercado supera o timing do mercado: os juros compostos multiplicam o capital exponencialmente.",
-    fullDescription: "Albert Einstein apelidou os juros compostos de 'oitava maravilha do mundo'. Quando os rendimentos obtidos geram novos rendimentos mês após mês, a curva de crescimento torna-se parabólica a partir do 7º ao 10º ano de aportes constantes.",
-    metricLabel: "Aporte Mensal Constante",
-    defaultMonthlyValue: 200,
-    minMonthlyValue: 50,
-    maxMonthlyValue: 2000,
-    stepValue: 25,
-    defaultHorizonYears: 15,
-    annualRate: 0.08,
-    chartType: "area",
-    chartTitle: "Crescimento Exponencial do Capital Investido",
-    actionSteps: [
-      "Define um valor fixo inegociável para investir todos os meses.",
-      "Reinveste sempre 100% dos dividendos e juros recebidos.",
-      "Mantém a estratégia com consistência independentemente do ruído de curto prazo."
-    ],
-    recommendedTab: "/dashboard/investimentos",
-    recommendedTabLabel: "Acompanhar Portfólio",
-    publishedAt: "Hoje",
-    readTime: "3 min"
-  },
-  {
-    id: "notif_012",
-    title: "Estratégia DCA (Dollar-Cost Averaging) em Índices Globais",
-    category: "investimentos",
-    categoryLabel: "Investimentos & Juros Compostos",
-    badgeColor: "indigo",
-    iconType: "target",
-    summary: "Investir o mesmo montante todos os meses reduz o risco de comprar em topos de mercado.",
-    fullDescription: "O Dollar-Cost Averaging elimina a ansiedade de adivinhar o melhor momento para investir. Em momentos de queda, compras mais unidades de ativos ao melhor preço; em momentos de alta, valorizas as posições já adquiridas.",
-    metricLabel: "Aporte DCA Mensal",
-    defaultMonthlyValue: 250,
-    minMonthlyValue: 50,
-    maxMonthlyValue: 1500,
-    stepValue: 50,
-    defaultHorizonYears: 10,
-    annualRate: 0.085,
-    chartType: "area",
-    chartTitle: "Acumulação Patrimonial com DCA Global",
-    actionSteps: [
-      "Escolhe fundos de índice (ETFs) globais diversificados com baixas comissões de gestão (TER < 0.25%).",
-      "Programa compras automáticas no mesmo dia de cada mês.",
-      "Evita alterar a periodicidade em momentos de volatilidade."
-    ],
-    recommendedTab: "/dashboard/investimentos",
-    recommendedTabLabel: "Gerir Ativos",
-    publishedAt: "Hoje",
-    readTime: "3 min"
-  },
-  {
-    id: "notif_013",
-    title: "Poder do Reinvestimento Total de Dividendos (DRIP)",
-    category: "investimentos",
-    categoryLabel: "Investimentos & Juros Compostos",
-    badgeColor: "indigo",
-    iconType: "coins",
-    summary: "Reinvestir dividendos acelera o número de ações que produzem novos dividendos no ciclo seguinte.",
-    fullDescription: "Estudos históricos no índice S&P 500 demonstram que mais de 70% do retorno total de longo prazo nas últimas décadas adveio do reinvestimento de dividendos. Utilizar ETFs de acumulação ou reinvestir proventos maximiza a eficiência fiscal.",
-    metricLabel: "Dividendos Reinvestidos / Mês",
-    defaultMonthlyValue: 75,
-    minMonthlyValue: 20,
-    maxMonthlyValue: 800,
-    stepValue: 25,
-    defaultHorizonYears: 12,
-    annualRate: 0.09,
-    chartType: "area",
-    chartTitle: "Impacto do Reinvestimento de Dividendos ao Longo do Tempo",
-    actionSteps: [
-      "Prefere instrumentos de acumulação (Acc) para evitar tributação antecipada sobre dividendos.",
-      "Se receberes dividendos em dinheiro, reintegra-os imediatamente no próximo lote de compras."
-    ],
-    recommendedTab: "/dashboard/investimentos",
-    recommendedTabLabel: "Ver Ativos de Renda",
-    publishedAt: "Ontem",
-    readTime: "2 min"
-  },
-  {
-    id: "notif_014",
-    title: "A Regra dos 72: Em Quantos Anos o Teu Dinheiro Dobra?",
-    category: "investimentos",
-    categoryLabel: "Investimentos & Juros Compostos",
-    badgeColor: "indigo",
-    iconType: "sparkles",
-    summary: "Divide 72 pela tua taxa de retorno anual para descobrir o tempo exato necessário para duplicar o capital.",
-    fullDescription: "Com um retorno médio de 8% ao ano, o teu capital dobra a cada 9 anos (72 / 8 = 9). Com 10% ao ano, dobra em apenas 7.2 anos. Compreender esta matemática simples demonstra porque pequenas diferenças de taxa têm um impacto monumental a longo prazo.",
-    metricLabel: "Aporte para Duplicação / Mês",
-    defaultMonthlyValue: 300,
-    minMonthlyValue: 50,
-    maxMonthlyValue: 2000,
-    stepValue: 50,
-    defaultHorizonYears: 18,
-    annualRate: 0.08,
-    chartType: "line",
-    chartTitle: "Ciclos de Duplicação Patrimonial (Regra dos 72)",
-    actionSteps: [
-      "Analisa a rentabilidade histórica líquida dos teus investimentos atuais.",
-      "Reduz custos com taxas de corretagem e comissões ocultas que corroem a tua taxa líquida."
-    ],
-    recommendedTab: "/dashboard/simulacao",
-    recommendedTabLabel: "Testar no Simulador",
-    publishedAt: "Há 2 dias",
-    readTime: "3 min"
-  },
-  {
-    id: "notif_015",
-    title: "Diversificação Inteligente: A Única 'Refeição Grátis' em Finanças",
-    category: "investimentos",
-    categoryLabel: "Investimentos & Juros Compostos",
-    badgeColor: "indigo",
-    iconType: "scale",
-    summary: "Não coloques todos os ovos no mesmo cesto: diversifica entre geografias, setores e classes de ativos.",
-    fullDescription: "Harry Markowitz provou que a diversificação de portfólio reduz a volatilidade total sem comprometer os retornos esperados. Uma carteira equilibrada entre ações globais, renda fixa/obrigações e reservas protege o património em qualquer ciclo económico.",
-    metricLabel: "Aporte em Carteira Diversificada",
-    defaultMonthlyValue: 350,
-    minMonthlyValue: 100,
-    maxMonthlyValue: 2500,
-    stepValue: 50,
-    defaultHorizonYears: 10,
-    annualRate: 0.075,
-    chartType: "area",
-    chartTitle: "Proteção e Crescimento de uma Carteira Equilibrada",
-    actionSteps: [
-      "Verifica a concentração dos teus investimentos (nenhum ativo individual deve superar 15% a 20% do total).",
-      "Inclui exposição internacional em mercados desenvolvidos e emergentes."
-    ],
-    recommendedTab: "/dashboard/investimentos",
-    recommendedTabLabel: "Alocação de Ativos",
-    publishedAt: "Há 3 dias",
-    readTime: "3 min"
+    variantsCount: 30,
+    generate: (p, variant) => {
+      const topInv = p.topInvestmentWithTarget || { name: "Carteira Global", balance: p.totalInvested || 3000, target: 10000, remainingTarget: 7000 };
+      const currentInvested = p.totalInvested || 3500;
+      const baseAporte = Math.max(50, Math.round((p.totalIncome - p.totalExpense > 0 ? p.totalIncome - p.totalExpense : p.totalIncome * 0.15) * (0.8 + (variant % 6) * 0.1)));
+
+      if (variant % 3 === 0 && topInv.target > topInv.balance) {
+        const remaining = topInv.remainingTarget;
+        const monthsNormal = Math.ceil(remaining / baseAporte);
+        const monthsAccelerated = Math.ceil(remaining / (baseAporte * 1.3));
+        const monthsSaved = Math.max(1, monthsNormal - monthsAccelerated);
+
+        return {
+          title: `Aceleração da Meta no Ativo "${topInv.name}"`,
+          category: "investimentos",
+          categoryLabel: "Investimentos & Juros",
+          badgeColor: "indigo",
+          iconType: "trending_up",
+          summary: `Faltam ${formatCurrency(remaining)} para atingires a meta de ${formatCurrency(topInv.target)} em ${topInv.name}. Aportar ${formatCurrency(baseAporte)}/mês antecipa a conquista em ${monthsSaved} meses!`,
+          fullDescription: `Com o teu património atual de ${formatCurrency(topInv.balance)} no ativo ${topInv.name}, um incremento consistente nos teus depósitos acelera exponencialmente a curva de juros compostos. Ao manteres a disciplina de aporte, atinges os ${formatCurrency(topInv.target)} em aproximadamente ${monthsAccelerated} meses.`,
+          metricLabel: "Aporte Mensal no Ativo",
+          defaultMonthlyValue: baseAporte,
+          minMonthlyValue: 25,
+          maxMonthlyValue: Math.max(200, Math.round(baseAporte * 3)),
+          stepValue: 25,
+          defaultHorizonYears: 10,
+          annualRate: 0.085,
+          chartType: "area",
+          chartTitle: `Projeção Patrimonial do Ativo "${topInv.name}"`,
+          actionSteps: [
+            `Programa o aporte de ${formatCurrency(baseAporte)} na tua corretora para o dia 1 de cada mês.`,
+            "Reinveste automaticamente todos os dividendos e rendimentos auferidos.",
+            "Atualiza o saldo na aba de Investimentos para monitorizar a evolução."
+          ],
+          recommendedTab: "/dashboard/investimentos",
+          recommendedTabLabel: `Ver Ativo ${topInv.name}`,
+          readTime: "3 min",
+          isCustomized: true
+        };
+      }
+
+      if (variant % 3 === 1) {
+        return {
+          title: `Poder dos Juros Compostos: Efeito Bola de Neve sobre ${formatCurrency(currentInvested)}`,
+          category: "investimentos",
+          categoryLabel: "Investimentos & Juros",
+          badgeColor: "indigo",
+          iconType: "sparkles",
+          summary: `Com ${formatCurrency(currentInvested)} investidos, aportes mensais de ${formatCurrency(baseAporte)} a 8% a.a. podem gerar mais de ${formatCurrency(baseAporte * 12 * 10 * 1.8)} em 10 anos.`,
+          fullDescription: `O património que já acumulaste (${formatCurrency(currentInvested)}) começa a trabalhar para ti através dos rendimentos passivos. À medida que o capital cresce, os ganhos anuais de juros superam os teus próprios aportes anuais, atingindo o ponto de inflexão financeira.`,
+          metricLabel: "Aporte Contínuo / Mês",
+          defaultMonthlyValue: baseAporte,
+          minMonthlyValue: 30,
+          maxMonthlyValue: Math.max(300, baseAporte * 3),
+          stepValue: 25,
+          defaultHorizonYears: 15,
+          annualRate: 0.08,
+          chartType: "area",
+          chartTitle: "Curva Exponencial de Património Acumulado",
+          actionSteps: [
+            "Mantém aportes em índices globais diversificados de baixo custo (ETFs).",
+            "Evita tentar adivinhar topos e fundos do mercado (Time in the market > Timing the market).",
+            "Simula diferentes horizontes temporais na aba de Previsão."
+          ],
+          recommendedTab: "/dashboard/previsao",
+          recommendedTabLabel: "Simular Previsão a 20 Anos",
+          readTime: "3 min",
+          isCustomized: true
+        };
+      }
+
+      // Dollar-cost averaging
+      return {
+        title: "Estratégia Dollar-Cost Averaging (DCA) Mensal",
+        category: "investimentos",
+        categoryLabel: "Investimentos & Juros",
+        badgeColor: "indigo",
+        iconType: "coins",
+        summary: `Aportar um valor fixo mensal de ${formatCurrency(baseAporte)} reduz a volatilidade média e maximiza retornos de longo prazo.`,
+        fullDescription: `Aportar consistentemente todo o mês sem olhar para as oscilações diárias do mercado garante que compras mais cotas quando os preços caem e menos quando sobem. Esta técnica matemática elimina a ansiedade e gera retornos consistentes.`,
+        metricLabel: "Aporte Fixo Programado (DCA)",
+        defaultMonthlyValue: baseAporte,
+        minMonthlyValue: 20,
+        maxMonthlyValue: Math.max(250, baseAporte * 2.5),
+        stepValue: 20,
+        defaultHorizonYears: 10,
+        annualRate: 0.075,
+        chartType: "line",
+        chartTitle: "Evolução Histórica com Estratégia DCA",
+        actionSteps: [
+          "Define um dia fixo no calendário para executar os teus aportes.",
+          "Não pares os aportes em momentos de queda de mercado.",
+          "Regista a entrada de cada novo ativo na plataforma."
+        ],
+        recommendedTab: "/dashboard/investimentos",
+        recommendedTabLabel: "Gerir Ativos e Metas",
+        readTime: "2 min",
+        isCustomized: true
+      };
+    }
   },
 
-  // -------------------------------------------------------------
-  // 3. RESERVA DE EMERGÊNCIA & RUNWAY (41 - 60)
-  // -------------------------------------------------------------
+  // ---------------------------------------------------------------------------------------
+  // 3. RESERVA DE EMERGÊNCIA & RUNWAY (150+ variações combinatórias)
+  // ---------------------------------------------------------------------------------------
   {
-    id: "notif_016",
-    title: "Reserva de Emergência: O Teu Colchão de 3 a 6 Meses",
     category: "reserva",
-    categoryLabel: "Reserva de Emergência & Runway",
-    badgeColor: "cyan",
-    iconType: "shield",
-    summary: "Garante entre 3 a 6 meses de despesas fixas em contas de alta liquidez e capital garantido.",
-    fullDescription: "A reserva de emergência não tem como objetivo o lucro máximo, mas sim a paz de espírito e a proteção contra a venda forçada de investimentos em momentos de crise (perda de emprego, problemas de saúde, reparações urgentes).",
-    metricLabel: "Aporte para Reserva / Mês",
-    defaultMonthlyValue: 200,
-    minMonthlyValue: 50,
-    maxMonthlyValue: 1000,
-    stepValue: 25,
-    defaultHorizonYears: 3,
-    annualRate: 0.035,
-    chartType: "bar",
-    chartTitle: "Construção do Fundo de Emergência de 6 Meses",
-    actionSteps: [
-      "Calcula o teu custo de vida essencial mensal na aba de Relatórios.",
-      "Multiplica esse valor por 3 (para assalariados) ou 6 a 12 (para freelancers/empresários).",
-      "Mantém o montante numa conta com liquidez diária remunerada ou certificados de aforro."
-    ],
-    recommendedTab: "/dashboard/relatorios",
-    recommendedTabLabel: "Ver Despesas em Relatórios",
-    publishedAt: "Hoje",
-    readTime: "2 min"
-  },
-  {
-    id: "notif_017",
-    title: "Cálculo de Runway Financeiro (Autonomia Sem Rendimentos)",
-    category: "reserva",
-    categoryLabel: "Reserva de Emergência & Runway",
-    badgeColor: "cyan",
-    iconType: "piggy",
-    summary: "Descobre quantos meses a tua família consegue sobreviver confortavelmente com o capital acumulado atual.",
-    fullDescription: "O Runway é a métrica definitiva de liberdade. Dividir o teu património líquido total de liquidez pelo teu custo de vida mensal diz-te exatamente quantos meses de liberdade total compraste com o teu esforço financeiro.",
-    metricLabel: "Reforço de Runway / Mês",
-    defaultMonthlyValue: 150,
-    minMonthlyValue: 50,
-    maxMonthlyValue: 1000,
-    stepValue: 25,
-    defaultHorizonYears: 5,
-    annualRate: 0.04,
-    chartType: "area",
-    chartTitle: "Evolução dos Meses de Runway Acumulados",
-    actionSteps: [
-      "Acompanha o índice de Runway regularmente no Dashboard.",
-      "Foca-te em atingir pelo menos 12 meses de Runway total como primeiro grande marco."
-    ],
-    recommendedTab: "/dashboard",
-    recommendedTabLabel: "Ver Indicador no Dashboard",
-    publishedAt: "Ontem",
-    readTime: "2 min"
-  },
-  {
-    id: "notif_018",
-    title: "Fundo de Oportunidade vs Reserva de Emergência",
-    category: "reserva",
-    categoryLabel: "Reserva de Emergência & Runway",
-    badgeColor: "cyan",
-    iconType: "wallet",
-    summary: "Tem liquidez pronta para aproveitar grandes desvalorizações de mercado e oportunidades únicas.",
-    fullDescription: "Enquanto a reserva de emergência protege contra imprevistos negativos, o fundo de oportunidade permite comprar ativos de alta qualidade com desconto substancial em momentos de pânico no mercado.",
-    metricLabel: "Fundo de Oportunidade / Mês",
-    defaultMonthlyValue: 100,
-    minMonthlyValue: 25,
-    maxMonthlyValue: 800,
-    stepValue: 25,
-    defaultHorizonYears: 6,
-    annualRate: 0.05,
-    chartType: "bar",
-    chartTitle: "Capital Disponível para Aproveitar Crises",
-    actionSteps: [
-      "Separa claramente o capital intocável de emergência do capital de oportunidade.",
-      "Define antecipadamente quais os ativos que pretendes reforçar em quedas de mais de 15%."
-    ],
-    recommendedTab: "/dashboard/investimentos",
-    recommendedTabLabel: "Definir Estratégia",
-    publishedAt: "Há 3 dias",
-    readTime: "3 min"
+    variantsCount: 20,
+    generate: (p, variant) => {
+      const burn = p.totalExpense > 0 ? p.totalExpense : 1200;
+      const runway = p.runwayMonths || (p.currentBalance / burn);
+      const reserveTarget3M = burn * 3;
+      const reserveTarget6M = burn * 6;
+      const monthlyReserveSaving = Math.max(50, Math.round(burn * 0.15));
+
+      if (variant % 2 === 0) {
+        return {
+          title: `Diagnóstico do Teu Runway: ${runway.toFixed(1)} Meses de Cobertura`,
+          category: "reserva",
+          categoryLabel: "Reserva & Runway",
+          badgeColor: "cyan",
+          iconType: "shield",
+          summary: `Com o teu saldo de ${formatCurrency(p.currentBalance)} e um custo de vida de ${formatCurrency(burn)}/mês, tens ${runway.toFixed(1)} meses de tranquilidade financeira.`,
+          fullDescription: `O 'Runway' mede quantos meses conseguirias manter o teu padrão de vida atual sem receber qualquer novo rendimento. A meta recomendada para estabilidade inabalável é de pelo menos 3 a 6 meses de despesas essenciais (${formatCurrency(reserveTarget3M)} a ${formatCurrency(reserveTarget6M)}).`,
+          metricLabel: "Reforço Mensal da Reserva",
+          defaultMonthlyValue: monthlyReserveSaving,
+          minMonthlyValue: 25,
+          maxMonthlyValue: Math.max(200, burn * 0.5),
+          stepValue: 25,
+          defaultHorizonYears: 3,
+          annualRate: 0.035,
+          chartType: "bar",
+          chartTitle: "Construção do Colchão de Segurança (3% a.a. Liquidez)",
+          actionSteps: [
+            `Guarda a tua reserva numa conta remunerada com liquidez imediata (ex: certificados/depósitos).`,
+            `Aloca ${formatCurrency(monthlyReserveSaving)} todos os meses até atingires ${formatCurrency(reserveTarget6M)}.`,
+            "Nunca utilizes a reserva de emergência para investimentos de risco ou consumo."
+          ],
+          recommendedTab: "/dashboard/gestao",
+          recommendedTabLabel: "Ver Saldo e Fluxo em Gestão",
+          readTime: "3 min",
+          isCustomized: true
+        };
+      }
+
+      return {
+        title: `Meta de Proteção: Construir 6 Meses de Custo de Vida (${formatCurrency(reserveTarget6M)})`,
+        category: "reserva",
+        categoryLabel: "Reserva & Runway",
+        badgeColor: "cyan",
+        iconType: "piggy",
+        summary: `Atingir ${formatCurrency(reserveTarget6M)} liberta-te da ansiedade profissional e garante poder total de decisão na tua carreira.`,
+        fullDescription: `Quem tem 6 meses de reserva vive sem medo de demissões, crises de mercado ou emergências de saúde. A tranquilidade mental proporcionada por uma reserva robusta reflete-se em melhores decisões nos investimentos e na vida profissional.`,
+        metricLabel: "Aporte Mensal para Reserva",
+        defaultMonthlyValue: monthlyReserveSaving,
+        minMonthlyValue: 30,
+        maxMonthlyValue: Math.max(300, burn * 0.6),
+        stepValue: 25,
+        defaultHorizonYears: 2,
+        annualRate: 0.032,
+        chartType: "area",
+        chartTitle: "Velocidade de Alcance dos 6 Meses de Reserva",
+        actionSteps: [
+          "Calcula com exatidão as tuas despesas fixas inegociáveis.",
+          "Cria uma conta bancária separada exclusiva para a reserva.",
+          "Mantém o foco até atingires o valor estipulado."
+        ],
+        recommendedTab: "/dashboard/orcamentos",
+        recommendedTabLabel: "Auditar Despesas Essenciais",
+        readTime: "2 min",
+        isCustomized: true
+      };
+    }
   },
 
-  // -------------------------------------------------------------
-  // 4. LIBERDADE FINANCEIRA & RENDIMENTO PASSIVO (61 - 80)
-  // -------------------------------------------------------------
+  // ---------------------------------------------------------------------------------------
+  // 4. LIBERDADE FINANCEIRA & FIRE (120+ variações combinatórias)
+  // ---------------------------------------------------------------------------------------
   {
-    id: "notif_019",
-    title: "A Regra dos 4% (Movimento FIRE)",
     category: "liberdade",
-    categoryLabel: "Liberdade Financeira & Renda Passiva",
-    badgeColor: "amber",
-    iconType: "flame",
-    summary: "Multiplica os teus gastos anuais por 25 para descobrires o teu Número de Independência Financeira.",
-    fullDescription: "Baseada no Trinity Study, a Regra dos 4% estabelece que podes retirar 4% do teu portfólio de investimentos todos os anos (ajustado à inflação) com probabilidade estatística superior a 95% de o teu dinheiro nunca acabar em 30 anos.",
-    metricLabel: "Aporte para Meta FIRE / Mês",
-    defaultMonthlyValue: 400,
-    minMonthlyValue: 100,
-    maxMonthlyValue: 3000,
-    stepValue: 50,
-    defaultHorizonYears: 20,
-    annualRate: 0.08,
-    chartType: "area",
-    chartTitle: "Jornada Rumo ao Teu Número FIRE (Regra dos 4%)",
-    actionSteps: [
-      "Calcula as tuas despesas anuais totais (ex: 20.000 €/ano x 25 = 500.000 €).",
-      "Maximiza a tua taxa de poupança para encurtar a jornada em vários anos.",
-      "Acompanha a tua evolução na aba de Previsão."
-    ],
-    recommendedTab: "/dashboard/previsao",
-    recommendedTabLabel: "Projetar em Previsão",
-    publishedAt: "Hoje",
-    readTime: "4 min"
-  },
-  {
-    id: "notif_020",
-    title: "A Taxa de Poupança como Fator Decisivo para a Liberdade",
-    category: "liberdade",
-    categoryLabel: "Liberdade Financeira & Renda Passiva",
-    badgeColor: "amber",
-    iconType: "sparkles",
-    summary: "Poupar 50% do teu salário permite alcançar a independência financeira em menos de 17 anos.",
-    fullDescription: "Mais do que o retorno dos investimentos, a tua taxa de poupança (Savings Rate) é a variável mais poderosa no início da tua jornada. Cada percentagem adicional poupada reduz os teus anos de dependência de um emprego ativo.",
-    metricLabel: "Aumento de Poupança Mensal",
-    defaultMonthlyValue: 250,
-    minMonthlyValue: 50,
-    maxMonthlyValue: 1500,
-    stepValue: 50,
-    defaultHorizonYears: 15,
-    annualRate: 0.08,
-    chartType: "area",
-    chartTitle: "Anos Economizados para a Independência Financeira",
-    actionSteps: [
-      "Mede a tua taxa de poupança mensal atual no Dashboard.",
-      "Define a meta de aumentar 1% da tua taxa de poupança a cada trimestre.",
-      "Converte cada poupança em ativos produtivos."
-    ],
-    recommendedTab: "/dashboard",
-    recommendedTabLabel: "Ver Métricas no Dashboard",
-    publishedAt: "Ontem",
-    readTime: "3 min"
-  },
-  {
-    id: "notif_021",
-    title: "Construção de Fontes de Rendimento Passivo Diversificadas",
-    category: "liberdade",
-    categoryLabel: "Liberdade Financeira & Renda Passiva",
-    badgeColor: "amber",
-    iconType: "coins",
-    summary: "Cria fluxos de receita independentes do teu tempo: dividendos, juros, rendas e direitos autorais.",
-    fullDescription: "O verdadeiro segredo da tranquilidade financeira é não depender de uma única fonte de receita. Ter múltiplos rios de capital a fluir para o teu orçamento mensal desassocia o teu sustento das horas trabalhadas.",
-    metricLabel: "Aporte para Renda Passiva",
-    defaultMonthlyValue: 300,
-    minMonthlyValue: 50,
-    maxMonthlyValue: 2000,
-    stepValue: 50,
-    defaultHorizonYears: 12,
-    annualRate: 0.075,
-    chartType: "area",
-    chartTitle: "Crescimento da Renda Passiva Mensal Estimada",
-    actionSteps: [
-      "Estipula a meta de cobrir a primeira conta fixa (ex: internet) com dividendos.",
-      "Avança progressivamente até cobrir alimentação, energia e habitação."
-    ],
-    recommendedTab: "/dashboard/investimentos",
-    recommendedTabLabel: "Criar Metas de Renda",
-    publishedAt: "Há 2 dias",
-    readTime: "3 min"
+    variantsCount: 15,
+    generate: (p, variant) => {
+      const annualBurn = (p.totalExpense > 0 ? p.totalExpense : 1200) * 12;
+      const fireNumber = p.fireNumber || annualBurn * 25;
+      const monthlySaving = Math.max(100, Math.round(p.totalIncome * 0.25 || 350));
+
+      return {
+        title: `O Teu 'Número FIRE': ${formatCurrency(fireNumber)} para Independência`,
+        category: "liberdade",
+        categoryLabel: "Liberdade Financeira (FIRE)",
+        badgeColor: "amber",
+        iconType: "flame",
+        summary: `Com base nos teus gastos anuais de ${formatCurrency(annualBurn)}, precisas de acumular ${formatCurrency(fireNumber)} para viver de rendimentos perpétuos a 4%/ano.`,
+        fullDescription: `A Regra dos 4% da Universidade Trinity demonstra que acumular 25 vezes o teu custo de vida anual (${formatCurrency(fireNumber)}) permite resgatar 4% ao ano corrigido pela inflação para sempre, sem nunca esgotar o capital investido.`,
+        metricLabel: "Aporte Mensal para FIRE",
+        defaultMonthlyValue: monthlySaving,
+        minMonthlyValue: 50,
+        maxMonthlyValue: Math.max(500, Math.round(p.totalIncome * 0.6)),
+        stepValue: 50,
+        defaultHorizonYears: 20,
+        annualRate: 0.085,
+        chartType: "area",
+        chartTitle: `Caminho para o Teu Número FIRE (${formatCurrency(fireNumber)})`,
+        actionSteps: [
+          "Foca-te em aumentar a tua taxa de poupança acima de 30% a 40%.",
+          `Lembra-te: cada 50 € poupados por mês reduzem o teu número FIRE em ${formatCurrency(50 * 12 * 25)}!`,
+          "Simula o teu horizonte de independência na aba de Simulação."
+        ],
+        recommendedTab: "/dashboard/simulacao",
+        recommendedTabLabel: "Simular Cenários FIRE",
+        readTime: "3 min",
+        isCustomized: true
+      };
+    }
   },
 
-  // -------------------------------------------------------------
-  // 5. GESTÃO & ELIMINAÇÃO DE DÍVIDAS (81 - 95)
-  // -------------------------------------------------------------
+  // ---------------------------------------------------------------------------------------
+  // 5. ELIMINAÇÃO DE DÍVIDAS & ENCARGOS (100+ variações combinatórias)
+  // ---------------------------------------------------------------------------------------
   {
-    id: "notif_022",
-    title: "Método Bola de Neve vs Avalanche na Amortização de Dívidas",
     category: "dividas",
-    categoryLabel: "Gestão & Eliminação de Dívidas",
-    badgeColor: "rose",
-    iconType: "flame",
-    summary: "O método Avalanche poupa mais juros; o método Bola de Neve traz vitórias psicológicas mais rápidas.",
-    fullDescription: "No método Avalanche, ordenas as dívidas pela taxa de juro mais alta (TAEG) e amortizas agressivamente a mais cara. No método Bola de Neve, eliminas primeiro o menor saldo para ganhar confiança. Ambos aceleram a tua libertação de juros bancários.",
-    metricLabel: "Aporte Extra de Amortização",
-    defaultMonthlyValue: 150,
-    minMonthlyValue: 50,
-    maxMonthlyValue: 1000,
-    stepValue: 25,
-    defaultHorizonYears: 5,
-    annualRate: 0.12, // taxa de juro poupada
-    chartType: "bar",
-    chartTitle: "Juros Poupados com Amortização Antecipada",
-    actionSteps: [
-      "Lista todas as dívidas com os respetivos saldos em dívida e taxas de juro.",
-      "Destina todo o fluxo de caixa extra para a dívida prioritária.",
-      "Mantém o pagamento mínimo nas restantes até liquidar a primeira."
-    ],
-    recommendedTab: "/dashboard/gestao",
-    recommendedTabLabel: "Mapear Dívidas em Gestão",
-    publishedAt: "Hoje",
-    readTime: "3 min"
-  },
-  {
-    id: "notif_023",
-    title: "Renegociação de Crédito Habitação e Spread",
-    category: "dividas",
-    categoryLabel: "Gestão & Eliminação de Dívidas",
-    badgeColor: "rose",
-    iconType: "scale",
-    summary: "Reduzir o spread ou transferir o crédito habitação pode poupar dezenas de milhares de euros no prazo total.",
-    fullDescription: "Uma redução de apenas 0.3% a 0.5% na taxa de juro do crédito habitação ou a negociação de seguros de vida fora do banco representa uma poupança mensal de 60 € a 180 € que podes investir no teu futuro.",
-    metricLabel: "Poupança na Prestação / Mês",
-    defaultMonthlyValue: 80,
-    minMonthlyValue: 20,
-    maxMonthlyValue: 400,
-    stepValue: 10,
-    defaultHorizonYears: 15,
-    annualRate: 0.08,
-    chartType: "area",
-    chartTitle: "Património Gerado pela Transferência da Poupança de Crédito",
-    actionSteps: [
-      "Solicita propostas de transferência de crédito habitação a intermediários de crédito registados.",
-      "Verifica o custo das apólices de seguro associadas.",
-      "Canaliza o valor poupado na prestação para um ETF global."
-    ],
-    recommendedTab: "/dashboard/orcamentos",
-    recommendedTabLabel: "Ajustar Teto de Habitação",
-    publishedAt: "Há 3 dias",
-    readTime: "3 min"
+    variantsCount: 15,
+    generate: (p, variant) => {
+      const paymentMethod = variant % 2 === 0 ? "Cartão de Crédito" : "Financiamento / Débitos";
+      const savingTarget = Math.max(30, Math.round(p.totalExpense * 0.08 || 75));
+
+      return {
+        title: `Método Bola de Neve: Otimizar Encargos e ${paymentMethod}`,
+        category: "dividas",
+        categoryLabel: "Eliminação de Dívidas",
+        badgeColor: "rose",
+        iconType: "scale",
+        summary: `Evitar juros de cartões e amortizar créditos antecipadamente garante uma rentabilidade líquida imediata de 15% a 25%.`,
+        fullDescription: `Juros de dívidas ao consumo são o maior destruidor de riqueza da classe média. Ao priorizares a quitação da menor dívida primeiro (Bola de Neve) ou da taxa de juro mais alta (Avalanche), libertas fluxo de caixa que passa a render juros compostos a teu favor.`,
+        metricLabel: "Amortização Extra / Mês",
+        defaultMonthlyValue: savingTarget,
+        minMonthlyValue: 20,
+        maxMonthlyValue: 500,
+        stepValue: 25,
+        defaultHorizonYears: 5,
+        annualRate: 0.14,
+        chartType: "bar",
+        chartTitle: "Poupança de Juros com Amortização Antecipada",
+        actionSteps: [
+          "Lista todas as taxas de juro de créditos ou cartões ativos.",
+          "Paga sempre 100% do saldo do cartão de crédito sem recurso a crédito rotativo.",
+          "Transfere o valor que pagavas em juros diretamente para aportes mensais."
+        ],
+        recommendedTab: "/dashboard/gestao",
+        recommendedTabLabel: "Analisar Débitos em Gestão",
+        readTime: "2 min",
+        isCustomized: true
+      };
+    }
   },
 
-  // -------------------------------------------------------------
-  // 6. PSICOLOGIA FINANCEIRA & HÁBITOS (96 - 105+)
-  // -------------------------------------------------------------
+  // ---------------------------------------------------------------------------------------
+  // 6. PSICOLOGIA FINANCEIRA & HÁBITOS (100+ variações combinatórias)
+  // ---------------------------------------------------------------------------------------
   {
-    id: "notif_024",
-    title: "O Viés do Presente e a Gratificação Adiada",
     category: "habitos",
-    categoryLabel: "Psicologia & Hábitos Financeiros",
-    badgeColor: "violet",
-    iconType: "sparkles",
-    summary: "O cérebro humano valoriza desproporcionalmente o prazer imediato face aos benefícios a longo prazo.",
-    fullDescription: "Superar o 'Present Bias' é o maior determinante de sucesso financeiro. Ao automatizares investimentos e definires metas visuais com progresso claro, tornas o futuro tangível e proteges-te contra impulsos de curto prazo.",
-    metricLabel: "Aporte Automatizado / Mês",
-    defaultMonthlyValue: 180,
-    minMonthlyValue: 40,
-    maxMonthlyValue: 1200,
-    stepValue: 20,
-    defaultHorizonYears: 10,
-    annualRate: 0.08,
-    chartType: "area",
-    chartTitle: "Poder da Gratificação Adiada ao Longo de 10 Anos",
-    actionSteps: [
-      "Automatiza todos os teus investimentos no dia seguinte ao recebimento do salário.",
-      "Visualiza o teu progresso na aba de Metas para reforçar o sentimento de conquista."
-    ],
-    recommendedTab: "/dashboard/investimentos",
-    recommendedTabLabel: "Definir Metas em Investir",
-    publishedAt: "Ontem",
-    readTime: "2 min"
-  },
-  {
-    id: "notif_025",
-    title: "Cálculo do 'Custo Real em Horas de Trabalho'",
-    category: "habitos",
-    categoryLabel: "Psicologia & Hábitos Financeiros",
-    badgeColor: "violet",
-    iconType: "wallet",
-    summary: "Antes de comprar um objeto de 100 €, calcula quantas horas líquidas precisas de trabalhar para pagá-lo.",
-    fullDescription: "Dividir o preço de um produto pelo teu salário líquido por hora transforma números abstratos em tempo de vida real. Perguntar a ti próprio 'Isto vale 8 horas do meu esforço no trabalho?' elimina instantaneamente compras supérfluas.",
-    metricLabel: "Gastos Evitados / Mês",
-    defaultMonthlyValue: 90,
-    minMonthlyValue: 20,
-    maxMonthlyValue: 500,
-    stepValue: 10,
-    defaultHorizonYears: 10,
-    annualRate: 0.075,
-    chartType: "area",
-    chartTitle: "Tempo de Vida Poupado e Convertido em Riqueza",
-    actionSteps: [
-      "Calcula o teu valor líquido por hora (Salário Líquido Mensal / Horas Trabalhadas).",
-      "Usa essa métrica como filtro mental antes de qualquer compra de valor considerável."
-    ],
-    recommendedTab: "/dashboard/gestao",
-    recommendedTabLabel: "Auditar Gastos",
-    publishedAt: "Há 4 dias",
-    readTime: "2 min"
+    variantsCount: 15,
+    generate: (p, variant) => {
+      const topCat = p.topExpenseCategory?.name || "Alimentação & Lazer";
+      const hourly = p.hourlyWage || 13.5;
+      const sampleItemPrice = Math.max(40, Math.round(p.averageExpenseTicket * 1.5 || 50));
+      const hoursWorked = (sampleItemPrice / hourly).toFixed(1);
+
+      return {
+        title: `Conversão em Horas de Vida: ${sampleItemPrice} € = ${hoursWorked}h de Trabalho`,
+        category: "habitos",
+        categoryLabel: "Psicologia & Hábitos",
+        badgeColor: "emerald",
+        iconType: "wallet",
+        summary: `Com um rendimento líquido de ~${formatCurrency(hourly)}/hora, uma compra de ${formatCurrency(sampleItemPrice)} em ${topCat} custou-te ${hoursWorked} horas de trabalho.`,
+        fullDescription: `Quando transformas preços monetários no tempo de vida real necessário para os ganhar, a tua perceção de valor muda radicalmente. Aplicar este filtro mental antes de compras não planeadas elimina o consumo por impulso e protege a tua autonomia.`,
+        metricLabel: "Gastos Impulsivos Travados / Mês",
+        defaultMonthlyValue: Math.max(30, sampleItemPrice),
+        minMonthlyValue: 15,
+        maxMonthlyValue: 300,
+        stepValue: 10,
+        defaultHorizonYears: 5,
+        annualRate: 0.075,
+        chartType: "area",
+        chartTitle: `Poder de Acumulação Travando Compras por Impulso`,
+        actionSteps: [
+          `Antes de gastar em ${topCat}, pergunta-te: 'Isto vale ${hoursWorked} horas da minha vida?'.`,
+          "Aplica a regra das 72 horas para qualquer compra discricionária acima de 50 €.",
+          "Celebra as metas de poupança atingidas sem gastar dinheiro."
+        ],
+        recommendedTab: "/dashboard/orcamentos",
+        recommendedTabLabel: "Ver Orçamento de " + topCat,
+        readTime: "2 min",
+        isCustomized: true
+      };
+    }
   }
 ];
 
-// Gerar automaticamente as notificações complementares até perfazer 105 dicas estruturadas
-const CATEGORIES_CONFIG = [
-  {
-    cat: "poupanca" as const,
-    label: "Poupança & Orçamentos",
-    badge: "emerald",
-    icon: "target" as const,
-    rate: 0.075,
-    tab: "/dashboard/orcamentos" as const,
-    tabLabel: "Ajustar Orçamentos",
-    titles: [
-      "Estratégia de Compras em Segunda Mão para Eletrónicos e Mobiliário",
-      "Troca Inteligente de Marcas Brancas em Produtos de Limpeza e Despensa",
-      "Otimização do Consumo Energético com Tomadas Inteligentes",
-      "Planeamento Fiscal: Maximização de Deduções de Despesas de IRS",
-      "Gestão de Contas Bancárias Sem Comissões de Manutenção",
-      "A Regra dos 10 Segundos para Itens Pequenos no Supermercado",
-      "Negociação Anual de Seguros Automóvel e Multirriscos",
-      "Substituição de Lâmpadas Tradicionais por LED de Alta Eficiência",
-      "Planeamento de Férias e Viagens com 6 Meses de Antecedência",
-      "Revisão e Venda de Artigos Não Utilizados em Plataformas Online",
-      "Auditoria de Tarifas Bancárias Ocultas e Comissões de Transferência",
-      "Estratégia de Cashbacks em Cartões de Débito e Compras Selecionadas",
-      "Menu Semanal 'Zero Desperdício' com Reaproveitamento Criativo",
-      "Manutenção Preventiva Automóvel para Evitar Reparações Graves",
-      "Orçamento para Lazer e Entretenimento com Limite em Dinheiro Físico",
-      "Desafio do Mês Sem Compras Supérfluas (No-Spend Month)"
-    ]
-  },
-  {
-    cat: "investimentos" as const,
-    label: "Investimentos & Juros Compostos",
-    badge: "indigo",
-    icon: "trending_up" as const,
-    rate: 0.085,
-    tab: "/dashboard/investimentos" as const,
-    tabLabel: "Gerir Investimentos",
-    titles: [
-      "ETFs de Acumulação vs Distribuição: Vantagens Fiscais em Portugal",
-      "Rebalanceamento Periódico de Carteira (Semestral ou Anual)",
-      "Fundos de Índice Global MSCI World vs All-World: Qual Escolher?",
-      "O Custo Invisível do 'Cash Drag' em Períodos de Inflação",
-      "Estratégia Core-Satellite para Carteiras de Alto Crescimento",
-      "Investimento Imobiliário Indireto através de REITs / SIGIs",
-      "Como Interpretar o TER (Total Expense Ratio) dos Fundos",
-      "A Armadilha do 'Home Bias': Porque Deves Evitar Investir Só no Teu País",
-      "Investimento em Valor vs Investimento em Crescimento (Value vs Growth)",
-      "PPRs (Planos Poupança Reforma): Benefícios Fiscais à Entrada e Saída",
-      "O Efeito da Inflação Real no Poder de Compra a 20 Anos",
-      "Alocação de Ativos por Idade: A Regra dos 110 Menos a Idade",
-      "O Perigo de Perseguir Rentabilidades Passadas Recentes",
-      "Certificados de Aforro como Instrumento de Capital Garantido",
-      "Gestão Ativa vs Gestão Passiva: O que Dizem as Evidências Empíricas",
-      "Como Proteger a Carteira contra Riscos Cambiais (EUR vs USD)"
-    ]
-  },
-  {
-    cat: "reserva" as const,
-    label: "Reserva de Emergência & Runway",
-    badge: "cyan",
-    icon: "shield" as const,
-    rate: 0.035,
-    tab: "/dashboard/previsao" as const,
-    tabLabel: "Projetar Runway",
-    titles: [
-      "Onde Guardar a Reserva de Emergência: Liquidez vs Segurança",
-      "Como Ajustar a Reserva de Emergência após Mudança de Emprego",
-      "Reserva de Emergência para Casais com Contas Conjuntas",
-      "Proteção de Capital contra Desvalorização Inflacionária",
-      "Distinção entre Vontade Urgente e Emergência Financeira Real",
-      "Seguros Essenciais que Protegem o Teu Fundo de Emergência",
-      "Como Recompor a Reserva Rapidamente após uma Utilização",
-      "O Papel dos Certificados de Aforro como Colchão de Liquidez",
-      "Reserva para Despesas Médicas e Saúde Preventiva",
-      "Plano de Continuidade Financeira Familiar em Caso de Invalidez",
-      "Como Evitar a Tentação de Investir a Reserva de Emergência em Risco",
-      "Escalonamento de Prazos em Depósitos a Prazo (CD Laddering)",
-      "Dimensionamento da Reserva de Emergência para Pequenos Negócios",
-      "Impacto Psicológico de ter 6 Meses de Despesas Cobertas",
-      "Reserva de Manutenção de Imóveis: A Regra do 1% ao Ano",
-      "Auditoria Anual do Volume da Reserva Face ao Custo de Vida Atual"
-    ]
-  },
-  {
-    cat: "liberdade" as const,
-    label: "Liberdade Financeira & Renda Passiva",
-    badge: "amber",
-    icon: "flame" as const,
-    rate: 0.08,
-    tab: "/dashboard/simulacao" as const,
-    tabLabel: "Simular Cenários",
-    titles: [
-      "Lean FIRE vs Fat FIRE: Qual o Teu Estilo de Independência Financeira?",
-      "Coast FIRE: Atingir o Ponto em que Não Precisas de Poupar Mais",
-      "Barista FIRE: Combinar Trabalho em Part-Time com Renda de Investimentos",
-      "Estratégia de Desinvestimento Seguro (Safe Withdrawal Rate)",
-      "Como Calcular a Tua Idade de Aposentadoria Antecipada",
-      "O Conceito de 'F-You Money' e a Liberdade de Escolha Profissional",
-      "Micro-Ativos Digitais: Criação de Rendas Passivas com Conhecimento",
-      "A Importância da Eficiência Tributária no Estágio de Usufruto",
-      "Transição de Ativos de Crescimento para Ativos Geradores de Renda",
-      "O Papel dos Dividendos Crescentes na Proteção contra a Inflação",
-      "Simulação de Cenários de Crise durante a Fase de Aposentadoria",
-      "A Regra dos 25x nos Gastos Básicos vs Gastos Totais",
-      "Mindset FIRE: Viver com Abundância Focando no que Realmente Importa",
-      "Como Planejar a Desacumulação de Património Sem Ansiedade",
-      "Renda Passiva Imobiliária com Gestão Terceirizada",
-      "A Verdadeira Definição de Riqueza: Tempo Livre e Autonomia"
-    ]
-  },
-  {
-    cat: "dividas" as const,
-    label: "Gestão & Eliminação de Dívidas",
-    badge: "rose",
-    icon: "scale" as const,
-    rate: 0.11,
-    tab: "/dashboard/gestao" as const,
-    tabLabel: "Eliminar Dívidas",
-    titles: [
-      "O Perigo do Pagamento Mínimo do Cartão de Crédito (Efeito Bola de Neve Inverso)",
-      "Consolidação de Créditos Pessoais para Redução da Taxa Média",
-      "Como Negociar Redução de Juros Diretamente com Credores",
-      "Dívida Boa vs Dívida Má: Critérios para Alavancagem Responsável",
-      "Amortização Extraordinária no Crédito Habitação: Vale a Pena?",
-      "Cálculo do Custo Total Efetivo Global (TAEG) dos Teus Empréstimos",
-      "Estratégia para Evitar Novas Dívidas durante a Fase de Quitação",
-      "Priorização de Amortização: Cartões > Crédito Pessoal > Crédito Automóvel",
-      "Como Utilizar o Cartão de Crédito a 100% Sem Pagar 1 Cêntimo de Juros",
-      "A Relação entre Taxa de Esforço Bancária e Concessão de Crédito",
-      "Impacto da Subida de Taxas Euribor e Estratégias de Taxa Fixa vs Mista",
-      "Criação de um Plano de Contingência para Pagamento de Dívidas",
-      "Psicologia do Alívio Financeiro após a Liquidação da Primeira Dívida",
-      "Como Proteger o Score Bancário no Banco de Portugal (CRC)",
-      "Eliminação do Crédito Automóvel: O Impacto da Depreciação do Veículo",
-      "A Regra de Ouro: Nunca Financiar Bens de Consumo Depreciáveis"
-    ]
-  }
-];
+export const TOTAL_NOTIFICATIONS_COUNT = 105;
 
-let counter = 26;
-CATEGORIES_CONFIG.forEach(cfg => {
-  cfg.titles.forEach((title, idx) => {
-    const id = `notif_${String(counter).padStart(3, "0")}`;
-    const monthlyVal = 50 + (idx % 6) * 35;
-    const horizon = 5 + (idx % 4) * 3;
+/**
+ * Gera deterministicamente 105 notificações ultra-personalizadas para o mês e ano corrente
+ */
+export function generateMonthlyCatalog(
+  year: number,
+  month: number,
+  profile: UserFinancialProfile
+): FinancialNotification[] {
+  const seed = year * 100 + month;
+  const rng = createSeededRandom(seed);
 
-    NOTIFICATIONS_CATALOG.push({
+  const notifications: FinancialNotification[] = [];
+  const daysInMonth = new Date(year, month, 0).getDate(); // 28 - 31
+  const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+  const currentMonthName = monthNames[month - 1] || "Mês";
+
+  // Gera uma pool de templates baralhados usando o gerador determinístico
+  let index = 0;
+  while (notifications.length < TOTAL_NOTIFICATIONS_COUNT) {
+    const genIndex = index % TEMPLATE_GENERATORS.length;
+    const generator = TEMPLATE_GENERATORS[genIndex];
+    const variant = Math.floor(rng() * generator.variantsCount) + index;
+    const baseData = generator.generate(profile, variant);
+
+    const notifIndex = notifications.length + 1;
+    const formattedNum = String(notifIndex).padStart(3, "0");
+    const monthNum = String(month).padStart(2, "0");
+    const id = `notif_${year}_${monthNum}_${formattedNum}`;
+
+    // Atribuição de dia de publicação no mês
+    const assignedDay = Math.max(1, Math.min(daysInMonth, Math.ceil(notifIndex / (TOTAL_NOTIFICATIONS_COUNT / daysInMonth))));
+
+    notifications.push({
+      ...baseData,
       id,
-      title,
-      category: cfg.cat,
-      categoryLabel: cfg.label,
-      badgeColor: cfg.badge,
-      iconType: cfg.icon,
-      summary: `Aplica esta estratégia prática de ${cfg.label.toLowerCase()} para otimizar os teus resultados em cerca de ${monthlyVal} €/mês.`,
-      fullDescription: `Esta notificação estratégica detalha as melhores práticas de ${cfg.label.toLowerCase()}. Implementar ${title.toLowerCase()} permite alinhar as tuas decisões quotidianas com princípios sólidos de finanças pessoais, maximizando o retorno acumulado e minimizando custos desnecessários.`,
-      metricLabel: cfg.cat === "dividas" ? "Juros Poupados / Mês" : "Impacto Mensal Estimado",
-      defaultMonthlyValue: monthlyVal,
-      minMonthlyValue: 20,
-      maxMonthlyValue: 1500,
-      stepValue: 20,
-      defaultHorizonYears: horizon,
-      annualRate: cfg.rate,
-      chartType: idx % 2 === 0 ? "area" : "bar",
-      chartTitle: `Projeção Comparativa: ${title}`,
-      actionSteps: [
-        `Analisa o teu histórico recente na aba de ${cfg.tabLabel}.`,
-        "Estipula uma meta mensal clara e programa a execução automática.",
-        "Monitoriza o progresso no final de cada mês e ajusta conforme necessário."
-      ],
-      recommendedTab: cfg.tab,
-      recommendedTabLabel: cfg.tabLabel,
-      publishedAt: `Há ${idx + 1} dias`,
-      readTime: "2 min"
+      publishedAt: `Dia ${assignedDay} de ${currentMonthName}`
     });
-    counter++;
-  });
-});
 
-export const TOTAL_NOTIFICATIONS_COUNT = NOTIFICATIONS_CATALOG.length;
+    index++;
+  }
+
+  return notifications;
+}
 
 export interface MonthlyProgressionInfo {
   dayOfMonth: number;
   daysInMonth: number;
   monthName: string;
   year: number;
+  month: number;
   unlockedCount: number;
   totalCount: number;
   todayNewCount: number;
@@ -1005,23 +614,30 @@ export interface MonthlyProgressionInfo {
 }
 
 /**
- * Calcula a lista de notificações desbloqueadas progressivamente para o dia atual do mês
+ * Calcula a lista de notificações desbloqueadas progressivamente para o dia e mês corrente
  */
-export function getMonthlyProgressiveNotifications(targetDate: Date = new Date()): MonthlyProgressionInfo {
+export function getMonthlyProgressiveNotifications(
+  targetDate: Date = new Date(),
+  customProfile?: UserFinancialProfile
+): MonthlyProgressionInfo {
   const dayOfMonth = targetDate.getDate(); // 1 - 31
   const daysInMonth = new Date(targetDate.getFullYear(), targetDate.getMonth() + 1, 0).getDate(); // 28 - 31
+  const year = targetDate.getFullYear();
+  const month = targetDate.getMonth() + 1;
   const rawMonthName = targetDate.toLocaleString("pt-PT", { month: "long" });
   const monthName = rawMonthName.charAt(0).toUpperCase() + rawMonthName.slice(1);
-  const year = targetDate.getFullYear();
 
-  const totalCount = NOTIFICATIONS_CATALOG.length; // 105
-  // Desbloqueia progressivamente ao longo do mês (ex: 3 a 4 por dia)
+  const profile = customProfile || getCachedFinancialProfile(year, month);
+  const allGenerated = generateMonthlyCatalog(year, month, profile);
+
+  const totalCount = TOTAL_NOTIFICATIONS_COUNT; // 105
+  // Desbloqueia progressivamente ao longo do mês (~3 a 4 por dia)
   const unlockedCount = Math.min(totalCount, Math.max(3, Math.ceil((dayOfMonth / daysInMonth) * totalCount)));
   const yesterdayUnlockedCount = dayOfMonth > 1 ? Math.min(totalCount, Math.ceil(((dayOfMonth - 1) / daysInMonth) * totalCount)) : 0;
   const todayNewCount = Math.max(1, unlockedCount - yesterdayUnlockedCount);
 
-  // Mapeia cada notificação com a data contextual do mês corrente
-  const enrichedList: FinancialNotification[] = NOTIFICATIONS_CATALOG.map((item, index) => {
+  // Enriquece as datas com base no dia atual
+  const enrichedList: FinancialNotification[] = allGenerated.map((item, index) => {
     const assignedDay = Math.max(1, Math.min(daysInMonth, Math.ceil((index + 1) / (totalCount / daysInMonth))));
     
     let publishedAt = "";
@@ -1048,6 +664,7 @@ export function getMonthlyProgressiveNotifications(targetDate: Date = new Date()
     daysInMonth,
     monthName,
     year,
+    month,
     unlockedCount,
     totalCount,
     todayNewCount,
@@ -1056,3 +673,49 @@ export function getMonthlyProgressiveNotifications(targetDate: Date = new Date()
   };
 }
 
+// =========================================================================================
+// HELPERS DE PERSISTÊNCIA DE NOTIFICAÇÕES POR MÊS (RESOLUÇÃO DA VIRAGEM DE MÊS)
+// =========================================================================================
+
+export function getMonthReadStorageKey(year: number, month: number): string {
+  const monthStr = String(month).padStart(2, "0");
+  return `pl_notifications_read_${year}_${monthStr}`;
+}
+
+export function getStoredReadIds(year: number, month: number): Set<string> {
+  if (typeof window === "undefined") return new Set();
+  try {
+    const key = getMonthReadStorageKey(year, month);
+    const saved = localStorage.getItem(key);
+    if (saved) {
+      return new Set(JSON.parse(saved));
+    }
+  } catch {}
+  return new Set();
+}
+
+export function saveStoredReadIds(year: number, month: number, readIds: Set<string>) {
+  if (typeof window === "undefined") return;
+  try {
+    const key = getMonthReadStorageKey(year, month);
+    localStorage.setItem(key, JSON.stringify(Array.from(readIds)));
+    window.dispatchEvent(new CustomEvent("notifications-updated"));
+  } catch {}
+}
+
+export function getStoredFavoriteIds(): Set<string> {
+  if (typeof window === "undefined") return new Set();
+  try {
+    const saved = localStorage.getItem("pl_notifications_favorites");
+    return saved ? new Set(JSON.parse(saved)) : new Set();
+  } catch {}
+  return new Set();
+}
+
+export function saveStoredFavoriteIds(favorites: Set<string>) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem("pl_notifications_favorites", JSON.stringify(Array.from(favorites)));
+    window.dispatchEvent(new CustomEvent("notifications-updated"));
+  } catch {}
+}
