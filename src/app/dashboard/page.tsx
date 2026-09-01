@@ -76,6 +76,18 @@ export default function DashboardPage() {
   const [filterYear, setFilterYear] = useState(new Date().getFullYear().toString());
   const [filterMonth, setFilterMonth] = useMonthFilter('current');
 
+  const isCreditPayment = (method: string) => {
+    if (!method) return false;
+    const m = method.toLowerCase();
+    return m.includes('crédito') || m.includes('credito');
+  };
+
+  const isTransactionPendingCredit = (t: any) => {
+    if (!t || t.type !== 'expense') return false;
+    if (!isCreditPayment(t.payment_method)) return false;
+    return t.is_paid === false || t.is_paid === 0 || t.is_paid === "0" || t.is_paid === "false" || t.is_paid === null || t.is_paid === undefined;
+  };
+
   const fetchData = async () => {
     try {
       const query = new URLSearchParams();
@@ -89,8 +101,24 @@ export default function DashboardPage() {
         api.get("/category-groups").catch(() => ({ data: [] })),
         api.get("/goals").catch(() => ({ data: [] }))
       ]);
-      setSummary(sumRes.data);
-      setTransactions(transRes.data || []);
+
+      const rawTrans: any[] = Array.isArray(transRes.data) ? transRes.data : [];
+      let currentSum = sumRes.data || { balance: 0, income: 0, expense: 0, investments: 0, chartData: [] };
+
+      // Se houver despesas no crédito pendentes no período, ajustar o total de despesas pagas
+      const pendingExpensesInPeriod = rawTrans.filter((t: any) => isTransactionPendingCredit(t)).reduce((acc: number, t: any) => acc + (Number(t.amount) || 0), 0);
+      const paidExpensesInPeriod = rawTrans.filter((t: any) => t.type === 'expense' && !isTransactionPendingCredit(t)).reduce((acc: number, t: any) => acc + (Number(t.amount) || 0), 0);
+
+      if (rawTrans.length > 0 && pendingExpensesInPeriod > 0) {
+        currentSum = {
+          ...currentSum,
+          expense: paidExpensesInPeriod,
+          pendingCreditExpense: pendingExpensesInPeriod,
+        };
+      }
+
+      setSummary(currentSum);
+      setTransactions(rawTrans);
       
       const storedIcons = getStoredCategoryIcons();
       let fetchedCats: any[] = (Array.isArray(catRes.data) ? catRes.data : []).map((c: any) => ({

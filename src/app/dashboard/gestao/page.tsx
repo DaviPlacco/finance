@@ -538,11 +538,16 @@ export default function GestaoPage() {
     return transactions.filter((t: any) => t.type === "income").reduce((acc: number, t: any) => acc + (t.amount || 0), 0);
   }, [transactions]);
 
-  const filteredExpenseTotal = useMemo(() => {
-    return transactions.filter((t: any) => t.type === "expense").reduce((acc: number, t: any) => acc + (t.amount || 0), 0);
+  // Apenas despesas que foram liquidadas entram no total de despesas debitadas
+  const filteredPaidExpenseTotal = useMemo(() => {
+    return transactions.filter((t: any) => t.type === "expense" && !isTransactionPendingCredit(t)).reduce((acc: number, t: any) => acc + (t.amount || 0), 0);
   }, [transactions]);
 
-  const filteredNetTotal = filteredIncomeTotal - filteredExpenseTotal;
+  const filteredPendingCreditExpenseTotal = useMemo(() => {
+    return transactions.filter((t: any) => isTransactionPendingCredit(t)).reduce((acc: number, t: any) => acc + (t.amount || 0), 0);
+  }, [transactions]);
+
+  const filteredNetTotal = filteredIncomeTotal - filteredPaidExpenseTotal;
 
   // Totais das Transações Selecionadas via Checkbox
   const selectedTransactionsList = useMemo(() => {
@@ -1350,16 +1355,23 @@ export default function GestaoPage() {
                     Total {isFilterActive ? "Filtrado" : "Geral"}:
                   </span>
                   <span className="font-black text-sm whitespace-nowrap">
-                    {filteredIncomeTotal > 0 && filteredExpenseTotal > 0 ? (
+                    {filteredIncomeTotal > 0 && filteredPaidExpenseTotal > 0 ? (
                       <span className="text-slate-900 dark:text-white">
                         Saldo: {formatCurrency(filteredNetTotal)}{" "}
                         <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 ml-1.5">+{formatCurrency(filteredIncomeTotal)}</span>
-                        <span className="text-xs font-bold text-rose-600 dark:text-rose-400 ml-1.5">-{formatCurrency(filteredExpenseTotal)}</span>
+                        <span className="text-xs font-bold text-rose-600 dark:text-rose-400 ml-1.5">-{formatCurrency(filteredPaidExpenseTotal)}</span>
                       </span>
                     ) : filteredIncomeTotal > 0 ? (
                       <span className="text-emerald-600 dark:text-emerald-400 font-black text-sm">+{formatCurrency(filteredIncomeTotal)}</span>
+                    ) : filteredPaidExpenseTotal > 0 ? (
+                      <span className="text-rose-600 dark:text-rose-400 font-black text-sm">-{formatCurrency(filteredPaidExpenseTotal)}</span>
                     ) : (
-                      <span className="text-rose-600 dark:text-rose-400 font-black text-sm">-{formatCurrency(filteredExpenseTotal)}</span>
+                      <span className="text-slate-600 dark:text-slate-400 font-black text-sm">0,00 €</span>
+                    )}
+                    {filteredPendingCreditExpenseTotal > 0 && (
+                      <span className="ml-2 text-xs font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20">
+                        {formatCurrency(filteredPendingCreditExpenseTotal)} pendente
+                      </span>
                     )}
                   </span>
                   {isFilterActive && (
