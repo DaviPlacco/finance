@@ -739,12 +739,12 @@ export default function GestaoPage() {
 
               {/* 💳 Alerta Informativo para Compras no Crédito */}
               {type === "expense" && isCreditPayment(paymentMethod) && (
-                <div className="p-3.5 rounded-xl bg-violet-500/10 border border-violet-500/25 text-violet-800 dark:text-violet-300 text-xs flex items-start gap-2.5 animate-in fade-in duration-200">
-                  <CreditCard className="w-4 h-4 shrink-0 mt-0.5 text-violet-600 dark:text-violet-400" />
+                <div className="p-3.5 rounded-xl bg-primary/10 border border-primary/25 text-primary text-xs flex items-start gap-2.5 animate-in fade-in duration-200">
+                  <CreditCard className="w-4 h-4 shrink-0 mt-0.5 text-primary" />
                   <div className="space-y-0.5">
-                    <p className="font-extrabold text-violet-900 dark:text-violet-200">Pagamento no Crédito (Pendente)</p>
-                    <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
-                      Esta despesa ficará registada como <strong>Pagamento Pendente</strong> e <u>não será descontada</u> do teu <strong>Saldo Atual</strong> até fechares a fatura.
+                    <p className="font-extrabold text-slate-900 dark:text-white">Pagamento no Crédito (Pendente)</p>
+                    <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
+                      Esta despesa ficará registada como <strong>Pagamento Pendente</strong> e <span className="underline decoration-primary/50 underline-offset-2 font-semibold">não será descontada</span> do teu <strong>Saldo Atual</strong> até fechares a fatura.
                     </p>
                   </div>
                 </div>
@@ -873,9 +873,14 @@ export default function GestaoPage() {
         <div className="lg:col-span-2 space-y-6">
           {/* 💳 BANNER DE ALERTA: FECHAR PAGAMENTOS PENDENTES NO CRÉDITO */}
           {pendingCreditTransactions.length > 0 && (
-            <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-violet-600/15 via-purple-600/10 to-indigo-600/15 border border-violet-500/30 dark:border-violet-500/25 shadow-xl shadow-violet-500/5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
+            <div 
+              className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-primary/15 via-primary/10 to-primary/5 border border-primary/30 dark:border-primary/25 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-in fade-in slide-in-from-top-2 duration-300"
+              style={{
+                boxShadow: '0 12px 36px -12px var(--primary-glow, rgba(16, 185, 129, 0.2))'
+              }}
+            >
               <div className="flex items-start sm:items-center gap-3.5 min-w-0 flex-1">
-                <div className="w-11 h-11 rounded-2xl bg-violet-500/20 border border-violet-500/30 flex items-center justify-center text-violet-600 dark:text-violet-400 shrink-0 shadow-inner">
+                <div className="w-11 h-11 rounded-2xl bg-primary/20 border border-primary/30 flex items-center justify-center text-primary shrink-0 shadow-inner">
                   <CreditCard className="w-6 h-6 animate-pulse" />
                 </div>
                 <div className="min-w-0 flex-1">
@@ -888,7 +893,7 @@ export default function GestaoPage() {
                     </span>
                   </div>
                   <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 mt-1 leading-relaxed">
-                    Tens <strong className="text-violet-600 dark:text-violet-400 font-extrabold">{formatCurrency(pendingCreditTotal)}</strong> em pagamentos no crédito que <span className="underline decoration-violet-400 underline-offset-2 font-semibold">ainda não foram debitados</span> do teu <strong>Saldo Atual</strong>.
+                    Tens <strong className="text-primary font-extrabold">{formatCurrency(pendingCreditTotal)}</strong> em pagamentos no crédito que <span className="underline decoration-primary underline-offset-2 font-semibold">ainda não foram debitados</span> do teu <strong>Saldo Atual</strong>.
                   </p>
                 </div>
               </div>
@@ -899,7 +904,10 @@ export default function GestaoPage() {
                   setCreditTxToSettle(null);
                   setShowSettleCreditModal(true);
                 }}
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-black text-xs sm:text-sm shadow-lg shadow-violet-600/30 hover:shadow-violet-600/50 hover:-translate-y-0.5 active:translate-y-0 transition-all shrink-0 uppercase tracking-wider"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-primary hover:brightness-110 text-white font-black text-xs sm:text-sm shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition-all shrink-0 uppercase tracking-wider whitespace-nowrap"
+                style={{
+                  boxShadow: '0 8px 24px -6px var(--primary-glow, rgba(16, 185, 129, 0.4))'
+                }}
               >
                 <CreditCard className="w-4 h-4" />
                 <span>Fechar Pagamento ({formatCurrency(pendingCreditTotal)})</span>
@@ -1130,7 +1138,7 @@ export default function GestaoPage() {
                                       e.stopPropagation();
                                       setCreditTxToSettle(t);
                                     }}
-                                    className="text-[10px] font-black text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 hover:underline px-1.5 py-0.5 rounded bg-violet-500/10 hover:bg-violet-500/20 transition-all cursor-pointer"
+                                    className="text-[10px] font-black text-primary hover:underline px-1.5 py-0.5 rounded bg-primary/10 hover:bg-primary/20 transition-all cursor-pointer"
                                     title="Fechar e debitar este pagamento do Saldo Atual"
                                   >
                                     Fechar
@@ -1259,7 +1267,7 @@ export default function GestaoPage() {
                                   e.stopPropagation();
                                   setCreditTxToSettle(t);
                                 }}
-                                className="text-[10px] font-black text-violet-600 dark:text-violet-400 hover:underline px-1.5 py-0.5 rounded bg-violet-500/10"
+                                className="text-[10px] font-black text-primary hover:underline px-1.5 py-0.5 rounded bg-primary/10 hover:bg-primary/20 transition-all cursor-pointer"
                               >
                                 Fechar
                               </button>
@@ -1628,7 +1636,7 @@ export default function GestaoPage() {
                     setCreditTxToSettle(null);
                     setShowSettleCreditModal(true);
                   }}
-                  className="bg-violet-600 hover:bg-violet-700 text-white text-xs px-2.5 sm:px-3 py-1 rounded-full font-bold transition-all flex items-center gap-1 whitespace-nowrap shadow-sm active:scale-95"
+                  className="bg-primary hover:brightness-110 text-white text-xs px-2.5 sm:px-3 py-1 rounded-full font-bold transition-all flex items-center gap-1 whitespace-nowrap shadow-sm active:scale-95"
                   title="Fechar pagamentos de crédito selecionados"
                 >
                   <CreditCard className="w-3.5 h-3.5" />
