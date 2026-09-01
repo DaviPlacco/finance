@@ -121,7 +121,7 @@ export default function DashboardPage() {
       const rawTrans: any[] = Array.isArray(transRes.data) ? transRes.data : [];
       let currentSum = sumRes.data || { balance: 0, income: 0, expense: 0, investments: 0, chartData: [] };
 
-      // Se houver transações carregadas, calcular valores reais reconciliados
+      // Se houver transações carregadas, calcular valores reais reconciliados do período filtrado
       if (rawTrans.length > 0) {
         const now = new Date();
         const totalIncome = rawTrans
@@ -138,12 +138,22 @@ export default function DashboardPage() {
 
         currentSum = {
           ...currentSum,
-          balance: totalIncome - paidExpenses,
           income: totalIncome,
           expense: paidExpenses,
           pendingCreditExpense: pendingExpenses,
         };
       }
+
+      // O Saldo Atual no card principal reflete o Saldo Real Acumulado da Conta
+      let actualAccountBalance = typeof sumRes?.data?.balance === 'number' ? sumRes.data.balance : 0;
+      try {
+        const cached = localStorage.getItem("pl_cached_balance");
+        if (cached !== null && !isNaN(Number(cached))) {
+          actualAccountBalance = Number(cached);
+        }
+      } catch {}
+
+      currentSum.balance = actualAccountBalance;
 
       setSummary(currentSum);
       setTransactions(rawTrans);

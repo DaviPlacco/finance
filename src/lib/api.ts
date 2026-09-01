@@ -176,6 +176,10 @@ if (typeof window !== 'undefined') {
       if (type === 'income' || type === 'receita') {
         if (!t.is_transfer) totalIncome += Number(t.amount) || 0;
       } else {
+        const pm = (t.payment_method || '').toLowerCase();
+        const isCredit = pm.includes('crédito') || pm.includes('credito');
+        const isPaid = t.is_paid === true || t.is_paid === 1 || t.is_paid === "1" || t.is_paid === "true";
+        if (isCredit && !isPaid) return;
         totalExpense += Number(t.amount) || 0;
       }
     });
@@ -190,6 +194,10 @@ if (typeof window !== 'undefined') {
       if (type === 'income' || type === 'receita') {
         if (!t.is_transfer) cumulativeIncome += Number(t.amount) || 0;
       } else {
+        const pm = (t.payment_method || '').toLowerCase();
+        const isCredit = pm.includes('crédito') || pm.includes('credito');
+        const isPaid = t.is_paid === true || t.is_paid === 1 || t.is_paid === "1" || t.is_paid === "true";
+        if (isCredit && !isPaid) return;
         cumulativeExpense += Number(t.amount) || 0;
       }
     });
@@ -209,6 +217,10 @@ if (typeof window !== 'undefined') {
             if (type === 'income' || type === 'receita') {
               if (!t.is_transfer) dailyIncome += Number(t.amount) || 0;
             } else {
+              const pm = (t.payment_method || '').toLowerCase();
+              const isCredit = pm.includes('crédito') || pm.includes('credito');
+              const isPaid = t.is_paid === true || t.is_paid === 1 || t.is_paid === "1" || t.is_paid === "true";
+              if (isCredit && !isPaid) return;
               dailyExpense += Number(t.amount) || 0;
             }
           }
