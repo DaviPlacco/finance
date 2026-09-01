@@ -407,6 +407,29 @@ if (typeof window !== 'undefined') {
     return [200, txs];
   });
 
+  mock.onPost(/\/transactions\/settle-credit.*/).reply((config) => {
+    const data = JSON.parse(config.data || '{}');
+    const db = getDB();
+    const txIds = data.transaction_ids;
+    let count = 0;
+    let totalAmount = 0;
+    (db.transactions || []).forEach((t: any) => {
+      const pm = (t.payment_method || '').toLowerCase();
+      const isCredit = pm.includes('crédito') || pm.includes('credito');
+      const isPending = t.type === 'expense' && isCredit && (t.is_paid === false || t.is_paid === 0 || t.is_paid === '0' || t.is_paid === 'false' || t.is_paid === null || t.is_paid === undefined);
+      
+      if (isPending) {
+        if (!txIds || txIds.length === 0 || txIds.includes(t.id)) {
+          t.is_paid = true;
+          count++;
+          totalAmount += Number(t.amount) || 0;
+        }
+      }
+    });
+    saveDB(db);
+    return [200, { message: "Pagamentos de crédito liquidados com sucesso!", count, total_amount: totalAmount }];
+  });
+
   mock.onPost('/transactions').reply((config) => {
     const data = JSON.parse(config.data || '{}');
     const db = getDB();

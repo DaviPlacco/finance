@@ -356,13 +356,50 @@ export default function GestaoPage() {
             month: filterMonth && filterMonth !== 'all' ? parseInt(filterMonth) : undefined 
           };
       
-      const res = await api.post("/transactions/settle-credit", payload);
-      toast.success(res.data?.message || "Pagamentos de crédito liquidados com sucesso! O valor foi debitado do teu Saldo Atual.");
-      setShowSettleCreditModal(false);
-      setCreditTxToSettle(null);
-      fetchData();
-      window.dispatchEvent(new CustomEvent("transactions-updated"));
-      window.dispatchEvent(new CustomEvent("summary-updated"));
+      let success = false;
+      try {
+        const res = await api.post("/transactions/settle-credit", payload);
+        toast.success(res.data?.message || "Pagamentos de crédito liquidados com sucesso! O valor foi debitado do teu Saldo Atual.");
+        success = true;
+      } catch (postErr) {
+        // Fallback imediato: atualizar as transações pendentes individualmente via PUT /transactions/{id}
+        const idsToUpdate = txIds && txIds.length > 0 
+          ? txIds 
+          : pendingCreditTransactions.map((t: any) => t.id);
+
+        if (idsToUpdate.length > 0) {
+          await Promise.all(
+            idsToUpdate.map(async (id: number) => {
+              const tx = safeTransactions.find((t: any) => t && t.id === id);
+              if (tx) {
+                return api.put(`/transactions/${id}`, {
+                  amount: tx.amount,
+                  type: tx.type,
+                  category_id: tx.category_id,
+                  payment_method: tx.payment_method,
+                  description: tx.description,
+                  date: tx.date,
+                  receipt_image: tx.receipt_image,
+                  is_paid: true
+                });
+              }
+            })
+          );
+          toast.success("Pagamentos de crédito liquidados com sucesso! O valor foi debitado do teu Saldo Atual.");
+          success = true;
+        } else {
+          throw postErr;
+        }
+      }
+
+      if (success) {
+        setShowSettleCreditModal(false);
+        setCreditTxToSettle(null);
+        fetchData();
+        window.dispatchEvent(new CustomEvent("transactions-updated"));
+        window.dispatchEvent(new CustomEvent("dashboard-updated"));
+        window.dispatchEvent(new CustomEvent("summary-updated"));
+      }
     } catch (err: any) {
       console.error("Erro ao fechar pagamentos de crédito:", err);
       toast.error(err?.response?.data?.detail || "Erro ao fechar pagamentos de crédito.");
