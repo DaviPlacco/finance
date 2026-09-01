@@ -555,6 +555,7 @@ export default function GestaoPage() {
     return safeTransactions.filter((t: any) => isTransactionPendingCredit(t)).reduce((acc: number, t: any) => acc + (Number(t.amount) || 0), 0);
   }, [safeTransactions]);
 
+  const filteredExpenseTotal = filteredPaidExpenseTotal;
   const filteredNetTotal = filteredIncomeTotal - filteredPaidExpenseTotal;
 
   // Totais das Transações Selecionadas via Checkbox
