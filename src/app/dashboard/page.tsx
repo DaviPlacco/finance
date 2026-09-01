@@ -97,7 +97,11 @@ export default function DashboardPage() {
     if (!isCreditPayment(t.payment_method)) return false;
     const settled = getSettledTransactionIds();
     if (settled.includes(Number(t.id))) return false;
-    return t.is_paid === false || t.is_paid === 0 || t.is_paid === "0" || t.is_paid === "false";
+    const isPaidVal = t.is_paid;
+    if (isPaidVal === true || isPaidVal === 1 || isPaidVal === "1" || isPaidVal === "true") {
+      return false;
+    }
+    return true;
   };
 
   const fetchData = async () => {
