@@ -82,10 +82,22 @@ export default function DashboardPage() {
     return m.includes('crédito') || m.includes('credito');
   };
 
+  const getSettledTransactionIds = (): number[] => {
+    if (typeof window === "undefined") return [];
+    try {
+      const raw = localStorage.getItem("pl_settled_tx_ids");
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  };
+
   const isTransactionPendingCredit = (t: any) => {
     if (!t || t.type !== 'expense') return false;
     if (!isCreditPayment(t.payment_method)) return false;
-    return t.is_paid === false || t.is_paid === 0 || t.is_paid === "0" || t.is_paid === "false" || t.is_paid === null || t.is_paid === undefined;
+    const settled = getSettledTransactionIds();
+    if (settled.includes(Number(t.id))) return false;
+    return t.is_paid === false || t.is_paid === 0 || t.is_paid === "0" || t.is_paid === "false";
   };
 
   const fetchData = async () => {

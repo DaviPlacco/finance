@@ -40,6 +40,25 @@ export const isPdfDocument = (dataOrUrl?: string | null) => {
   return dataOrUrl.startsWith("data:application/pdf") || dataOrUrl.toLowerCase().includes(".pdf");
 };
 
+export const getSettledTransactionIds = (): number[] => {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem("pl_settled_tx_ids");
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+};
+
+export const markTransactionsAsSettledLocally = (ids: number[]) => {
+  if (typeof window === "undefined" || !ids || ids.length === 0) return;
+  try {
+    const existing = getSettledTransactionIds();
+    const updated = Array.from(new Set([...existing, ...ids.map(Number)]));
+    localStorage.setItem("pl_settled_tx_ids", JSON.stringify(updated));
+  } catch {}
+};
+
 export const isCreditPayment = (pm?: string | null) => {
   if (!pm) return false;
   const lower = pm.toLowerCase();
@@ -49,7 +68,9 @@ export const isCreditPayment = (pm?: string | null) => {
 export const isTransactionPendingCredit = (t: any) => {
   if (!t || t.type !== 'expense') return false;
   if (!isCreditPayment(t.payment_method)) return false;
-  return t.is_paid === false || t.is_paid === 0 || t.is_paid === "0" || t.is_paid === "false" || t.is_paid === null || t.is_paid === undefined;
+  const settled = getSettledTransactionIds();
+  if (settled.includes(Number(t.id))) return false;
+  return t.is_paid === false || t.is_paid === 0 || t.is_paid === "0" || t.is_paid === "false";
 };
 
 export const isTransactionPaid = (t: any) => {
@@ -361,7 +382,8 @@ export default function GestaoPage() {
     }
 
     try {
-      // 1. Mutação otimista imediata na UI
+      // 1. Mutação otimista imediata na UI e persistência local segura
+      markTransactionsAsSettledLocally(targetIds);
       setTransactions((prev: any[]) =>
         (Array.isArray(prev) ? prev : []).map((t: any) =>
           targetIds.includes(t.id) ? { ...t, is_paid: true } : t

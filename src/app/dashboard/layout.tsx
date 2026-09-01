@@ -82,6 +82,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   // Helpers de Crédito Pendente para cálculo de Saldo Atual na Sidebar
+  const getSettledTransactionIds = (): number[] => {
+    if (typeof window === "undefined") return [];
+    try {
+      const raw = localStorage.getItem("pl_settled_tx_ids");
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  };
+
   const isCreditPayment = (pm?: string | null) => {
     if (!pm) return false;
     const lower = pm.toLowerCase();
@@ -91,7 +101,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const isTransactionPendingCredit = (t: any) => {
     if (!t || t.type !== 'expense') return false;
     if (!isCreditPayment(t.payment_method)) return false;
-    return t.is_paid === false || t.is_paid === 0 || t.is_paid === "0" || t.is_paid === "false" || t.is_paid === null || t.is_paid === undefined;
+    const settled = getSettledTransactionIds();
+    if (settled.includes(Number(t.id))) return false;
+    return t.is_paid === false || t.is_paid === 0 || t.is_paid === "0" || t.is_paid === "false";
   };
 
   // Saldo Atual sincronizado para exibição na sidebar
