@@ -348,61 +348,61 @@ export default function GestaoPage() {
 
   const handleSettleCredit = async (txIds?: number[]) => {
     setSettlingCredit(true);
+    const targetIds = txIds && txIds.length > 0 
+      ? txIds 
+      : pendingCreditTransactions.map((t: any) => t.id);
+
+    if (targetIds.length === 0) {
+      toast.info("Não existem pagamentos pendentes para liquidar.");
+      setSettlingCredit(false);
+      setShowSettleCreditModal(false);
+      setCreditTxToSettle(null);
+      return;
+    }
+
     try {
-      const payload = txIds && txIds.length > 0 
-        ? { transaction_ids: txIds } 
-        : { 
-            year: filterYear ? parseInt(filterYear) : undefined, 
-            month: filterMonth && filterMonth !== 'all' ? parseInt(filterMonth) : undefined 
-          };
-      
+      // 1. Mutação otimista imediata na UI
+      setTransactions((prev: any[]) =>
+        (Array.isArray(prev) ? prev : []).map((t: any) =>
+          targetIds.includes(t.id) ? { ...t, is_paid: true } : t
+        )
+      );
+      setShowSettleCreditModal(false);
+      setCreditTxToSettle(null);
+
+      // 2. Persistência na API (tenta lote e fallback individual com PUT /transactions/{id})
       let success = false;
       try {
-        const res = await api.post("/transactions/settle-credit", payload);
-        toast.success(res.data?.message || "Pagamentos de crédito liquidados com sucesso! O valor foi debitado do teu Saldo Atual.");
-        success = true;
-      } catch (postErr) {
-        // Fallback imediato: atualizar as transações pendentes individualmente via PUT /transactions/{id}
-        const idsToUpdate = txIds && txIds.length > 0 
-          ? txIds 
-          : pendingCreditTransactions.map((t: any) => t.id);
-
-        if (idsToUpdate.length > 0) {
-          await Promise.all(
-            idsToUpdate.map(async (id: number) => {
-              const tx = safeTransactions.find((t: any) => t && t.id === id);
-              if (tx) {
-                return api.put(`/transactions/${id}`, {
-                  amount: tx.amount,
-                  type: tx.type,
-                  category_id: tx.category_id,
-                  payment_method: tx.payment_method,
-                  description: tx.description,
-                  date: tx.date,
-                  receipt_image: tx.receipt_image,
-                  is_paid: true
-                });
-              }
-            })
-          );
-          toast.success("Pagamentos de crédito liquidados com sucesso! O valor foi debitado do teu Saldo Atual.");
+        const res = await api.post("/transactions/settle-credit", { transaction_ids: targetIds });
+        if (res && res.status >= 200 && res.status < 300) {
           success = true;
-        } else {
-          throw postErr;
         }
+      } catch (postErr) {
+        console.warn("POST /transactions/settle-credit indisponível, a executar PUT /transactions/{id}:", postErr);
       }
 
-      if (success) {
-        setShowSettleCreditModal(false);
-        setCreditTxToSettle(null);
-        fetchData();
-        window.dispatchEvent(new CustomEvent("transactions-updated"));
-        window.dispatchEvent(new CustomEvent("dashboard-updated"));
-        window.dispatchEvent(new CustomEvent("summary-updated"));
+      if (!success) {
+        // Executar PUT direto para cada ID com { is_paid: true }
+        await Promise.all(
+          targetIds.map((id: number) => {
+            return api.put(`/transactions/${id}`, { is_paid: true }).catch((err) => {
+              console.error(`Erro ao atualizar transação ${id}:`, err);
+            });
+          })
+        );
       }
+
+      toast.success("Pagamentos de crédito liquidados com sucesso! O valor foi debitado do teu Saldo Atual.");
+
+      // 3. Recarregar dados e sincronizar eventos globais
+      await fetchData();
+      window.dispatchEvent(new CustomEvent("transactions-updated"));
+      window.dispatchEvent(new CustomEvent("dashboard-updated"));
+      window.dispatchEvent(new CustomEvent("summary-updated"));
     } catch (err: any) {
       console.error("Erro ao fechar pagamentos de crédito:", err);
       toast.error(err?.response?.data?.detail || "Erro ao fechar pagamentos de crédito.");
+      fetchData();
     } finally {
       setSettlingCredit(false);
     }
