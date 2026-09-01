@@ -320,8 +320,15 @@ if (typeof window !== 'undefined') {
     return [200, newCat];
   });
 
+  const extractId = (url?: string) => {
+    if (!url) return 0;
+    const clean = url.split('?')[0].replace(/\/+$/, '');
+    const parts = clean.split('/');
+    return parseInt(parts[parts.length - 1] || '0');
+  };
+
   mock.onDelete(/\/categories\/\d+/).reply((config) => {
-    const id = parseInt(config.url!.split('/').pop()!);
+    const id = extractId(config.url);
     const db = getDB();
     db.categories = (db.categories || []).filter((c: any) => c.id !== id);
     saveDB(db);
@@ -329,7 +336,7 @@ if (typeof window !== 'undefined') {
   });
 
   mock.onPut(/\/categories\/\d+/).reply((config) => {
-    const id = parseInt(config.url!.split('/').pop()!);
+    const id = extractId(config.url);
     const data = JSON.parse(config.data || '{}');
     const db = getDB();
     const idx = (db.categories || []).findIndex((c: any) => c.id === id);
@@ -355,7 +362,7 @@ if (typeof window !== 'undefined') {
   });
 
   mock.onPut(/\/category-groups\/\d+/).reply((config) => {
-    const id = parseInt(config.url!.split('/').pop()!);
+    const id = extractId(config.url);
     const data = JSON.parse(config.data || '{}');
     const db = getDB();
     const idx = (db.categoryGroups || []).findIndex((g: any) => g.id === id);
@@ -368,7 +375,7 @@ if (typeof window !== 'undefined') {
   });
 
   mock.onDelete(/\/category-groups\/\d+/).reply((config) => {
-    const id = parseInt(config.url!.split('/').pop()!);
+    const id = extractId(config.url);
     const db = getDB();
     db.categoryGroups = (db.categoryGroups || []).filter((g: any) => g.id !== id);
     saveDB(db);
@@ -410,7 +417,7 @@ if (typeof window !== 'undefined') {
   mock.onPost(/\/transactions\/settle-credit.*/).reply((config) => {
     const data = JSON.parse(config.data || '{}');
     const db = getDB();
-    const txIds = data.transaction_ids;
+    const txIds = data.transaction_ids ? data.transaction_ids.map(Number) : null;
     let count = 0;
     let totalAmount = 0;
     (db.transactions || []).forEach((t: any) => {
@@ -418,8 +425,8 @@ if (typeof window !== 'undefined') {
       const isCredit = pm.includes('crédito') || pm.includes('credito');
       const isPending = t.type === 'expense' && isCredit && (t.is_paid === false || t.is_paid === 0 || t.is_paid === '0' || t.is_paid === 'false' || t.is_paid === null || t.is_paid === undefined);
       
-      if (isPending) {
-        if (!txIds || txIds.length === 0 || txIds.includes(t.id)) {
+      if (isPending || (txIds && txIds.includes(Number(t.id)))) {
+        if (!txIds || txIds.length === 0 || txIds.includes(Number(t.id))) {
           t.is_paid = true;
           count++;
           totalAmount += Number(t.amount) || 0;
@@ -441,10 +448,10 @@ if (typeof window !== 'undefined') {
   });
 
   mock.onPut(/\/transactions\/\d+/).reply((config) => {
-    const id = parseInt(config.url!.split('/').pop()!);
+    const id = extractId(config.url);
     const data = JSON.parse(config.data || '{}');
     const db = getDB();
-    const idx = (db.transactions || []).findIndex((t: any) => t.id === id);
+    const idx = (db.transactions || []).findIndex((t: any) => Number(t.id) === Number(id));
     if (idx >= 0) {
       db.transactions[idx] = { ...db.transactions[idx], ...data };
       saveDB(db);
@@ -454,9 +461,9 @@ if (typeof window !== 'undefined') {
   });
 
   mock.onDelete(/\/transactions\/\d+/).reply((config) => {
-    const id = parseInt(config.url!.split('/').pop()!);
+    const id = extractId(config.url);
     const db = getDB();
-    db.transactions = (db.transactions || []).filter((t: any) => t.id !== id);
+    db.transactions = (db.transactions || []).filter((t: any) => Number(t.id) !== Number(id));
     saveDB(db);
     return [200, { message: "Deleted" }];
   });
@@ -487,10 +494,10 @@ if (typeof window !== 'undefined') {
   });
 
   mock.onPut(/\/investments\/\d+/).reply((config) => {
-    const id = parseInt(config.url!.split('/').pop()!);
+    const id = extractId(config.url);
     const data = JSON.parse(config.data || '{}');
     const db = getDB();
-    const idx = (db.investments || []).findIndex((i: any) => i.id === id);
+    const idx = (db.investments || []).findIndex((i: any) => Number(i.id) === Number(id));
     if (idx >= 0) {
       db.investments[idx] = { ...db.investments[idx], ...data };
       saveDB(db);
@@ -500,19 +507,19 @@ if (typeof window !== 'undefined') {
   });
 
   mock.onDelete(/\/investments\/\d+/).reply((config) => {
-    const id = parseInt(config.url!.split('/').pop()!);
+    const id = extractId(config.url);
     const db = getDB();
-    db.investments = (db.investments || []).filter((i: any) => i.id !== id);
+    db.investments = (db.investments || []).filter((i: any) => Number(i.id) !== Number(id));
     saveDB(db);
     return [200, { message: "Deleted" }];
   });
 
   // Withdraw Investment Mock
   mock.onPost(/\/investments\/\d+\/withdraw.*/).reply((config) => {
-    const id = parseInt(config.url!.split('/')[2]);
+    const id = extractId(config.url?.replace(/\/withdraw.*/, ''));
     const data = JSON.parse(config.data || '{}');
     const db = getDB();
-    const inv = (db.investments || []).find((i: any) => i.id === id);
+    const inv = (db.investments || []).find((i: any) => Number(i.id) === Number(id));
     if (!inv) return [404, { detail: "Investment not found" }];
     const amount = Number(data.amount) || 0;
     if (amount <= 0) return [400, { detail: "Montante inválido" }];
@@ -548,10 +555,10 @@ if (typeof window !== 'undefined') {
   });
 
   mock.onPut(/\/goals\/\d+/).reply((config) => {
-    const id = parseInt(config.url!.split('/').pop()!);
+    const id = extractId(config.url);
     const data = JSON.parse(config.data || '{}');
     const db = getDB();
-    const idx = (db.goals || []).findIndex((g: any) => g.id === id);
+    const idx = (db.goals || []).findIndex((g: any) => Number(g.id) === Number(id));
     if (idx >= 0) {
       db.goals[idx] = { ...db.goals[idx], ...data };
       saveDB(db);
@@ -561,9 +568,9 @@ if (typeof window !== 'undefined') {
   });
 
   mock.onDelete(/\/goals\/\d+/).reply((config) => {
-    const id = parseInt(config.url!.split('/').pop()!);
+    const id = extractId(config.url);
     const db = getDB();
-    db.goals = (db.goals || []).filter((g: any) => g.id !== id);
+    db.goals = (db.goals || []).filter((g: any) => Number(g.id) !== Number(id));
     saveDB(db);
     return [200, { message: "Deleted" }];
   });
@@ -582,9 +589,9 @@ if (typeof window !== 'undefined') {
   });
 
   mock.onDelete(/\/simulations\/\d+/).reply((config) => {
-    const id = parseInt(config.url!.split('/').pop()!);
+    const id = extractId(config.url);
     const db = getDB();
-    db.simulations = (db.simulations || []).filter((s: any) => s.id !== id);
+    db.simulations = (db.simulations || []).filter((s: any) => Number(s.id) !== Number(id));
     saveDB(db);
     return [200, { message: "Deleted" }];
   });
