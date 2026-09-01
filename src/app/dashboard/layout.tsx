@@ -81,6 +81,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
+  // Helpers de Crédito Pendente para cálculo de Saldo Atual na Sidebar
+  const isCreditPayment = (pm?: string | null) => {
+    if (!pm) return false;
+    const lower = pm.toLowerCase();
+    return lower.includes("crédito") || lower.includes("credito");
+  };
+
+  const isTransactionPendingCredit = (t: any) => {
+    if (!t || t.type !== 'expense') return false;
+    if (!isCreditPayment(t.payment_method)) return false;
+    return t.is_paid === false || t.is_paid === 0 || t.is_paid === "0" || t.is_paid === "false" || t.is_paid === null || t.is_paid === undefined;
+  };
+
   // Saldo Atual sincronizado para exibição na sidebar
   const [currentBalance, setCurrentBalance] = useState<number | null>(() => {
     try {
@@ -93,10 +106,32 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const fetchBalance = async () => {
     try {
-      const res = await api.get("/summary").catch(() => null);
-      if (res && res.data && typeof res.data.balance === "number") {
-        setCurrentBalance(res.data.balance);
-        try { localStorage.setItem("pl_cached_balance", String(res.data.balance)); } catch {}
+      const [sumRes, transRes] = await Promise.all([
+        api.get("/summary").catch(() => null),
+        api.get("/transactions").catch(() => null)
+      ]);
+
+      const rawTrans: any[] = Array.isArray(transRes?.data) ? transRes.data : [];
+      let calculatedBalance: number | null = null;
+
+      if (rawTrans.length > 0) {
+        const now = new Date();
+        const totalIncome = rawTrans
+          .filter((t: any) => t.type === 'income' && !t.is_transfer && new Date(t.date) <= now)
+          .reduce((acc: number, t: any) => acc + (Number(t.amount) || 0), 0);
+        
+        const totalPaidExpenses = rawTrans
+          .filter((t: any) => t.type === 'expense' && !isTransactionPendingCredit(t) && new Date(t.date) <= now)
+          .reduce((acc: number, t: any) => acc + (Number(t.amount) || 0), 0);
+        
+        calculatedBalance = totalIncome - totalPaidExpenses;
+      } else if (sumRes && sumRes.data && typeof sumRes.data.balance === "number") {
+        calculatedBalance = sumRes.data.balance;
+      }
+
+      if (calculatedBalance !== null) {
+        setCurrentBalance(calculatedBalance);
+        try { localStorage.setItem("pl_cached_balance", String(calculatedBalance)); } catch {}
       }
     } catch (err) {
       console.warn("Erro ao buscar saldo para sidebar:", err);

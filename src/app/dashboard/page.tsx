@@ -105,15 +105,27 @@ export default function DashboardPage() {
       const rawTrans: any[] = Array.isArray(transRes.data) ? transRes.data : [];
       let currentSum = sumRes.data || { balance: 0, income: 0, expense: 0, investments: 0, chartData: [] };
 
-      // Se houver despesas no crédito pendentes no período, ajustar o total de despesas pagas
-      const pendingExpensesInPeriod = rawTrans.filter((t: any) => isTransactionPendingCredit(t)).reduce((acc: number, t: any) => acc + (Number(t.amount) || 0), 0);
-      const paidExpensesInPeriod = rawTrans.filter((t: any) => t.type === 'expense' && !isTransactionPendingCredit(t)).reduce((acc: number, t: any) => acc + (Number(t.amount) || 0), 0);
+      // Se houver transações carregadas, calcular valores reais reconciliados
+      if (rawTrans.length > 0) {
+        const now = new Date();
+        const totalIncome = rawTrans
+          .filter((t: any) => t.type === 'income' && !t.is_transfer && new Date(t.date) <= now)
+          .reduce((acc: number, t: any) => acc + (Number(t.amount) || 0), 0);
+        
+        const paidExpenses = rawTrans
+          .filter((t: any) => t.type === 'expense' && !isTransactionPendingCredit(t) && new Date(t.date) <= now)
+          .reduce((acc: number, t: any) => acc + (Number(t.amount) || 0), 0);
 
-      if (rawTrans.length > 0 && pendingExpensesInPeriod > 0) {
+        const pendingExpenses = rawTrans
+          .filter((t: any) => isTransactionPendingCredit(t) && new Date(t.date) <= now)
+          .reduce((acc: number, t: any) => acc + (Number(t.amount) || 0), 0);
+
         currentSum = {
           ...currentSum,
-          expense: paidExpensesInPeriod,
-          pendingCreditExpense: pendingExpensesInPeriod,
+          balance: totalIncome - paidExpenses,
+          income: totalIncome,
+          expense: paidExpenses,
+          pendingCreditExpense: pendingExpenses,
         };
       }
 
