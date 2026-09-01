@@ -1944,7 +1944,7 @@ export default function GestaoPage() {
             ? `Tens a certeza de que desejas fechar ${selectedTransactionsList.filter((t: any) => isTransactionPendingCredit(t)).length} pagamentos pendentes selecionados no valor de ${formatCurrency(selectedTransactionsList.filter((t: any) => isTransactionPendingCredit(t)).reduce((acc: number, t: any) => acc + (t.amount || 0), 0))}? Este valor será debitado imediatamente do teu Saldo Atual.`
             : `Tens a certeza de que desejas fechar e liquidar ${pendingCreditTransactions.length} ${pendingCreditTransactions.length === 1 ? 'pagamento pendente' : 'pagamentos pendentes'} no valor total de ${formatCurrency(pendingCreditTotal)}? Este valor será debitado imediatamente do teu Saldo Atual.`
         }
-        confirmText="Sim, Fechar e Debitar Saldo"
+        confirmText={creditTxToSettle ? "Fechar Pagamento" : "Fechar Pagamentos"}
         cancelText="Cancelar"
         variant="primary"
         isLoading={settlingCredit}
