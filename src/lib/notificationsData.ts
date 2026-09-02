@@ -24,6 +24,7 @@ export interface FinancialNotification {
   publishedAt: string;
   readTime: string;
   isCustomized?: boolean;
+  assignedDay?: number;
 }
 
 export interface ProjectionPoint {
@@ -653,11 +654,15 @@ export function getMonthlyProgressiveNotifications(
 
     return {
       ...item,
-      publishedAt
+      publishedAt,
+      assignedDay
     };
   });
 
-  const unlockedNotifications = enrichedList.slice(0, unlockedCount);
+  // Notificações desbloqueadas ordenadas rigorosamente das mais recentes para as mais antigas (Hoje primeiro, depois Ontem, etc.)
+  const unlockedNotifications = enrichedList
+    .slice(0, unlockedCount)
+    .sort((a, b) => (b.assignedDay || 0) - (a.assignedDay || 0));
 
   return {
     dayOfMonth,
