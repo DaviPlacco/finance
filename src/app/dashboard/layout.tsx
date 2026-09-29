@@ -49,6 +49,8 @@ import { SmartAdvisorToastManager } from "@/components/SmartAdvisorToast";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { getMonthlyProgressiveNotifications, getStoredReadIds } from "@/lib/notificationsData";
 import { refreshUserFinancialProfile } from "@/lib/financialContext";
+import { calculateTransactionTotals, getSettledTransactionIds, isExcludedExpenseCategory } from "@/lib/transactionAccounting";
+import Image from "next/image";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -81,31 +83,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
-  // Helpers de Crédito Pendente para cálculo de Saldo Atual na Sidebar
-  const getSettledTransactionIds = (): number[] => {
-    if (typeof window === "undefined") return [];
-    try {
-      const raw = localStorage.getItem("pl_settled_tx_ids");
-      return raw ? JSON.parse(raw) : [];
-    } catch {
-      return [];
-    }
-  };
-
-  const isCreditPayment = (pm?: string | null) => {
-    if (!pm) return false;
-    const lower = pm.toLowerCase();
-    return lower.includes("crédito") || lower.includes("credito");
-  };
-
-  const isTransactionPendingCredit = (t: any) => {
-    if (!t || t.type !== 'expense') return false;
-    if (!isCreditPayment(t.payment_method)) return false;
-    const settled = getSettledTransactionIds();
-    if (settled.includes(Number(t.id))) return false;
-    return true;
-  };
-
   // Saldo Atual sincronizado para exibição na sidebar
   const [currentBalance, setCurrentBalance] = useState<number | null>(() => {
     try {
@@ -127,15 +104,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       let calculatedBalance: number | null = null;
 
       if (rawTrans.length > 0) {
-        const totalIncome = rawTrans
-          .filter((t: any) => t.type === 'income' && !t.is_transfer)
-          .reduce((acc: number, t: any) => acc + (Number(t.amount) || 0), 0);
-        
-        const totalPaidExpenses = rawTrans
-          .filter((t: any) => t.type === 'expense' && !isTransactionPendingCredit(t))
-          .reduce((acc: number, t: any) => acc + (Number(t.amount) || 0), 0);
-        
-        calculatedBalance = totalIncome - totalPaidExpenses;
+        calculatedBalance = calculateTransactionTotals(rawTrans, getSettledTransactionIds()).accountBalance;
       } else if (sumRes && sumRes.data && typeof sumRes.data.balance === "number") {
         calculatedBalance = sumRes.data.balance;
       }
@@ -214,6 +183,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         icon: category.icon,
         type: category.type,
         budget_limit: category.budget_limit,
+        exclude_from_expenses: Boolean(category.exclude_from_expenses),
         group_id: category.group_id
       });
       window.dispatchEvent(new CustomEvent("categories-updated"));
@@ -240,10 +210,44 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         icon: newIcon,
         type: cat.type,
         budget_limit: cat.budget_limit,
+        exclude_from_expenses: Boolean(cat.exclude_from_expenses),
         group_id: cat.group_id
       });
     } catch (err) {
       console.warn("Backend sync notification:", err);
+    }
+  };
+
+  const handleCategoryExpenseClassificationChange = async (category: any, excludeFromExpenses: boolean) => {
+    setCategoriesList(prev => prev.map(c => (
+      c.id === category.id ? { ...c, exclude_from_expenses: excludeFromExpenses } : c
+    )));
+    setUpdatingCatId(category.id);
+
+    try {
+      await api.put(`/categories/${category.id}`, {
+        name: category.name,
+        color: category.color,
+        icon: category.icon,
+        type: category.type,
+        budget_limit: category.budget_limit,
+        exclude_from_expenses: excludeFromExpenses,
+        group_id: category.group_id
+      });
+      toast.success(excludeFromExpenses
+        ? `"${category.name}" passa a ser tratada como aporte.`
+        : `"${category.name}" volta a contar nas despesas do mês.`
+      );
+      window.dispatchEvent(new CustomEvent("categories-updated"));
+      window.dispatchEvent(new CustomEvent("dashboard-updated"));
+    } catch (err) {
+      setCategoriesList(prev => prev.map(c => (
+        c.id === category.id ? { ...c, exclude_from_expenses: Boolean(category.exclude_from_expenses) } : c
+      )));
+      console.error("Erro ao atualizar a classificação da categoria", err);
+      toast.error("Não foi possível alterar a classificação da categoria.");
+    } finally {
+      setUpdatingCatId(null);
     }
   };
 
@@ -568,7 +572,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 </div>
               )}
               {profileImage && (
-                <img src={profileImage} alt="Profile" className="w-9 h-9 sm:w-10 sm:h-10 rounded-full object-cover border-2 border-primary shadow-sm" />
+                <Image src={profileImage} alt="Perfil" width={40} height={40} unoptimized className="w-9 h-9 sm:w-10 sm:h-10 rounded-full object-cover border-2 border-primary shadow-sm" />
               )}
               <div className="flex flex-col min-w-0">
                 <span className="font-bold text-slate-900 dark:text-white leading-tight truncate text-sm sm:text-base">{username}</span>
@@ -581,7 +585,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           ) : (
             <div className="flex flex-col items-center gap-2">
               {profileImage ? (
-                <img src={profileImage} alt="Profile" className="w-10 h-10 rounded-full object-cover border-2 border-primary shadow-sm" />
+                <Image src={profileImage} alt="Perfil" width={40} height={40} unoptimized className="w-10 h-10 rounded-full object-cover border-2 border-primary shadow-sm" />
               ) : (
                 <div 
                   className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold border-2 shadow-sm transition-all duration-500 text-xs sm:text-sm"
@@ -1033,7 +1037,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     </label>
                     <div className="flex items-center gap-4 bg-slate-50 dark:bg-slate-800/40 p-4 rounded-xl border border-slate-200/70 dark:border-slate-800">
                       {profileImage ? (
-                        <img src={profileImage} alt="Preview" className="w-14 h-14 rounded-full object-cover border-2 border-primary shadow-md shrink-0" />
+                        <Image src={profileImage} alt="Pré-visualização do perfil" width={56} height={56} unoptimized className="w-14 h-14 rounded-full object-cover border-2 border-primary shadow-md shrink-0" />
                       ) : (
                         <div className="w-14 h-14 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center text-slate-400 border-2 border-dashed border-slate-300 dark:border-slate-700 shrink-0">
                           <User className="w-6 h-6" />
@@ -1338,10 +1342,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         <TrendingUp className="w-4 h-4 text-rose-500" />
                         <div>
                           <span className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white block">
-                            Cores Individuais das Categorias
+                            Aparência e Contabilidade das Categorias
                           </span>
                           <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                            Cada categoria utiliza a sua cor no destaque, barra e brilho de hover nos Maiores Gastos
+                            Personaliza a aparência e identifica aportes que não representam consumo mensal
                           </span>
                         </div>
                       </div>
@@ -1424,6 +1428,28 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                     <Smile className="w-3 h-3" />
                                     <span>{cat.icon ? "Alterar Ícone" : "Escolher Ícone / Emoji"}</span>
                                   </button>
+                                  {cat.type === "expense" && (
+                                    <button
+                                      type="button"
+                                      disabled={updatingCatId === cat.id}
+                                      onClick={() => handleCategoryExpenseClassificationChange(cat, !isExcludedExpenseCategory(cat))}
+                                      className="flex items-center gap-2 mt-2 text-left disabled:opacity-60"
+                                      title="Aportes reduzem o Saldo Atual, mas não entram em Despesas (Mês), orçamentos ou poupança"
+                                    >
+                                      <span className={`relative inline-flex h-4 w-7 shrink-0 rounded-full transition-colors ${
+                                        isExcludedExpenseCategory(cat) ? "bg-emerald-500" : "bg-slate-300 dark:bg-slate-600"
+                                      }`}>
+                                        <span className={`absolute top-0.5 h-3 w-3 rounded-full bg-white shadow-sm transition-transform ${
+                                          isExcludedExpenseCategory(cat) ? "translate-x-3.5" : "translate-x-0.5"
+                                        }`} />
+                                      </span>
+                                      <span className={`text-[10px] font-bold ${
+                                        isExcludedExpenseCategory(cat) ? "text-emerald-600 dark:text-emerald-400" : "text-slate-500"
+                                      }`}>
+                                        Aporte: não contar em Despesas (Mês)
+                                      </span>
+                                    </button>
+                                  )}
                                 </div>
                               </div>
 

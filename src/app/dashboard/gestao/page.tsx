@@ -131,6 +131,28 @@ export default function GestaoPage() {
   const [editNewInvestmentTarget, setEditNewInvestmentTarget] = useState("");
   const [editAutoCreditInvestment, setEditAutoCreditInvestment] = useState(false);
 
+  const ASSET_TYPE_OPTIONS = useMemo(() => [
+    { value: "Ações", label: "📈 Ações" },
+    { value: "ETFs", label: "📊 ETFs" },
+    { value: "Cripto", label: "🪙 Cripto" },
+    { value: "Imobiliário", label: "🏢 Imobiliário" },
+    { value: "Renda Fixa", label: "🛡️ Renda Fixa" },
+    { value: "Fundos", label: "💼 Fundos" },
+    { value: "Numerário", label: "💶 Numerário" },
+    { value: "Outro", label: "🔄 Outro" }
+  ], []);
+
+  const investmentSelectOptions = useMemo(() => [
+    { value: "", label: "Selecione o investimento de destino..." },
+    { value: "new", label: "+ Criar Novo Ativo / Investimento...", icon: "➕", color: "#6366f1" },
+    ...investments.map((inv: any) => ({
+      value: String(inv.id),
+      label: `${inv.name} • Saldo: ${formatCurrency(inv.balance)}`,
+      icon: "📈",
+      color: "#3b82f6"
+    }))
+  ], [investments]);
+
   const [isAddingCategory, setIsAddingCategory] = useState(false);
   const [newCatName, setNewCatName] = useState("");
 
@@ -171,6 +193,9 @@ export default function GestaoPage() {
 
   const [selectedTransactions, setSelectedTransactions] = useState<number[]>([]);
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
+  const [catToDelete, setCatToDelete] = useState<any | null>(null);
+  const [showDeleteCatModal, setShowDeleteCatModal] = useState(false);
+  const [isDeletingCategory, setIsDeletingCategory] = useState(false);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -969,65 +994,58 @@ export default function GestaoPage() {
 
               {/* 📈 Destino do Investimento integrado com a aba Investir */}
               {type === "expense" && isInvestmentCategory(categories.find((c: any) => String(c.id) === String(categoryId))) && (
-                <div className="p-4 rounded-2xl bg-gradient-to-br from-indigo-50/90 via-sky-50/70 to-emerald-50/60 dark:from-slate-800/90 dark:via-indigo-950/40 dark:to-slate-800/80 border border-indigo-200/80 dark:border-indigo-800/60 space-y-3.5 animate-in fade-in slide-in-from-top-2 duration-300 shadow-sm">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-lg bg-indigo-500/10 dark:bg-indigo-400/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                <div className="p-4 rounded-2xl bg-gradient-to-br from-indigo-50/80 via-sky-50/40 to-slate-50/50 dark:from-slate-800/90 dark:via-indigo-950/30 dark:to-slate-900/80 border border-indigo-200/70 dark:border-indigo-800/50 space-y-3.5 animate-in fade-in slide-in-from-top-2 duration-300 shadow-sm">
+                  {/* Cabeçalho sem quebras inadequadas de linha */}
+                  <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-indigo-200/50 dark:border-indigo-800/50">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="w-7 h-7 rounded-lg bg-indigo-500/15 dark:bg-indigo-400/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
                         <TrendingUp className="w-3.5 h-3.5" />
                       </div>
-                      <span className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">
-                        Destino do Investimento
-                      </span>
+                      <div className="min-w-0">
+                        <h4 className="text-xs font-bold text-slate-900 dark:text-white leading-tight truncate">
+                          Destino do Investimento
+                        </h4>
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">
+                          Sincronizado com a aba Investir
+                        </p>
+                      </div>
                     </div>
-                    <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                      <Sparkles className="w-2.5 h-2.5" /> Aba Investir Integrada
+                    <span className="inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 whitespace-nowrap shrink-0">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" /> Integrado
                     </span>
                   </div>
 
                   <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
-                    Escolhe para onde este valor vai ou cria um novo ativo. O saldo e o histórico de aportes serão atualizados automaticamente na aba <strong className="text-indigo-600 dark:text-indigo-400">Investir</strong>.
+                    Escolhe o ativo para onde vai este valor ou cria um novo na hora. O saldo e o histórico de aportes serão atualizados automaticamente na aba <strong className="text-indigo-600 dark:text-indigo-400">Investir</strong>.
                   </p>
 
-                  {/* Seleção do Investimento */}
+                  {/* Seleção do Investimento com CustomSelect */}
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1.5 uppercase tracking-wider">
                       Ativo / Investimento de Destino
                     </label>
-                    <select
+                    <CustomSelect
                       value={destinationInvestmentId}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setDestinationInvestmentId(val);
-                        setIsCreatingNewInvestment(val === "new");
+                      onChange={(val) => {
+                        const str = String(val);
+                        setDestinationInvestmentId(str);
+                        setIsCreatingNewInvestment(str === "new");
                       }}
-                      className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700/80 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-semibold focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
-                    >
-                      <option value="">Selecione o investimento de destino...</option>
-                      <option value="new" className="font-bold text-indigo-600 dark:text-indigo-400">
-                        ✨ + Criar Novo Ativo / Investimento...
-                      </option>
-                      {investments.length > 0 && (
-                        <optgroup label="Investimentos Existentes">
-                          {investments.map((inv: any) => (
-                            <option key={inv.id} value={String(inv.id)}>
-                              {inv.name} ({inv.asset_type || "Geral"}) — Saldo: {formatCurrency(inv.balance)}
-                            </option>
-                          ))}
-                        </optgroup>
-                      )}
-                    </select>
+                      options={investmentSelectOptions}
+                      placeholder="Selecione o investimento de destino..."
+                    />
                   </div>
 
                   {/* Formulário Embutido para Novo Ativo */}
                   {(destinationInvestmentId === "new" || isCreatingNewInvestment) && (
-                    <div className="p-3 bg-white/80 dark:bg-slate-900/80 rounded-xl border border-indigo-200/60 dark:border-indigo-900/60 space-y-2.5 animate-in fade-in duration-200">
+                    <div className="p-3.5 bg-white/80 dark:bg-slate-900/80 rounded-xl border border-indigo-200/60 dark:border-indigo-900/60 space-y-3 animate-in fade-in duration-200 shadow-xs">
                       <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-600 dark:text-indigo-400">
                         <Plus className="w-3.5 h-3.5" />
                         <span>Configurar Novo Ativo</span>
                       </div>
 
                       <div>
-                        <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-1 uppercase">
+                        <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-1 uppercase tracking-wider">
                           Nome do Ativo *
                         </label>
                         <input
@@ -1036,32 +1054,24 @@ export default function GestaoPage() {
                           value={newInvestmentName}
                           onChange={(e) => setNewInvestmentName(e.target.value)}
                           placeholder="Ex: ETF VWCE, Apple, Poupança..."
-                          className="w-full px-3 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-medium focus:ring-2 focus:ring-primary outline-none"
+                          className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-medium focus:ring-2 focus:ring-primary outline-none"
                         />
                       </div>
 
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                         <div>
-                          <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-1 uppercase">
+                          <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-1 uppercase tracking-wider">
                             Tipo de Ativo
                           </label>
-                          <select
+                          <CustomSelect
                             value={newInvestmentAssetType}
-                            onChange={(e) => setNewInvestmentAssetType(e.target.value)}
-                            className="w-full px-2.5 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-medium focus:ring-2 focus:ring-primary outline-none"
-                          >
-                            <option value="Ações">Ações</option>
-                            <option value="ETFs">ETFs</option>
-                            <option value="Cripto">Cripto</option>
-                            <option value="Imobiliário">Imobiliário</option>
-                            <option value="Renda Fixa">Renda Fixa</option>
-                            <option value="Fundos">Fundos</option>
-                            <option value="Numerário">Numerário</option>
-                            <option value="Outro">Outro</option>
-                          </select>
+                            onChange={(val) => setNewInvestmentAssetType(String(val))}
+                            options={ASSET_TYPE_OPTIONS}
+                            placeholder="Selecione o tipo..."
+                          />
                         </div>
                         <div>
-                          <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-1 uppercase">
+                          <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-1 uppercase tracking-wider">
                             Meta / Objetivo (€)
                           </label>
                           <input
@@ -1070,14 +1080,14 @@ export default function GestaoPage() {
                             value={newInvestmentTarget}
                             onChange={(e) => setNewInvestmentTarget(e.target.value)}
                             placeholder="Opcional"
-                            className="w-full px-2.5 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-medium focus:ring-2 focus:ring-primary outline-none"
+                            className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-medium focus:ring-2 focus:ring-primary outline-none"
                           />
                         </div>
                       </div>
 
                       {newInvestmentAssetType === "Outro" && (
                         <div>
-                          <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-1 uppercase">
+                          <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-1 uppercase tracking-wider">
                             Especifica o Tipo
                           </label>
                           <input
@@ -1085,7 +1095,7 @@ export default function GestaoPage() {
                             value={newInvestmentCustomAssetType}
                             onChange={(e) => setNewInvestmentCustomAssetType(e.target.value)}
                             placeholder="Ex: Metais Preciosos, Arte..."
-                            className="w-full px-2.5 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-medium focus:ring-2 focus:ring-primary outline-none"
+                            className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-medium focus:ring-2 focus:ring-primary outline-none"
                           />
                         </div>
                       )}
@@ -1100,20 +1110,20 @@ export default function GestaoPage() {
                     const aporte = parseFloat(amount) || 0;
                     const nextBal = curBal + aporte;
                     return (
-                      <div className="p-3 bg-indigo-500/10 dark:bg-indigo-950/30 rounded-xl border border-indigo-200/50 dark:border-indigo-800/40 text-xs space-y-1">
+                      <div className="p-3 bg-white/70 dark:bg-slate-900/60 rounded-xl border border-indigo-200/50 dark:border-indigo-900/50 text-xs space-y-1.5 shadow-xs">
                         <div className="flex items-center justify-between text-slate-600 dark:text-slate-300">
-                          <span>Saldo Atual de {selectedInv.name}:</span>
-                          <span className="font-semibold text-slate-800 dark:text-slate-200">{formatCurrency(curBal)}</span>
+                          <span className="font-medium truncate mr-2">Saldo Atual ({selectedInv.name}):</span>
+                          <span className="font-semibold text-slate-800 dark:text-slate-200 whitespace-nowrap">{formatCurrency(curBal)}</span>
                         </div>
                         {aporte > 0 && (
                           <>
                             <div className="flex items-center justify-between text-emerald-600 dark:text-emerald-400 font-semibold">
                               <span>+ Novo Aporte:</span>
-                              <span>+{formatCurrency(aporte)}</span>
+                              <span className="whitespace-nowrap">+{formatCurrency(aporte)}</span>
                             </div>
-                            <div className="pt-1 border-t border-indigo-200/40 dark:border-indigo-800/40 flex items-center justify-between font-bold text-slate-900 dark:text-white">
+                            <div className="pt-1.5 border-t border-slate-200/60 dark:border-slate-800/80 flex items-center justify-between font-bold text-slate-900 dark:text-white">
                               <span>Novo Saldo Previsto:</span>
-                              <span className="text-indigo-600 dark:text-indigo-400">{formatCurrency(nextBal)}</span>
+                              <span className="text-indigo-600 dark:text-indigo-400 font-black whitespace-nowrap">{formatCurrency(nextBal)}</span>
                             </div>
                           </>
                         )}
@@ -1122,14 +1132,14 @@ export default function GestaoPage() {
                   })()}
 
                   {/* Checkbox de integração automática */}
-                  <label className="flex items-center gap-2 cursor-pointer pt-1">
+                  <label className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-white/40 dark:hover:bg-slate-800/40 transition-colors cursor-pointer select-none">
                     <input
                       type="checkbox"
                       checked={autoCreditInvestment}
                       onChange={(e) => setAutoCreditInvestment(e.target.checked)}
-                      className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-700"
+                      className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500 accent-indigo-600 cursor-pointer shrink-0"
                     />
-                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 select-none">
+                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 leading-tight">
                       Creditar e registar no histórico da aba <span className="text-indigo-600 dark:text-indigo-400 font-bold">Investir</span>
                     </span>
                   </label>
@@ -2229,59 +2239,52 @@ export default function GestaoPage() {
 
                 {/* 📈 Destino do Investimento na Edição */}
                 {editType === "expense" && isInvestmentCategory(categories.find((c: any) => String(c.id) === String(editCategoryId))) && (
-                  <div className="p-4 rounded-2xl bg-gradient-to-br from-indigo-50/90 via-sky-50/70 to-emerald-50/60 dark:from-slate-800/90 dark:via-indigo-950/40 dark:to-slate-800/80 border border-indigo-200/80 dark:border-indigo-800/60 space-y-3 animate-in fade-in duration-200">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-lg bg-indigo-500/10 dark:bg-indigo-400/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                  <div className="p-4 rounded-2xl bg-gradient-to-br from-indigo-50/80 via-sky-50/40 to-slate-50/50 dark:from-slate-800/90 dark:via-indigo-950/30 dark:to-slate-900/80 border border-indigo-200/70 dark:border-indigo-800/50 space-y-3.5 animate-in fade-in duration-200 shadow-sm">
+                    {/* Cabeçalho sem quebras inadequadas de linha */}
+                    <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-indigo-200/50 dark:border-indigo-800/50">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="w-7 h-7 rounded-lg bg-indigo-500/15 dark:bg-indigo-400/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
                           <TrendingUp className="w-3.5 h-3.5" />
                         </div>
-                        <span className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">
-                          Destino do Investimento
-                        </span>
+                        <div className="min-w-0">
+                          <h4 className="text-xs font-bold text-slate-900 dark:text-white leading-tight truncate">
+                            Destino do Investimento
+                          </h4>
+                          <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">
+                            Sincronizado com a aba Investir
+                          </p>
+                        </div>
                       </div>
-                      <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                        <Sparkles className="w-2.5 h-2.5" /> Aba Investir
+                      <span className="inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 whitespace-nowrap shrink-0">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" /> Integrado
                       </span>
                     </div>
 
                     <div>
-                      <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
-                        Ativo de Destino
+                      <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1.5 uppercase tracking-wider">
+                        Ativo / Investimento de Destino
                       </label>
-                      <select
+                      <CustomSelect
                         value={editDestinationInvestmentId}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setEditDestinationInvestmentId(val);
-                          setEditIsCreatingNewInvestment(val === "new");
+                        onChange={(val) => {
+                          const str = String(val);
+                          setEditDestinationInvestmentId(str);
+                          setEditIsCreatingNewInvestment(str === "new");
                         }}
-                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700/80 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-semibold focus:ring-2 focus:ring-primary outline-none"
-                      >
-                        <option value="">Selecione o investimento de destino...</option>
-                        <option value="new" className="font-bold text-indigo-600 dark:text-indigo-400">
-                          ✨ + Criar Novo Ativo / Investimento...
-                        </option>
-                        {investments.length > 0 && (
-                          <optgroup label="Investimentos Existentes">
-                            {investments.map((inv: any) => (
-                              <option key={inv.id} value={String(inv.id)}>
-                                {inv.name} ({inv.asset_type || "Geral"}) — Saldo: {formatCurrency(inv.balance)}
-                              </option>
-                            ))}
-                          </optgroup>
-                        )}
-                      </select>
+                        options={investmentSelectOptions}
+                        placeholder="Selecione o investimento de destino..."
+                      />
                     </div>
 
                     {(editDestinationInvestmentId === "new" || editIsCreatingNewInvestment) && (
-                      <div className="p-3 bg-white/80 dark:bg-slate-900/80 rounded-xl border border-indigo-200/60 dark:border-indigo-900/60 space-y-2.5 animate-in fade-in duration-200">
+                      <div className="p-3.5 bg-white/80 dark:bg-slate-900/80 rounded-xl border border-indigo-200/60 dark:border-indigo-900/60 space-y-3 animate-in fade-in duration-200 shadow-xs">
                         <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-600 dark:text-indigo-400">
                           <Plus className="w-3.5 h-3.5" />
                           <span>Configurar Novo Ativo</span>
                         </div>
 
                         <div>
-                          <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-1 uppercase">
+                          <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-1 uppercase tracking-wider">
                             Nome do Ativo *
                           </label>
                           <input
@@ -2290,32 +2293,24 @@ export default function GestaoPage() {
                             value={editNewInvestmentName}
                             onChange={(e) => setEditNewInvestmentName(e.target.value)}
                             placeholder="Ex: ETF VWCE, Apple, Poupança..."
-                            className="w-full px-3 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-medium focus:ring-2 focus:ring-primary outline-none"
+                            className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-medium focus:ring-2 focus:ring-primary outline-none"
                           />
                         </div>
 
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                           <div>
-                            <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-1 uppercase">
+                            <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-1 uppercase tracking-wider">
                               Tipo de Ativo
                             </label>
-                            <select
+                            <CustomSelect
                               value={editNewInvestmentAssetType}
-                              onChange={(e) => setEditNewInvestmentAssetType(e.target.value)}
-                              className="w-full px-2.5 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-medium focus:ring-2 focus:ring-primary outline-none"
-                            >
-                              <option value="Ações">Ações</option>
-                              <option value="ETFs">ETFs</option>
-                              <option value="Cripto">Cripto</option>
-                              <option value="Imobiliário">Imobiliário</option>
-                              <option value="Renda Fixa">Renda Fixa</option>
-                              <option value="Fundos">Fundos</option>
-                              <option value="Numerário">Numerário</option>
-                              <option value="Outro">Outro</option>
-                            </select>
+                              onChange={(val) => setEditNewInvestmentAssetType(String(val))}
+                              options={ASSET_TYPE_OPTIONS}
+                              placeholder="Selecione o tipo..."
+                            />
                           </div>
                           <div>
-                            <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-1 uppercase">
+                            <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-1 uppercase tracking-wider">
                               Meta / Objetivo (€)
                             </label>
                             <input
@@ -2324,14 +2319,14 @@ export default function GestaoPage() {
                               value={editNewInvestmentTarget}
                               onChange={(e) => setEditNewInvestmentTarget(e.target.value)}
                               placeholder="Opcional"
-                              className="w-full px-2.5 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-medium focus:ring-2 focus:ring-primary outline-none"
+                              className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-medium focus:ring-2 focus:ring-primary outline-none"
                             />
                           </div>
                         </div>
 
                         {editNewInvestmentAssetType === "Outro" && (
                           <div>
-                            <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-1 uppercase">
+                            <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-1 uppercase tracking-wider">
                               Especifica o Tipo
                             </label>
                             <input
@@ -2339,22 +2334,51 @@ export default function GestaoPage() {
                               value={editNewInvestmentCustomAssetType}
                               onChange={(e) => setEditNewInvestmentCustomAssetType(e.target.value)}
                               placeholder="Ex: Metais Preciosos, Arte..."
-                              className="w-full px-2.5 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-medium focus:ring-2 focus:ring-primary outline-none"
+                              className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-medium focus:ring-2 focus:ring-primary outline-none"
                             />
                           </div>
                         )}
                       </div>
                     )}
 
+                    {/* Projeção / Pré-visualização do Impacto na Edição */}
+                    {editDestinationInvestmentId && editDestinationInvestmentId !== "new" && (() => {
+                      const selectedInv = investments.find((i: any) => String(i.id) === String(editDestinationInvestmentId));
+                      if (!selectedInv) return null;
+                      const curBal = parseFloat(selectedInv.balance) || 0;
+                      const aporte = parseFloat(editAmount) || 0;
+                      const nextBal = curBal + aporte;
+                      return (
+                        <div className="p-3 bg-white/70 dark:bg-slate-900/60 rounded-xl border border-indigo-200/50 dark:border-indigo-900/50 text-xs space-y-1.5 shadow-xs">
+                          <div className="flex items-center justify-between text-slate-600 dark:text-slate-300">
+                            <span className="font-medium truncate mr-2">Saldo Atual ({selectedInv.name}):</span>
+                            <span className="font-semibold text-slate-800 dark:text-slate-200 whitespace-nowrap">{formatCurrency(curBal)}</span>
+                          </div>
+                          {aporte > 0 && (
+                            <>
+                              <div className="flex items-center justify-between text-emerald-600 dark:text-emerald-400 font-semibold">
+                                <span>+ Novo Aporte:</span>
+                                <span className="whitespace-nowrap">+{formatCurrency(aporte)}</span>
+                              </div>
+                              <div className="pt-1.5 border-t border-slate-200/60 dark:border-slate-800/80 flex items-center justify-between font-bold text-slate-900 dark:text-white">
+                                <span>Novo Saldo Previsto:</span>
+                                <span className="text-indigo-600 dark:text-indigo-400 font-black whitespace-nowrap">{formatCurrency(nextBal)}</span>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      );
+                    })()}
+
                     {editDestinationInvestmentId && (
-                      <label className="flex items-center gap-2 cursor-pointer pt-1">
+                      <label className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-white/40 dark:hover:bg-slate-800/40 transition-colors cursor-pointer select-none">
                         <input
                           type="checkbox"
                           checked={editAutoCreditInvestment}
                           onChange={(e) => setEditAutoCreditInvestment(e.target.checked)}
-                          className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-700"
+                          className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500 accent-indigo-600 cursor-pointer shrink-0"
                         />
-                        <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 select-none">
+                        <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 leading-tight">
                           Creditar e sincronizar valor na aba <span className="text-indigo-600 dark:text-indigo-400 font-bold">Investir</span>
                         </span>
                       </label>
@@ -2529,6 +2553,23 @@ export default function GestaoPage() {
         onCancel={() => {
           setShowSettleCreditModal(false);
           setCreditTxToSettle(null);
+        }}
+      />
+
+      {/* MODAL DE ELIMINAR CATEGORIA */}
+      <ConfirmModal
+        isOpen={showDeleteCatModal}
+        title="Eliminar categoria"
+        description={`Tens a certeza de que pretendes eliminar a categoria "${catToDelete?.name || "selecionada"}"? Só é possível eliminar categorias sem transações associadas.`}
+        confirmText="Eliminar Categoria"
+        cancelText="Cancelar"
+        variant="danger"
+        isLoading={isDeletingCategory}
+        onConfirm={confirmDeleteCategory}
+        onCancel={() => {
+          if (isDeletingCategory) return;
+          setShowDeleteCatModal(false);
+          setCatToDelete(null);
         }}
       />
 

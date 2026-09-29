@@ -2,6 +2,14 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { api } from "./api";
 import { toast } from "sonner";
+import { isExcludedExpenseCategory } from "./transactionAccounting";
+
+interface ExportCategory {
+  id: number;
+  name: string;
+  color?: string | null;
+  exclude_from_expenses?: boolean | null;
+}
 
 // Helper for currency
 const formatCurrency = (value: number) => {
@@ -23,30 +31,35 @@ export const exportToCSV = async () => {
       api.get("/categories")
     ]);
     const transactions = transactionsRes.data;
-    const categories = categoriesRes.data;
+    const categories: ExportCategory[] = Array.isArray(categoriesRes.data) ? categoriesRes.data : [];
 
-    const categoryMap = new Map(categories.map((c: any) => [c.id, c]));
+    const categoryMap = new Map<number, ExportCategory>(categories.map((category) => [category.id, category]));
 
     let csvContent = "Data,Categoria,Descricao,Tipo,Valor\n";
 
     let totalIncome = 0;
     let totalExpense = 0;
+    let totalCashOutflow = 0;
 
     transactions.forEach((t: any) => {
       const category = categoryMap.get(t.category_id);
       const catName = category ? category.name : "Sem Categoria";
       const isIncome = t.type && t.type.toUpperCase() === "INCOME";
-      const typeStr = isIncome ? "Receita" : "Despesa";
+      const isInvestmentContribution = !isIncome && isExcludedExpenseCategory(category);
+      const typeStr = isIncome ? "Receita" : isInvestmentContribution ? "Aporte" : "Despesa";
       const valueStr = t.amount.toString().replace(".", ",");
       
       if (isIncome) totalIncome += t.amount;
-      else totalExpense += t.amount;
+      else {
+        totalCashOutflow += t.amount;
+        if (!isInvestmentContribution) totalExpense += t.amount;
+      }
 
       const row = `"${formatDate(t.date)}","${catName}","${t.description || ""}","${typeStr}","${valueStr}"`;
       csvContent += row + "\n";
     });
 
-    const balance = totalIncome - totalExpense;
+    const balance = totalIncome - totalCashOutflow;
     csvContent += `\n"","","","Total Receitas","${totalIncome.toString().replace(".", ",")}"\n`;
     csvContent += `"","","","Total Despesas","${totalExpense.toString().replace(".", ",")}"\n`;
     csvContent += `"","","","Saldo Total","${balance.toString().replace(".", ",")}"\n`;
@@ -72,9 +85,9 @@ export const exportToPDF = async () => {
       api.get("/categories")
     ]);
     const transactions = transactionsRes.data;
-    const categories = categoriesRes.data;
+    const categories: ExportCategory[] = Array.isArray(categoriesRes.data) ? categoriesRes.data : [];
 
-    const categoryMap = new Map(categories.map((c: any) => [c.id, c]));
+    const categoryMap = new Map<number, ExportCategory>(categories.map((category) => [category.id, category]));
 
     const doc = new jsPDF();
 
@@ -95,6 +108,7 @@ export const exportToPDF = async () => {
 
     let totalIncome = 0;
     let totalExpense = 0;
+    let totalCashOutflow = 0;
 
     transactions.forEach((t: any) => {
       const category = categoryMap.get(t.category_id);
@@ -102,11 +116,15 @@ export const exportToPDF = async () => {
       const catColorHex = category && category.color ? category.color : "#94a3b8"; // default slate-400
       
       const isIncome = t.type && t.type.toUpperCase() === "INCOME";
-      const typeStr = isIncome ? "Receita" : "Despesa";
+      const isInvestmentContribution = !isIncome && isExcludedExpenseCategory(category);
+      const typeStr = isIncome ? "Receita" : isInvestmentContribution ? "Aporte" : "Despesa";
       const valStr = formatCurrency(t.amount);
 
       if (isIncome) totalIncome += t.amount;
-      else totalExpense += t.amount;
+      else {
+        totalCashOutflow += t.amount;
+        if (!isInvestmentContribution) totalExpense += t.amount;
+      }
 
       const rowData = [
         formatDate(t.date),
@@ -155,7 +173,7 @@ export const exportToPDF = async () => {
       }
     });
 
-    const balance = totalIncome - totalExpense;
+    const balance = totalIncome - totalCashOutflow;
     const finalY = (doc as any).lastAutoTable.finalY + 10;
     
     doc.setFontSize(12);
@@ -394,10 +412,10 @@ export const exportGeneralMonthlyReportPDF = async (year: number, month: number)
     ]);
     
     const allTransactions = transactionsRes.data;
-    const categories = categoriesRes.data;
+    const categories: ExportCategory[] = Array.isArray(categoriesRes.data) ? categoriesRes.data : [];
     const investments = investmentsRes.data;
 
-    const categoryMap = new Map(categories.map((c: any) => [c.id, c]));
+    const categoryMap = new Map<number, ExportCategory>(categories.map((category) => [category.id, category]));
 
     // Filtrar transações pelo mês e ano escolhidos
     const filteredTransactions = allTransactions.filter((t: any) => {
@@ -424,6 +442,7 @@ export const exportGeneralMonthlyReportPDF = async (year: number, month: number)
 
     let totalIncome = 0;
     let totalExpense = 0;
+    let totalCashOutflow = 0;
 
     filteredTransactions.forEach((t: any) => {
       const category = categoryMap.get(t.category_id);
@@ -431,11 +450,15 @@ export const exportGeneralMonthlyReportPDF = async (year: number, month: number)
       const catColorHex = category && category.color ? category.color : "#94a3b8";
       
       const isIncome = t.type && t.type.toUpperCase() === "INCOME";
-      const typeStr = isIncome ? "Receita" : "Despesa";
+      const isInvestmentContribution = !isIncome && isExcludedExpenseCategory(category);
+      const typeStr = isIncome ? "Receita" : isInvestmentContribution ? "Aporte" : "Despesa";
       const valStr = formatCurrency(t.amount);
 
       if (isIncome) totalIncome += t.amount;
-      else totalExpense += t.amount;
+      else {
+        totalCashOutflow += t.amount;
+        if (!isInvestmentContribution) totalExpense += t.amount;
+      }
 
       tableRows.push([formatDate(t.date), catName, t.description || "-", typeStr, valStr]);
       rowColors.push({ catColorHex, isIncome });
@@ -479,7 +502,7 @@ export const exportGeneralMonthlyReportPDF = async (year: number, month: number)
     const finalY = (doc as any).lastAutoTable ? (doc as any).lastAutoTable.finalY + 15 : 55;
     
     // Resumo Financeiro
-    const balance = totalIncome - totalExpense;
+    const balance = totalIncome - totalCashOutflow;
     doc.setFontSize(14);
     doc.setTextColor(30, 41, 59);
     doc.text("Resumo de Fluxo de Caixa", 14, finalY);

@@ -11,10 +11,10 @@ export interface Option {
   color?: string | null;
 }
 
-interface CustomSelectProps {
+interface CustomSelectProps<T extends string | number = string | number> {
   options: Option[];
-  value: string | number;
-  onChange: (value: string | number) => void;
+  value: T;
+  onChange: (value: T) => void;
   placeholder?: string;
   required?: boolean;
   onAddNew?: () => void;
@@ -22,7 +22,7 @@ interface CustomSelectProps {
   onDeleteOption?: (value: string | number) => void;
 }
 
-export function CustomSelect({
+export function CustomSelect<T extends string | number = string | number>({
   options,
   value,
   onChange,
@@ -31,7 +31,7 @@ export function CustomSelect({
   onAddNew,
   addNewLabel,
   onDeleteOption,
-}: CustomSelectProps) {
+}: CustomSelectProps<T>) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -53,7 +53,10 @@ export function CustomSelect({
       <select
         required={required}
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e) => {
+          const val = typeof value === 'number' ? (Number(e.target.value) as T) : (e.target.value as T);
+          onChange(val);
+        }}
         className="opacity-0 absolute inset-0 pointer-events-none -z-10 w-full h-full"
         tabIndex={-1}
       >
@@ -80,7 +83,7 @@ export function CustomSelect({
       </button>
 
       {isOpen && (
-        <div className="absolute z-50 min-w-full w-max max-w-[280px] mt-2 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+        <div className="absolute z-50 left-0 right-0 min-w-full w-full mt-2 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
           <div className="max-h-60 overflow-y-auto py-1 [scrollbar-width:thin]">
             {options.length === 0 ? (
               <div className="px-4 py-3 text-slate-500 dark:text-slate-400 text-sm text-center font-medium">Nenhuma opção disponível</div>
@@ -90,7 +93,7 @@ export function CustomSelect({
                   key={option.value}
                   type="button"
                   onClick={() => {
-                    onChange(option.value);
+                    onChange(option.value as T);
                     setIsOpen(false);
                   }}
                   className={`w-full text-left px-4 py-2.5 text-sm transition-colors flex items-center justify-between ${

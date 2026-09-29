@@ -5,6 +5,7 @@ import { Lightbulb, Plus, Trash2, TrendingUp, TrendingDown, Wallet, Calculator, 
 import { exportSimulacaoToCSV, exportSimulacaoToPDF } from "@/lib/exportUtils";
 import { api } from "@/lib/api";
 import { ModalPortal } from "@/components/ModalPortal";
+import { CustomSelect } from "@/components/CustomSelect";
 import { toast } from "sonner";
 
 type Transaction = {
@@ -376,18 +377,20 @@ export default function SimulacaoPage() {
             {/* Pagination Controls */}
             {expenses.length > 0 && (
               <div className="flex flex-col sm:flex-row items-center justify-between mt-6 pt-4 border-t border-slate-100 dark:border-slate-800 gap-3">
-                <div className="flex items-center justify-between w-full sm:w-auto gap-2">
-                  <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Itens por página:</span>
-                  <select 
-                    value={itemsPerPage}
-                    onChange={(e) => setItemsPerPage(Number(e.target.value))}
-                    className="text-xs font-semibold bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 outline-none focus:ring-1 focus:ring-rose-500 text-slate-700 dark:text-slate-300 transition-colors"
-                  >
-                    <option value={3}>3</option>
-                    <option value={5}>5</option>
-                    <option value={10}>10</option>
-                    <option value={20}>20</option>
-                  </select>
+                <div className="flex items-center justify-between w-full sm:w-auto gap-2.5">
+                  <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">Itens por página:</span>
+                  <div className="w-20">
+                    <CustomSelect 
+                      value={itemsPerPage}
+                      onChange={(val) => setItemsPerPage(Number(val))}
+                      options={[
+                        { value: 3, label: "3" },
+                        { value: 5, label: "5" },
+                        { value: 10, label: "10" },
+                        { value: 20, label: "20" },
+                      ]}
+                    />
+                  </div>
                 </div>
                 
                 <div className="flex items-center justify-between w-full sm:w-auto gap-2">

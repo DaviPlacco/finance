@@ -24,6 +24,8 @@ import { ConfirmModal } from "@/components/ConfirmModal";
 import { CategoryIcon, getStoredCategoryIcons } from "@/components/CategoryIcon";
 import { ModalPortal } from "@/components/ModalPortal";
 import { toast } from "sonner";
+import { buildYearOptions } from "@/lib/dateOptions";
+import { isExcludedExpenseCategory } from "@/lib/transactionAccounting";
 
 const MONTH_NAMES: Record<string, string> = {
   "1": "Janeiro",
@@ -181,6 +183,7 @@ export default function OrcamentosPage() {
         color: budgetToDelete.category.color,
         type: budgetToDelete.category.type,
         budget_limit: null,
+        exclude_from_expenses: Boolean(budgetToDelete.category.exclude_from_expenses),
         group_id: budgetToDelete.category.group_id
       });
       toast.success("Orçamento eliminado com sucesso!");
@@ -211,7 +214,7 @@ export default function OrcamentosPage() {
 
   const handleOpenNewModal = () => {
     setIsCreatingNew(true);
-    const expenseCategories = categories.filter((c: any) => isExpense(c.type));
+    const expenseCategories = categories.filter((c: any) => isExpense(c.type) && !isExcludedExpenseCategory(c));
     const firstWithoutBudget = expenseCategories.find((c: any) => !c.budget_limit || c.budget_limit <= 0);
     const defaultCatId = firstWithoutBudget ? String(firstWithoutBudget.id) : (expenseCategories[0] ? String(expenseCategories[0].id) : "");
     setSelectedCategoryId(defaultCatId);
@@ -242,6 +245,7 @@ export default function OrcamentosPage() {
         color: cat.color,
         type: cat.type,
         budget_limit: amount,
+        exclude_from_expenses: Boolean(cat.exclude_from_expenses),
         group_id: cat.group_id
       });
       toast.success(isCreatingNew ? "Orçamento criado com sucesso!" : "Orçamento atualizado com sucesso!");
@@ -266,13 +270,17 @@ export default function OrcamentosPage() {
   if (loading) return <div className="animate-pulse p-8">A carregar previsões...</div>;
 
   // Filter categories that have a budget limit and are expenses
-  const budgetCategories = categories.filter((c: any) => isExpense(c.type) && c.budget_limit && Number(c.budget_limit) > 0);
-  const allExpenseCategories = categories.filter((c: any) => isExpense(c.type));
+  const budgetCategories = categories.filter((c: any) => isExpense(c.type) && !isExcludedExpenseCategory(c) && c.budget_limit && Number(c.budget_limit) > 0);
+  const allExpenseCategories = categories.filter((c: any) => isExpense(c.type) && !isExcludedExpenseCategory(c));
 
   // Calculate spent amount per category
   const categorySpending: Record<string, number> = {};
   let totalSpent = 0;
   transactions.forEach((t: any) => {
+    if (!isExpense(t.type)) return;
+    const category = categories.find((c: any) => String(c.id) === String(t.category_id));
+    if (isExcludedExpenseCategory(category)) return;
+
     if (!categorySpending[t.category_id]) categorySpending[t.category_id] = 0;
     categorySpending[t.category_id] += t.amount;
     
@@ -288,13 +296,18 @@ export default function OrcamentosPage() {
   // Análise detalhada por categoria
   const exceededCategories = budgetCategories.filter((cat: any) => {
     const spent = categorySpending[cat.id] || 0;
-    return spent >= cat.budget_limit;
+    return Math.round(spent * 100) > Math.round(cat.budget_limit * 100);
+  });
+
+  const reachedCategories = budgetCategories.filter((cat: any) => {
+    const spent = categorySpending[cat.id] || 0;
+    return Math.round(spent * 100) === Math.round(cat.budget_limit * 100);
   });
 
   const warningCategories = budgetCategories.filter((cat: any) => {
     const spent = categorySpending[cat.id] || 0;
     const pct = (spent / cat.budget_limit) * 100;
-    return pct >= 70 && pct < 100;
+    return pct >= 70 && Math.round(spent * 100) < Math.round(cat.budget_limit * 100);
   });
 
   let bannerState: 'danger' | 'warning' | 'success' = 'success';
@@ -319,6 +332,19 @@ export default function OrcamentosPage() {
       bannerTitle = `Atenção: ${exceededCategories.length} Orçamentos Ultrapassados`;
     } else {
       bannerTitle = 'Orçamento Global Ultrapassado';
+    }
+  } else if (reachedCategories.length > 0) {
+    bannerState = 'danger';
+    bannerIcon = <AlertTriangle className="w-8 h-8" />;
+    bannerBg = 'bg-rose-50 border-rose-200 dark:bg-rose-900/10 dark:border-rose-900/30';
+    iconBg = 'bg-rose-500 text-white shadow-[0_0_20px_rgba(244,63,94,0.3)]';
+    titleColor = 'text-rose-700 dark:text-rose-400';
+    textSubColor = 'text-rose-600 dark:text-rose-500';
+
+    if (reachedCategories.length === 1) {
+      bannerTitle = `Atenção: 1 Orçamento no Limite (${reachedCategories[0].name})`;
+    } else {
+      bannerTitle = `Atenção: ${reachedCategories.length} Orçamentos no Limite Máximo`;
     }
   } else if (warningCategories.length > 0) {
     bannerState = 'warning';
@@ -345,10 +371,12 @@ export default function OrcamentosPage() {
   const detailsSpent = selectedCategoryForDetails ? (categorySpending[selectedCategoryForDetails.id] || 0) : 0;
   const detailsLimit = selectedCategoryForDetails ? selectedCategoryForDetails.budget_limit : 0;
   const detailsPercentage = detailsLimit > 0 ? (detailsSpent / detailsLimit) * 100 : 0;
+  const isDetailsOver = Math.round(detailsSpent * 100) > Math.round(detailsLimit * 100);
+  const isDetailsReached = Math.round(detailsSpent * 100) === Math.round(detailsLimit * 100);
 
   let detailsStatusColor = "bg-emerald-500";
   let detailsTextColor = "text-emerald-500";
-  if (detailsPercentage >= 100) {
+  if (isDetailsOver || isDetailsReached) {
     detailsStatusColor = "bg-rose-500";
     detailsTextColor = "text-rose-500";
   } else if (detailsPercentage >= 70) {
@@ -389,11 +417,7 @@ export default function OrcamentosPage() {
               <CustomSelect 
                 value={filterYear} 
                 onChange={setFilterYear as any} 
-                options={[
-                  { value: "Todos", label: "Todos" },
-                  { value: "2025", label: "2025" },
-                  { value: "2026", label: "2026" }
-                ]} 
+                options={buildYearOptions()}
               />
             </div>
             <div className="w-full sm:w-32">
@@ -468,18 +492,22 @@ export default function OrcamentosPage() {
           {budgetCategories.map((cat: any) => {
             const spent = categorySpending[cat.id] || 0;
             const limit = cat.budget_limit;
-            const percentage = Math.min((spent / limit) * 100, 100);
+            const rawPercentage = limit > 0 ? (spent / limit) * 100 : 0;
+            const progressPercentage = Math.min(rawPercentage, 100);
             const catTransactionsCount = transactions.filter((t: any) => String(t.category_id) === String(cat.id)).length;
             
+            const isExceeded = Math.round(spent * 100) > Math.round(limit * 100);
+            const isReached = Math.round(spent * 100) === Math.round(limit * 100);
+
             let statusColor = "bg-emerald-500";
             let textColor = "text-emerald-500";
             let statusIcon = <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />;
             
-            if (percentage >= 100) {
+            if (isExceeded || isReached) {
               statusColor = "bg-rose-500";
               textColor = "text-rose-500";
               statusIcon = <AlertTriangle className="w-5 h-5 text-rose-500 shrink-0" />;
-            } else if (percentage >= 70) {
+            } else if (rawPercentage >= 70) {
               statusColor = "bg-amber-500";
               textColor = "text-amber-500";
               statusIcon = <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0" />;
@@ -532,7 +560,11 @@ export default function OrcamentosPage() {
                       <span className={`text-xl sm:text-2xl font-black ${textColor}`}>{formatCurrency(spent)}</span>
                     </div>
                     <span className={`text-xs sm:text-sm font-black ${textColor}`}>
-                      {percentage >= 100 ? `${percentage.toFixed(0)}% (Ultrapassado)` : `${percentage.toFixed(0)}%`}
+                      {isExceeded 
+                        ? `${rawPercentage.toFixed(0)}% (Ultrapassado)` 
+                        : isReached 
+                          ? `100% (Atingido)` 
+                          : `${rawPercentage.toFixed(0)}%`}
                     </span>
                   </div>
                   
@@ -540,15 +572,19 @@ export default function OrcamentosPage() {
                   <div className="h-2.5 sm:h-3 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                     <div 
                       className={`h-full rounded-full ${statusColor} transition-all duration-1000 ease-out`}
-                      style={{ width: `${percentage}%` }}
+                      style={{ width: `${progressPercentage}%` }}
                     />
                   </div>
                   
-                  {percentage >= 100 && (
+                  {isExceeded ? (
+                    <p className="text-[11px] sm:text-xs font-bold text-rose-500 bg-rose-50 dark:bg-rose-500/10 p-2 rounded-xl text-center">
+                      Ultrapassaste o teu limite em {formatCurrency(spent - limit)}!
+                    </p>
+                  ) : isReached ? (
                     <p className="text-[11px] sm:text-xs font-bold text-rose-500 bg-rose-50 dark:bg-rose-500/10 p-2 rounded-xl text-center">
                       Atingiste o teu limite máximo!
                     </p>
-                  )}
+                  ) : null}
 
                   {/* Interactive Footer Cue */}
                   <div className="pt-2.5 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs font-semibold text-slate-400 group-hover:text-primary transition-colors">
@@ -640,18 +676,20 @@ export default function OrcamentosPage() {
                 </div>
 
                 <div className={`p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl border flex flex-col justify-between ${
-                  detailsSpent >= detailsLimit 
+                  isDetailsOver 
                     ? 'bg-rose-50/60 dark:bg-rose-950/20 border-rose-200 dark:border-rose-900/40 text-rose-600 dark:text-rose-400' 
+                    : isDetailsReached
+                    ? 'bg-amber-50/60 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/40 text-amber-600 dark:text-amber-400'
                     : 'bg-emerald-50/60 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/40 text-emerald-600 dark:text-emerald-400'
                 }`}>
                   <span className="text-[9px] sm:text-[11px] font-bold uppercase tracking-wider opacity-80 truncate">
-                    {detailsSpent >= detailsLimit ? 'Ultrapassado' : 'Disponível'}
+                    {isDetailsOver ? 'Ultrapassado' : isDetailsReached ? 'Limite Atingido' : 'Disponível'}
                   </span>
                   <span className="text-xs sm:text-lg md:text-xl font-black mt-0.5 sm:mt-1 truncate" title={formatCurrency(Math.abs(detailsLimit - detailsSpent))}>
                     {formatCurrency(Math.abs(detailsLimit - detailsSpent))}
                   </span>
                   <span className="text-[9px] sm:text-[11px] font-medium opacity-80 mt-0.5 truncate">
-                    {detailsSpent >= detailsLimit ? 'Excesso' : 'Margem'}
+                    {isDetailsOver ? 'Excesso' : isDetailsReached ? 'Esgotado' : 'Margem'}
                   </span>
                 </div>
               </div>
@@ -819,7 +857,7 @@ export default function OrcamentosPage() {
                 {isCreatingNew ? (
                   <CustomSelect
                     value={selectedCategoryId}
-                    onChange={(val) => setSelectedCategoryId(val)}
+                    onChange={(val) => setSelectedCategoryId(String(val))}
                     options={allExpenseCategories.map((c: any) => ({
                       value: String(c.id),
                       label: c.budget_limit ? `${c.name} (Atual: ${formatCurrency(c.budget_limit)})` : c.name,

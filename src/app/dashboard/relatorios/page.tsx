@@ -7,6 +7,8 @@ import { CustomSelect } from "@/components/CustomSelect";
 import { toast } from "sonner";
 import { exportGeneralMonthlyReportPDF } from "@/lib/exportUtils";
 import { api } from "@/lib/api";
+import { buildYearOptions } from "@/lib/dateOptions";
+import { getExcludedExpenseCategoryIds } from "@/lib/transactionAccounting";
 
 type ReportHistory = {
   year: number;
@@ -40,8 +42,48 @@ export default function RelatoriosPage() {
 
   const fetchHistory = async () => {
     try {
-      const response = await api.get("/reports/history");
-      setHistory(response.data);
+      const [historyResponse, transactionsResponse, categoriesResponse] = await Promise.all([
+        api.get("/reports/history").catch(() => ({ data: [] })),
+        api.get("/transactions").catch(() => ({ data: [] })),
+        api.get("/categories").catch(() => ({ data: [] })),
+      ]);
+      const transactions: any[] = Array.isArray(transactionsResponse.data) ? transactionsResponse.data : [];
+      const categories: any[] = Array.isArray(categoriesResponse.data) ? categoriesResponse.data : [];
+
+      if (transactions.length === 0) {
+        setHistory(Array.isArray(historyResponse.data) ? historyResponse.data : []);
+        return;
+      }
+
+      const excludedCategoryIds = getExcludedExpenseCategoryIds(categories);
+      const historyByPeriod = new Map<string, ReportHistory>();
+      transactions.forEach((transaction: any) => {
+        const date = new Date(transaction.date);
+        if (Number.isNaN(date.getTime())) return;
+
+        const year = date.getFullYear();
+        const month = date.getMonth() + 1;
+        const key = `${year}-${String(month).padStart(2, "0")}`;
+        const period = historyByPeriod.get(key) || { year, month, income: 0, expense: 0, balance: 0 };
+
+        if (transaction.type === "income" && !transaction.is_transfer) {
+          period.income += Number(transaction.amount) || 0;
+        } else if (
+          transaction.type === "expense"
+          && !excludedCategoryIds.has(String(transaction.category_id))
+        ) {
+          period.expense += Number(transaction.amount) || 0;
+        }
+
+        period.balance = period.income - period.expense;
+        historyByPeriod.set(key, period);
+      });
+
+      setHistory(
+        Array.from(historyByPeriod.values()).sort((a, b) => (
+          b.year - a.year || b.month - a.month
+        )),
+      );
     } catch (error) {
       console.error("Erro ao carregar histórico", error);
     } finally {
@@ -99,11 +141,7 @@ export default function RelatoriosPage() {
                 <CustomSelect 
                   value={filterYear} 
                   onChange={setFilterYear as any} 
-                  options={[
-                    { value: "2024", label: "2024" },
-                    { value: "2025", label: "2025" },
-                    { value: "2026", label: "2026" }
-                  ]} 
+                  options={buildYearOptions(false)}
                 />
               </div>
               <div>

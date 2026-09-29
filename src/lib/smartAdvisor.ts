@@ -1,4 +1,5 @@
 import { api } from "@/lib/api";
+import { getExcludedExpenseCategoryIds } from "@/lib/transactionAccounting";
 
 export interface SmartInsight {
   id: string;
@@ -39,7 +40,11 @@ export async function generateSmartInsights(): Promise<SmartInsight[]> {
     const insights: SmartInsight[] = [];
 
     // 1. Cálculos de Despesas e Receitas
-    const expenses = transactions.filter((t) => t.type === "expense");
+    const excludedExpenseCategoryIds = getExcludedExpenseCategoryIds(categories);
+    const expenses = transactions.filter((t) => (
+      t.type === "expense"
+      && !excludedExpenseCategoryIds.has(String(t.category_id))
+    ));
     const incomes = transactions.filter((t) => t.type === "income" && !t.is_transfer);
 
     const totalIncome = incomes.reduce((acc, t) => acc + (t.amount || 0), 0);

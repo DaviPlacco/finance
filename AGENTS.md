@@ -44,3 +44,17 @@ Este repositório segue os mais rigorosos padrões de UX/UI, engenharia de softw
 - **Zero Placeholders**: Nunca deixar comentários de omissão ou código incompleto.
 - **Sincronização de Estado**: Manter sincronização reativa através de eventos globais de dashboard (`categories-updated`, `groups-updated`, etc.) e mutações otimistas com feedback de Toast.
 - **Tratamento Resiliente de Erros**: Toda a chamada à API deve ter blocos `try/catch` com feedback visual imediato via `toast.error()` e fallback elegante caso o backend esteja indisponível.
+
+---
+
+## 🚫 5. PROIBIÇÃO ABSOLUTA DE SELETORES/DROPDOWNS NATIVOS DO HTML (`<select>`)
+
+- **NUNCA utilizar a tag `<select>` padrão do HTML.**
+- Seletores nativos quebram a imersão estética da aplicação, abrem menus de contexto nativos do sistema operacional (estilo cinzento/azul do SO) completamente desconectados da identidade visual, e causam quebras de linha ou truncamentos inadequados de layout.
+- **Toda e qualquer seleção suspensa DEVE utilizar obrigatoriamente o componente customizado do projeto**:
+  - Componente: `@/components/CustomSelect`
+  - Características obrigatórias:
+    - Design premium 100% aderente ao Design System (Dark/Light mode, transições de abertura/fecho, anéis de foco, bordas refinadas).
+    - Suporte a ícones por opção, badges de cor e opções especiais (como `✨ + Criar Novo...`).
+    - Alinhamento de largura total (`min-w-full w-full`) para garantir que o menu acompanhe o tamanho do elemento acionador e impeça quebras de linha indesejadas.
+    - Suporte a fecho por clique exterior (`outside click`) e navegação intuitiva.

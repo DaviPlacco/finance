@@ -1,4 +1,9 @@
 import { api } from "@/lib/api";
+import {
+  calculateTransactionTotals,
+  getExcludedExpenseCategoryIds,
+  isTransactionPaid,
+} from "@/lib/transactionAccounting";
 
 export interface CategorySpendingProfile {
   id: string | number;
@@ -179,16 +184,25 @@ export async function refreshUserFinancialProfile(targetYear?: number, targetMon
     const categories: any[] = catRes?.data || [];
     const investmentsData: any[] = invRes?.data || [];
 
-    const expenses = transactions.filter((t) => t.type === "expense");
+    const excludedExpenseCategoryIds = getExcludedExpenseCategoryIds(categories);
+    const expenses = transactions.filter((t) => (
+      t.type === "expense"
+      && !excludedExpenseCategoryIds.has(String(t.category_id))
+      && isTransactionPaid(t)
+    ));
     const incomes = transactions.filter((t) => t.type === "income" && !t.is_transfer);
+    const calculatedTotals = calculateTransactionTotals(
+      transactions,
+      undefined,
+      excludedExpenseCategoryIds,
+    );
 
-    const totalIncome = typeof summary.income === "number" && summary.income > 0 
-      ? summary.income 
-      : incomes.reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
-    
-    const totalExpense = typeof summary.expense === "number" && summary.expense > 0 
-      ? summary.expense 
-      : expenses.reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
+    const totalIncome = transactions.length > 0
+      ? calculatedTotals.income
+      : (Number(summary.income) || incomes.reduce((acc, t) => acc + (Number(t.amount) || 0), 0));
+    const totalExpense = transactions.length > 0
+      ? calculatedTotals.paidExpense
+      : (Number(summary.expense) || expenses.reduce((acc, t) => acc + (Number(t.amount) || 0), 0));
 
     const currentBalance = typeof summary.balance === "number" ? summary.balance : 0;
     const netCashFlow = totalIncome - totalExpense;

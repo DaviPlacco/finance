@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useId, useRef, useState } from "react";
 import { AlertTriangle, Trash2, X } from "lucide-react";
 import { ModalPortal } from "./ModalPortal";
 
@@ -27,29 +27,84 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
   onConfirm,
   onCancel,
 }) => {
+  const [shouldRender, setShouldRender] = useState(isOpen);
+  const [isVisible, setIsVisible] = useState(false);
+  const cancelButtonRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+  const descriptionId = useId();
+
+  useEffect(() => {
+    if (isOpen) {
+      setShouldRender(true);
+      const frame = window.requestAnimationFrame(() => setIsVisible(true));
+      return () => window.cancelAnimationFrame(frame);
+    }
+
+    setIsVisible(false);
+    const timeout = window.setTimeout(() => setShouldRender(false), 300);
+    return () => window.clearTimeout(timeout);
+  }, [isOpen]);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!isOpen) return;
-      if (e.key === "Escape") {
+      if (e.key === "Escape" && !isLoading) {
         onCancel();
+      }
+      if (e.key === "Tab") {
+        const focusableElements = dialogRef.current?.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        );
+        if (!focusableElements?.length) return;
+
+        const firstElement = focusableElements[0];
+        const lastElement = focusableElements[focusableElements.length - 1];
+        if (e.shiftKey && document.activeElement === firstElement) {
+          e.preventDefault();
+          lastElement.focus();
+        } else if (!e.shiftKey && document.activeElement === lastElement) {
+          e.preventDefault();
+          firstElement.focus();
+        }
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, onCancel]);
+  }, [isLoading, isOpen, onCancel]);
 
-  if (!isOpen) return null;
+  useEffect(() => {
+    if (!isOpen) return;
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    const timeout = window.setTimeout(() => cancelButtonRef.current?.focus(), 50);
+
+    return () => {
+      window.clearTimeout(timeout);
+      previouslyFocused?.focus();
+    };
+  }, [isOpen]);
+
+  if (!shouldRender) return null;
 
   const isDanger = variant === "danger";
   const isWarning = variant === "warning";
 
   return (
     <ModalPortal>
-      <div className="fixed inset-0 z-[200] w-screen h-screen flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md animate-in fade-in duration-200">
+      <div
+        className={`fixed inset-0 z-[200] w-screen h-screen flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+          isVisible ? "opacity-100" : "opacity-0"
+        }`}
+      >
         <div 
-          className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl p-6 max-w-md w-full animate-in zoom-in-95 duration-200 relative"
+          ref={dialogRef}
+          className={`bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl p-6 max-w-md w-full relative transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+            isVisible ? "translate-y-0 opacity-100 scale-100" : "translate-y-8 opacity-0 scale-95"
+          }`}
           role="dialog"
           aria-modal="true"
+          aria-labelledby={titleId}
+          aria-describedby={descriptionId}
         >
           <button
             onClick={onCancel}
@@ -78,10 +133,10 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
             </div>
 
             <div className="flex-1 pr-4">
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white leading-snug">
+              <h3 id={titleId} className="text-lg font-bold text-slate-900 dark:text-white leading-snug">
                 {title}
               </h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed">
+              <p id={descriptionId} className="text-sm text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed">
                 {description}
               </p>
             </div>
@@ -89,6 +144,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
 
           <div className="flex items-center gap-3 mt-6">
             <button
+              ref={cancelButtonRef}
               type="button"
               onClick={onCancel}
               disabled={isLoading}
