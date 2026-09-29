@@ -261,10 +261,16 @@ export default function DashboardPage() {
     window.addEventListener("categories-updated", handleUpdates);
     window.addEventListener("groups-updated", handleUpdates);
     window.addEventListener("user-updated", handleUserUpdate);
+    window.addEventListener("investments-updated", handleUpdates);
+    window.addEventListener("transactions-updated", handleUpdates);
+    window.addEventListener("dashboard-updated", handleUpdates);
     return () => {
       window.removeEventListener("categories-updated", handleUpdates);
       window.removeEventListener("groups-updated", handleUpdates);
       window.removeEventListener("user-updated", handleUserUpdate);
+      window.removeEventListener("investments-updated", handleUpdates);
+      window.removeEventListener("transactions-updated", handleUpdates);
+      window.removeEventListener("dashboard-updated", handleUpdates);
     };
   }, []);
 

@@ -86,11 +86,23 @@ export const PAYMENT_METHODS = [
   { id: "Outro", label: "Outro", icon: "🔄", color: "#64748b" },
 ];
 
+export const isInvestmentCategory = (cat?: any) => {
+  if (!cat) return false;
+  const name = String(cat.name || "").trim().toLowerCase();
+  const catType = String(cat.type || "").trim().toLowerCase();
+  return name.includes("investimento") || catType === "investment";
+};
+
 export default function GestaoPage() {
   const [transactions, setTransactions] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   
+  // Format currency helper
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('pt-PT', { style: 'currency', currency: 'EUR' }).format(value);
+  };
+
   // Form state
   const [amount, setAmount] = useState("");
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
@@ -99,6 +111,25 @@ export default function GestaoPage() {
   const [paymentMethod, setPaymentMethod] = useState("");
   const [type, setType] = useState("expense");
   const [receiptImage, setReceiptImage] = useState<string | null>(null);
+
+  // Investments state for integration with "Investir"
+  const [investments, setInvestments] = useState<any[]>([]);
+  const [destinationInvestmentId, setDestinationInvestmentId] = useState<string>("");
+  const [isCreatingNewInvestment, setIsCreatingNewInvestment] = useState(false);
+  const [newInvestmentName, setNewInvestmentName] = useState("");
+  const [newInvestmentAssetType, setNewInvestmentAssetType] = useState("Ações");
+  const [newInvestmentCustomAssetType, setNewInvestmentCustomAssetType] = useState("");
+  const [newInvestmentTarget, setNewInvestmentTarget] = useState("");
+  const [autoCreditInvestment, setAutoCreditInvestment] = useState(true);
+
+  // Edit form investment destination state
+  const [editDestinationInvestmentId, setEditDestinationInvestmentId] = useState<string>("");
+  const [editIsCreatingNewInvestment, setEditIsCreatingNewInvestment] = useState(false);
+  const [editNewInvestmentName, setEditNewInvestmentName] = useState("");
+  const [editNewInvestmentAssetType, setEditNewInvestmentAssetType] = useState("Ações");
+  const [editNewInvestmentCustomAssetType, setEditNewInvestmentCustomAssetType] = useState("");
+  const [editNewInvestmentTarget, setEditNewInvestmentTarget] = useState("");
+  const [editAutoCreditInvestment, setEditAutoCreditInvestment] = useState(false);
 
   const [isAddingCategory, setIsAddingCategory] = useState(false);
   const [newCatName, setNewCatName] = useState("");
@@ -147,11 +178,17 @@ export default function GestaoPage() {
   }, [filterYear, filterMonth, filterType, filterCategoryId, filterPaymentMethod, filterStatus]);
 
   useEffect(() => {
-    const handleCategoriesUpdate = () => {
+    const handleUpdates = () => {
       fetchData();
     };
-    window.addEventListener("categories-updated", handleCategoriesUpdate);
-    return () => window.removeEventListener("categories-updated", handleCategoriesUpdate);
+    window.addEventListener("categories-updated", handleUpdates);
+    window.addEventListener("investments-updated", handleUpdates);
+    window.addEventListener("transactions-updated", handleUpdates);
+    return () => {
+      window.removeEventListener("categories-updated", handleUpdates);
+      window.removeEventListener("investments-updated", handleUpdates);
+      window.removeEventListener("transactions-updated", handleUpdates);
+    };
   }, []);
 
   async function fetchData() {
@@ -165,23 +202,27 @@ export default function GestaoPage() {
       if (filterStatus === "pending_credit") query.append("is_paid", "false");
       if (filterStatus === "paid") query.append("is_paid", "true");
 
-      const [transRes, catRes] = await Promise.all([
+      const [transRes, catRes, invRes] = await Promise.all([
         api.get(`/transactions?${query.toString()}`).catch(() => ({ data: [] })),
-        api.get("/categories").catch(() => ({ data: [] }))
+        api.get("/categories").catch(() => ({ data: [] })),
+        api.get("/investments").catch(() => ({ data: [] }))
       ]);
       const storedIcons = getStoredCategoryIcons();
       const rawTx = Array.isArray(transRes?.data) ? transRes.data : [];
       const rawCats = Array.isArray(catRes?.data) ? catRes.data : [];
+      const rawInvs = Array.isArray(invRes?.data) ? invRes.data : [];
 
       setTransactions(rawTx);
       setCategories(rawCats.map((c: any) => ({
         ...c,
         icon: c.icon || storedIcons[String(c.id)] || null
       })));
+      setInvestments(rawInvs);
     } catch (err) {
       console.error("Erro ao carregar dados na gestão:", err);
       setTransactions([]);
       setCategories([]);
+      setInvestments([]);
     } finally {
       setLoading(false);
     }
@@ -239,29 +280,98 @@ export default function GestaoPage() {
   const handleAddTransaction = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const numAmount = parseFloat(amount);
+      if (isNaN(numAmount) || numAmount <= 0) {
+        toast.error("Por favor, introduz um valor válido.");
+        return;
+      }
+      if (!categoryId) {
+        toast.error("Por favor, seleciona uma categoria.");
+        return;
+      }
+
+      const selectedCategory = categories.find((c: any) => String(c.id) === String(categoryId));
+      const isInvCategory = type === "expense" && isInvestmentCategory(selectedCategory);
+
+      let destinationInvName = "";
+
+      // Sincronização automática com a aba Investir
+      if (isInvCategory && autoCreditInvestment) {
+        if (destinationInvestmentId === "new" || (investments.length === 0 && newInvestmentName.trim())) {
+          if (!newInvestmentName.trim()) {
+            toast.error("Por favor, indica o nome do novo ativo de investimento.");
+            return;
+          }
+          const finalAssetType = newInvestmentAssetType === "Outro" 
+            ? (newInvestmentCustomAssetType.trim() || "Outro") 
+            : (newInvestmentAssetType || "Ações");
+          
+          await api.post("/investments", {
+            name: newInvestmentName.trim(),
+            asset_type: finalAssetType,
+            balance: numAmount,
+            target: newInvestmentTarget ? parseFloat(newInvestmentTarget) : null
+          });
+          destinationInvName = newInvestmentName.trim();
+        } else if (destinationInvestmentId) {
+          const selectedInv = investments.find((i: any) => String(i.id) === String(destinationInvestmentId));
+          if (selectedInv) {
+            const currentBal = parseFloat(selectedInv.balance) || 0;
+            const newBal = currentBal + numAmount;
+            await api.put(`/investments/${selectedInv.id}`, {
+              name: selectedInv.name,
+              asset_type: selectedInv.asset_type,
+              balance: newBal,
+              target: selectedInv.target
+            });
+            destinationInvName = selectedInv.name;
+          }
+        }
+      }
+
       const isCreditExpense = type === "expense" && isCreditPayment(paymentMethod);
+      
+      let finalDescription = description.trim();
+      if (!finalDescription && destinationInvName) {
+        finalDescription = `Aporte - ${destinationInvName}`;
+      }
+
       await api.post("/transactions", {
-        amount: parseFloat(amount),
+        amount: numAmount,
         type,
         category_id: parseInt(categoryId),
         payment_method: paymentMethod || null,
-        description,
+        description: finalDescription || null,
         date,
         receipt_image: receiptImage,
         is_paid: isCreditExpense ? false : true
       });
+
       setAmount("");
       setDescription("");
       setPaymentMethod("");
       setReceiptImage(null);
+      setDestinationInvestmentId("");
+      setIsCreatingNewInvestment(false);
+      setNewInvestmentName("");
+      setNewInvestmentAssetType("Ações");
+      setNewInvestmentCustomAssetType("");
+      setNewInvestmentTarget("");
+      
       fetchData();
-      if (isCreditExpense) {
+
+      if (destinationInvName) {
+        toast.success(`Despesa registada e ${formatCurrency(numAmount)} adicionados a "${destinationInvName}" na aba Investir!`);
+      } else if (isCreditExpense) {
         toast.success("Despesa em Crédito registada! Ficou pendente e será debitada ao fechar a fatura.");
       } else {
         toast.success("Registo adicionado com sucesso!");
       }
+
       window.dispatchEvent(new CustomEvent("transactions-updated"));
       window.dispatchEvent(new CustomEvent("summary-updated"));
+      window.dispatchEvent(new CustomEvent("investments-updated"));
+      window.dispatchEvent(new CustomEvent("dashboard-updated"));
     } catch (err) {
       console.error("Failed to add transaction", err);
       toast.error("Erro ao adicionar registo");
@@ -327,12 +437,31 @@ export default function GestaoPage() {
     setEditPaymentMethod(t.payment_method || "");
     setEditReceiptImage(t.receipt_image || null);
     setEditIsPaid(t.is_paid !== false);
+
+    // Auto-identificar investimento correspondente se presente na descrição
+    let matchedInvId = "";
+    if (t.description && Array.isArray(investments)) {
+      const found = investments.find((inv: any) => 
+        t.description.toLowerCase().includes(inv.name.toLowerCase())
+      );
+      if (found) {
+        matchedInvId = String(found.id);
+      }
+    }
+    setEditDestinationInvestmentId(matchedInvId);
+    setEditIsCreatingNewInvestment(false);
+    setEditNewInvestmentName("");
+    setEditNewInvestmentAssetType("Ações");
+    setEditNewInvestmentCustomAssetType("");
+    setEditNewInvestmentTarget("");
+    setEditAutoCreditInvestment(false);
   };
 
   const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingTransaction) return;
-    if (!editAmount || parseFloat(editAmount) <= 0) {
+    const numAmount = parseFloat(editAmount);
+    if (!editAmount || numAmount <= 0) {
       toast.error("Por favor, insere um valor válido.");
       return;
     }
@@ -343,22 +472,71 @@ export default function GestaoPage() {
 
     setSavingEdit(true);
     try {
+      const editCategory = categories.find((c: any) => String(c.id) === String(editCategoryId));
+      const isInvCategory = editType === "expense" && isInvestmentCategory(editCategory);
+      let destinationInvName = "";
+
+      if (isInvCategory && editAutoCreditInvestment && editDestinationInvestmentId) {
+        if (editDestinationInvestmentId === "new") {
+          if (!editNewInvestmentName.trim()) {
+            toast.error("Por favor, indica o nome do novo ativo de investimento.");
+            setSavingEdit(false);
+            return;
+          }
+          const finalAssetType = editNewInvestmentAssetType === "Outro"
+            ? (editNewInvestmentCustomAssetType.trim() || "Outro")
+            : (editNewInvestmentAssetType || "Ações");
+
+          await api.post("/investments", {
+            name: editNewInvestmentName.trim(),
+            asset_type: finalAssetType,
+            balance: numAmount,
+            target: editNewInvestmentTarget ? parseFloat(editNewInvestmentTarget) : null
+          });
+          destinationInvName = editNewInvestmentName.trim();
+        } else {
+          const selectedInv = investments.find((i: any) => String(i.id) === String(editDestinationInvestmentId));
+          if (selectedInv) {
+            const currentBal = parseFloat(selectedInv.balance) || 0;
+            const newBal = currentBal + numAmount;
+            await api.put(`/investments/${selectedInv.id}`, {
+              name: selectedInv.name,
+              asset_type: selectedInv.asset_type,
+              balance: newBal,
+              target: selectedInv.target
+            });
+            destinationInvName = selectedInv.name;
+          }
+        }
+      }
+
+      let finalDescription = editDescription.trim();
+      if (!finalDescription && destinationInvName) {
+        finalDescription = `Aporte - ${destinationInvName}`;
+      }
+
       await api.put(`/transactions/${editingTransaction.id}`, {
-        amount: parseFloat(editAmount),
+        amount: numAmount,
         type: editType,
         category_id: parseInt(editCategoryId),
-        description: editDescription,
+        description: finalDescription || null,
         date: editDate,
         payment_method: editPaymentMethod || null,
         receipt_image: editReceiptImage,
         is_paid: editIsPaid
       });
 
-      toast.success("Transação atualizada com sucesso!");
+      if (destinationInvName) {
+        toast.success(`Transação atualizada e ${formatCurrency(numAmount)} sincronizados com "${destinationInvName}" na aba Investir!`);
+      } else {
+        toast.success("Transação atualizada com sucesso!");
+      }
       setEditingTransaction(null);
       fetchData();
       window.dispatchEvent(new CustomEvent("transactions-updated"));
       window.dispatchEvent(new CustomEvent("summary-updated"));
+      window.dispatchEvent(new CustomEvent("investments-updated"));
+      window.dispatchEvent(new CustomEvent("dashboard-updated"));
     } catch (err: any) {
       console.error("Erro ao atualizar transação:", err);
       toast.error(err?.response?.data?.detail || "Erro ao atualizar transação");
@@ -534,10 +712,6 @@ export default function GestaoPage() {
     } else {
       setSelectedTransactions([...selectedTransactions, id]);
     }
-  };
-
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-PT', { style: 'currency', currency: 'EUR' }).format(value);
   };
 
   const formatDate = (dateString: string) => {
@@ -792,6 +966,175 @@ export default function GestaoPage() {
                   onDeleteOption={handleDeleteCategory}
                 />
               </div>
+
+              {/* 📈 Destino do Investimento integrado com a aba Investir */}
+              {type === "expense" && isInvestmentCategory(categories.find((c: any) => String(c.id) === String(categoryId))) && (
+                <div className="p-4 rounded-2xl bg-gradient-to-br from-indigo-50/90 via-sky-50/70 to-emerald-50/60 dark:from-slate-800/90 dark:via-indigo-950/40 dark:to-slate-800/80 border border-indigo-200/80 dark:border-indigo-800/60 space-y-3.5 animate-in fade-in slide-in-from-top-2 duration-300 shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-lg bg-indigo-500/10 dark:bg-indigo-400/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                        <TrendingUp className="w-3.5 h-3.5" />
+                      </div>
+                      <span className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">
+                        Destino do Investimento
+                      </span>
+                    </div>
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                      <Sparkles className="w-2.5 h-2.5" /> Aba Investir Integrada
+                    </span>
+                  </div>
+
+                  <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
+                    Escolhe para onde este valor vai ou cria um novo ativo. O saldo e o histórico de aportes serão atualizados automaticamente na aba <strong className="text-indigo-600 dark:text-indigo-400">Investir</strong>.
+                  </p>
+
+                  {/* Seleção do Investimento */}
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      Ativo / Investimento de Destino
+                    </label>
+                    <select
+                      value={destinationInvestmentId}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setDestinationInvestmentId(val);
+                        setIsCreatingNewInvestment(val === "new");
+                      }}
+                      className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700/80 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-semibold focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
+                    >
+                      <option value="">Selecione o investimento de destino...</option>
+                      <option value="new" className="font-bold text-indigo-600 dark:text-indigo-400">
+                        ✨ + Criar Novo Ativo / Investimento...
+                      </option>
+                      {investments.length > 0 && (
+                        <optgroup label="Investimentos Existentes">
+                          {investments.map((inv: any) => (
+                            <option key={inv.id} value={String(inv.id)}>
+                              {inv.name} ({inv.asset_type || "Geral"}) — Saldo: {formatCurrency(inv.balance)}
+                            </option>
+                          ))}
+                        </optgroup>
+                      )}
+                    </select>
+                  </div>
+
+                  {/* Formulário Embutido para Novo Ativo */}
+                  {(destinationInvestmentId === "new" || isCreatingNewInvestment) && (
+                    <div className="p-3 bg-white/80 dark:bg-slate-900/80 rounded-xl border border-indigo-200/60 dark:border-indigo-900/60 space-y-2.5 animate-in fade-in duration-200">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-600 dark:text-indigo-400">
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Configurar Novo Ativo</span>
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-1 uppercase">
+                          Nome do Ativo *
+                        </label>
+                        <input
+                          type="text"
+                          required={destinationInvestmentId === "new"}
+                          value={newInvestmentName}
+                          onChange={(e) => setNewInvestmentName(e.target.value)}
+                          placeholder="Ex: ETF VWCE, Apple, Poupança..."
+                          className="w-full px-3 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-medium focus:ring-2 focus:ring-primary outline-none"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-1 uppercase">
+                            Tipo de Ativo
+                          </label>
+                          <select
+                            value={newInvestmentAssetType}
+                            onChange={(e) => setNewInvestmentAssetType(e.target.value)}
+                            className="w-full px-2.5 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-medium focus:ring-2 focus:ring-primary outline-none"
+                          >
+                            <option value="Ações">Ações</option>
+                            <option value="ETFs">ETFs</option>
+                            <option value="Cripto">Cripto</option>
+                            <option value="Imobiliário">Imobiliário</option>
+                            <option value="Renda Fixa">Renda Fixa</option>
+                            <option value="Fundos">Fundos</option>
+                            <option value="Numerário">Numerário</option>
+                            <option value="Outro">Outro</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-1 uppercase">
+                            Meta / Objetivo (€)
+                          </label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={newInvestmentTarget}
+                            onChange={(e) => setNewInvestmentTarget(e.target.value)}
+                            placeholder="Opcional"
+                            className="w-full px-2.5 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-medium focus:ring-2 focus:ring-primary outline-none"
+                          />
+                        </div>
+                      </div>
+
+                      {newInvestmentAssetType === "Outro" && (
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-1 uppercase">
+                            Especifica o Tipo
+                          </label>
+                          <input
+                            type="text"
+                            value={newInvestmentCustomAssetType}
+                            onChange={(e) => setNewInvestmentCustomAssetType(e.target.value)}
+                            placeholder="Ex: Metais Preciosos, Arte..."
+                            className="w-full px-2.5 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-medium focus:ring-2 focus:ring-primary outline-none"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Projeção / Pré-visualização do Impacto */}
+                  {destinationInvestmentId && destinationInvestmentId !== "new" && (() => {
+                    const selectedInv = investments.find((i: any) => String(i.id) === String(destinationInvestmentId));
+                    if (!selectedInv) return null;
+                    const curBal = parseFloat(selectedInv.balance) || 0;
+                    const aporte = parseFloat(amount) || 0;
+                    const nextBal = curBal + aporte;
+                    return (
+                      <div className="p-3 bg-indigo-500/10 dark:bg-indigo-950/30 rounded-xl border border-indigo-200/50 dark:border-indigo-800/40 text-xs space-y-1">
+                        <div className="flex items-center justify-between text-slate-600 dark:text-slate-300">
+                          <span>Saldo Atual de {selectedInv.name}:</span>
+                          <span className="font-semibold text-slate-800 dark:text-slate-200">{formatCurrency(curBal)}</span>
+                        </div>
+                        {aporte > 0 && (
+                          <>
+                            <div className="flex items-center justify-between text-emerald-600 dark:text-emerald-400 font-semibold">
+                              <span>+ Novo Aporte:</span>
+                              <span>+{formatCurrency(aporte)}</span>
+                            </div>
+                            <div className="pt-1 border-t border-indigo-200/40 dark:border-indigo-800/40 flex items-center justify-between font-bold text-slate-900 dark:text-white">
+                              <span>Novo Saldo Previsto:</span>
+                              <span className="text-indigo-600 dark:text-indigo-400">{formatCurrency(nextBal)}</span>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    );
+                  })()}
+
+                  {/* Checkbox de integração automática */}
+                  <label className="flex items-center gap-2 cursor-pointer pt-1">
+                    <input
+                      type="checkbox"
+                      checked={autoCreditInvestment}
+                      onChange={(e) => setAutoCreditInvestment(e.target.checked)}
+                      className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-700"
+                    />
+                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 select-none">
+                      Creditar e registar no histórico da aba <span className="text-indigo-600 dark:text-indigo-400 font-bold">Investir</span>
+                    </span>
+                  </label>
+                </div>
+              )}
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 uppercase tracking-wider">
@@ -1883,6 +2226,141 @@ export default function GestaoPage() {
                     addNewLabel="Nova Categoria"
                   />
                 </div>
+
+                {/* 📈 Destino do Investimento na Edição */}
+                {editType === "expense" && isInvestmentCategory(categories.find((c: any) => String(c.id) === String(editCategoryId))) && (
+                  <div className="p-4 rounded-2xl bg-gradient-to-br from-indigo-50/90 via-sky-50/70 to-emerald-50/60 dark:from-slate-800/90 dark:via-indigo-950/40 dark:to-slate-800/80 border border-indigo-200/80 dark:border-indigo-800/60 space-y-3 animate-in fade-in duration-200">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-lg bg-indigo-500/10 dark:bg-indigo-400/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                          <TrendingUp className="w-3.5 h-3.5" />
+                        </div>
+                        <span className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">
+                          Destino do Investimento
+                        </span>
+                      </div>
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                        <Sparkles className="w-2.5 h-2.5" /> Aba Investir
+                      </span>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                        Ativo de Destino
+                      </label>
+                      <select
+                        value={editDestinationInvestmentId}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setEditDestinationInvestmentId(val);
+                          setEditIsCreatingNewInvestment(val === "new");
+                        }}
+                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700/80 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-semibold focus:ring-2 focus:ring-primary outline-none"
+                      >
+                        <option value="">Selecione o investimento de destino...</option>
+                        <option value="new" className="font-bold text-indigo-600 dark:text-indigo-400">
+                          ✨ + Criar Novo Ativo / Investimento...
+                        </option>
+                        {investments.length > 0 && (
+                          <optgroup label="Investimentos Existentes">
+                            {investments.map((inv: any) => (
+                              <option key={inv.id} value={String(inv.id)}>
+                                {inv.name} ({inv.asset_type || "Geral"}) — Saldo: {formatCurrency(inv.balance)}
+                              </option>
+                            ))}
+                          </optgroup>
+                        )}
+                      </select>
+                    </div>
+
+                    {(editDestinationInvestmentId === "new" || editIsCreatingNewInvestment) && (
+                      <div className="p-3 bg-white/80 dark:bg-slate-900/80 rounded-xl border border-indigo-200/60 dark:border-indigo-900/60 space-y-2.5 animate-in fade-in duration-200">
+                        <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-600 dark:text-indigo-400">
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Configurar Novo Ativo</span>
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-1 uppercase">
+                            Nome do Ativo *
+                          </label>
+                          <input
+                            type="text"
+                            required={editDestinationInvestmentId === "new"}
+                            value={editNewInvestmentName}
+                            onChange={(e) => setEditNewInvestmentName(e.target.value)}
+                            placeholder="Ex: ETF VWCE, Apple, Poupança..."
+                            className="w-full px-3 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-medium focus:ring-2 focus:ring-primary outline-none"
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-1 uppercase">
+                              Tipo de Ativo
+                            </label>
+                            <select
+                              value={editNewInvestmentAssetType}
+                              onChange={(e) => setEditNewInvestmentAssetType(e.target.value)}
+                              className="w-full px-2.5 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-medium focus:ring-2 focus:ring-primary outline-none"
+                            >
+                              <option value="Ações">Ações</option>
+                              <option value="ETFs">ETFs</option>
+                              <option value="Cripto">Cripto</option>
+                              <option value="Imobiliário">Imobiliário</option>
+                              <option value="Renda Fixa">Renda Fixa</option>
+                              <option value="Fundos">Fundos</option>
+                              <option value="Numerário">Numerário</option>
+                              <option value="Outro">Outro</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-1 uppercase">
+                              Meta / Objetivo (€)
+                            </label>
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={editNewInvestmentTarget}
+                              onChange={(e) => setEditNewInvestmentTarget(e.target.value)}
+                              placeholder="Opcional"
+                              className="w-full px-2.5 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-medium focus:ring-2 focus:ring-primary outline-none"
+                            />
+                          </div>
+                        </div>
+
+                        {editNewInvestmentAssetType === "Outro" && (
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-1 uppercase">
+                              Especifica o Tipo
+                            </label>
+                            <input
+                              type="text"
+                              value={editNewInvestmentCustomAssetType}
+                              onChange={(e) => setEditNewInvestmentCustomAssetType(e.target.value)}
+                              placeholder="Ex: Metais Preciosos, Arte..."
+                              className="w-full px-2.5 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-medium focus:ring-2 focus:ring-primary outline-none"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {editDestinationInvestmentId && (
+                      <label className="flex items-center gap-2 cursor-pointer pt-1">
+                        <input
+                          type="checkbox"
+                          checked={editAutoCreditInvestment}
+                          onChange={(e) => setEditAutoCreditInvestment(e.target.checked)}
+                          className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-700"
+                        />
+                        <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 select-none">
+                          Creditar e sincronizar valor na aba <span className="text-indigo-600 dark:text-indigo-400 font-bold">Investir</span>
+                        </span>
+                      </label>
+                    )}
+                  </div>
+                )}
 
                 {/* Método de Pagamento */}
                 <div>

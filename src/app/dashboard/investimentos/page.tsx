@@ -111,12 +111,18 @@ export default function InvestimentosPage() {
   }, [goalFilterYear, goalFilterMonth]);
 
   useEffect(() => {
-    const handleCategoriesUpdate = () => {
+    const handleUpdates = () => {
       fetchData();
       fetchGoalsData();
     };
-    window.addEventListener("categories-updated", handleCategoriesUpdate);
-    return () => window.removeEventListener("categories-updated", handleCategoriesUpdate);
+    window.addEventListener("categories-updated", handleUpdates);
+    window.addEventListener("investments-updated", handleUpdates);
+    window.addEventListener("transactions-updated", handleUpdates);
+    return () => {
+      window.removeEventListener("categories-updated", handleUpdates);
+      window.removeEventListener("investments-updated", handleUpdates);
+      window.removeEventListener("transactions-updated", handleUpdates);
+    };
   }, []);
 
   async function fetchData() {
